@@ -1,0 +1,168 @@
+{% extends "base.html" %}
+
+{% block title %}Count Report — RestaurantOps{% endblock %}
+
+{% block topbar %}
+<h1>Variance Report — {{ report.session.count_date.strftime('%b %d, %Y') }}</h1>
+{% endblock %}
+
+{% block topbar_actions %}
+<a href="{{ url_for('counts') }}" class="btn btn-outline-brand btn-sm">
+    <i class="bi bi-arrow-left"></i> All Counts
+</a>
+{% endblock %}
+
+{% block content %}
+<!-- Summary Cards -->
+<div class="row g-3 mb-4">
+    <div class="col-md-3">
+        <div class="stat-card">
+            <div class="stat-icon blue"><i class="bi bi-currency-dollar"></i></div>
+            <div class="stat-value">${{ "{:,.2f}".format(report.total_expected_value) }}</div>
+            <div class="stat-label">Expected Value</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card">
+            <div class="stat-icon green"><i class="bi bi-clipboard-check"></i></div>
+            <div class="stat-value">${{ "{:,.2f}".format(report.total_actual_value) }}</div>
+            <div class="stat-label">Actual Value</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card">
+            <div class="stat-icon {% if report.total_variance < -50 %}red{% else %}orange{% endif %}"><i class="bi bi-exclamation-triangle"></i></div>
+            <div class="stat-value {% if report.total_variance < -50 %}low-stock{% endif %}">${{ "{:,.2f}".format(report.total_variance) }}</div>
+            <div class="stat-label">Total Variance</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card">
+            <div class="stat-icon red"><i class="bi bi-flag"></i></div>
+            <div class="stat-value">{{ report.flagged_count }}</div>
+            <div class="stat-label">Flagged Items (>10%)</div>
+        </div>
+    </div>
+</div>
+
+<!-- Counted By Info -->
+<div class="content-card mb-4" style="padding: 14px 20px;">
+    <div class="d-flex gap-4" style="font-size: 0.85rem;">
+        <span><strong>Counted by:</strong> {{ report.session.counted_by or 'Not specified' }}</span>
+        <span><strong>Date:</strong> {{ report.session.count_date.strftime('%B %d, %Y') }}</span>
+        <span><strong>Submitted:</strong> {{ report.session.submitted_at.strftime('%b %d at %I:%M %p') if report.session.submitted_at else '—' }}</span>
+        <span><strong>Items:</strong> {{ report.entries|length }}</span>
+    </div>
+</div>
+
+<!-- Flagged Items -->
+{% set flagged = report.entries|selectattr('flagged')|list %}
+{% if flagged|length > 0 %}
+<div class="content-card mb-4" style="border-left: 4px solid var(--accent-red);">
+    <div class="card-header-row">
+        <h5><i class="bi bi-flag-fill" style="color: var(--accent-red); margin-right: 4px;"></i> Flagged Items — Needs Attention</h5>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-clean">
+            <thead>
+                <tr>
+                    <th>Item</th>
+                    <th>Zone</th>
+                    <th>Expected</th>
+                    <th>Actual</th>
+                    <th>Variance</th>
+                    <th>$ Variance</th>
+                    <th>% Variance</th>
+                    <th>Notes</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for e in flagged %}
+                <tr>
+                    <td class="fw-semibold">{{ e.item_name }}</td>
+                    <td><span class="zone-badge">{{ e.zone }}</span></td>
+                    <td>{{ e.expected }} {{ e.unit }}</td>
+                    <td>{{ e.actual }} {{ e.unit }}</td>
+                    <td class="{% if e.variance < 0 %}variance-neg{% else %}variance-pos{% endif %}">
+                        {{ "%+.1f"|format(e.variance) }}
+                    </td>
+                    <td class="{% if e.variance_value < 0 %}variance-neg{% else %}variance-pos{% endif %}">
+                        ${{ "{:,.2f}".format(e.variance_value) }}
+                    </td>
+                    <td class="{% if e.variance_percent < 0 %}variance-neg{% else %}variance-pos{% endif %}">
+                        {{ "%+.1f"|format(e.variance_percent) }}%
+                    </td>
+                    <td style="font-size: 0.82rem; color: #888;">{{ e.notes or '—' }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+
+<!-- Full Report -->
+<div class="content-card">
+    <div class="card-header-row">
+        <h5>Full Variance Detail</h5>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-clean">
+            <thead>
+                <tr>
+                    <th>Item</th>
+                    <th>Category</th>
+                    <th>Zone</th>
+                    <th>Unit Cost</th>
+                    <th>Expected</th>
+                    <th>Actual</th>
+                    <th>Variance</th>
+                    <th>$ Variance</th>
+                    <th>% Var</th>
+                    <th>Notes</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for e in report.entries %}
+                <tr class="{% if e.flagged %}table-warning{% endif %}">
+                    <td class="fw-semibold">
+                        {% if e.flagged %}<i class="bi bi-flag-fill" style="color: var(--accent-red); font-size: 0.7rem; margin-right: 3px;"></i>{% endif %}
+                        {{ e.item_name }}
+                    </td>
+                    <td><span class="category-tag">{{ e.category|capitalize if e.category else '—' }}</span></td>
+                    <td><span class="zone-badge">{{ e.zone }}</span></td>
+                    <td>${{ "{:,.2f}".format(e.unit_cost) }}</td>
+                    <td>{{ e.expected }} {{ e.unit }}</td>
+                    <td>{{ e.actual }} {{ e.unit }}</td>
+                    <td class="{% if e.variance < -0.5 %}variance-neg{% elif e.variance > 0.5 %}variance-pos{% else %}variance-ok{% endif %}">
+                        {{ "%+.1f"|format(e.variance) }}
+                    </td>
+                    <td class="{% if e.variance_value < -1 %}variance-neg{% elif e.variance_value > 1 %}variance-pos{% else %}variance-ok{% endif %}">
+                        ${{ "{:,.2f}".format(e.variance_value) }}
+                    </td>
+                    <td>{{ "%+.1f"|format(e.variance_percent) }}%</td>
+                    <td style="font-size: 0.82rem; color: #888;">{{ e.notes or '' }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<style>
+    .zone-badge {
+        font-size: 0.7rem; font-weight: 600; padding: 3px 8px;
+        border-radius: 4px; background: rgba(0,119,182,0.08); color: #0077b6;
+    }
+    .category-tag {
+        font-size: 0.72rem; font-weight: 600; padding: 3px 8px;
+        border-radius: 4px; background: rgba(108,117,125,0.08); color: #6c757d;
+    }
+    .variance-neg { color: var(--accent-red); font-weight: 600; }
+    .variance-pos { color: var(--accent-green); font-weight: 600; }
+    .variance-ok { color: #888; }
+    .table-warning { background: rgba(230,57,70,0.04) !important; }
+</style>
+{% endblock %}

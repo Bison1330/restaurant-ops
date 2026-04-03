@@ -1,0 +1,525 @@
+{% extends "base.html" %}
+
+{% block title %}Recipes — RestaurantOps{% endblock %}
+
+{% block topbar %}
+<h1>Recipes</h1>
+{% endblock %}
+
+{% block topbar_actions %}
+<button class="btn btn-outline-brand btn-sm" data-bs-toggle="modal" data-bs-target="#csvModal">
+    <i class="bi bi-filetype-csv"></i> Import CSV
+</button>
+<button class="btn btn-brand btn-sm" data-bs-toggle="modal" data-bs-target="#recipeModal" onclick="openNewRecipe()">
+    <i class="bi bi-plus-lg"></i> New Recipe
+</button>
+{% endblock %}
+
+{% block content %}
+
+<!-- Summary Cards -->
+<div class="row g-3 mb-4">
+    <div class="col-md-3">
+        <div class="stat-card">
+            <div class="stat-icon green"><i class="bi bi-egg-fried"></i></div>
+            <div class="stat-value">{{ food_recipes|length }}</div>
+            <div class="stat-label">Food Recipes</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card">
+            <div class="stat-icon orange"><i class="bi bi-cup-straw"></i></div>
+            <div class="stat-value">{{ beverage_recipes|length }}</div>
+            <div class="stat-label">Beverage Recipes</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card">
+            <div class="stat-icon blue"><i class="bi bi-currency-dollar"></i></div>
+            {% set avg_food_cost = [] %}
+            {% for r in food_recipes if r.cost_percent > 0 %}{% if avg_food_cost.append(r.cost_percent) %}{% endif %}{% endfor %}
+            <div class="stat-value">{{ "%.1f"|format(avg_food_cost|sum / avg_food_cost|length) if avg_food_cost|length > 0 else "—" }}%</div>
+            <div class="stat-label">Avg Food Cost %</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card">
+            <div class="stat-icon blue"><i class="bi bi-percent"></i></div>
+            {% set avg_bev_cost = [] %}
+            {% for r in beverage_recipes if r.cost_percent > 0 %}{% if avg_bev_cost.append(r.cost_percent) %}{% endif %}{% endfor %}
+            <div class="stat-value">{{ "%.1f"|format(avg_bev_cost|sum / avg_bev_cost|length) if avg_bev_cost|length > 0 else "—" }}%</div>
+            <div class="stat-label">Avg Beverage Cost %</div>
+        </div>
+    </div>
+</div>
+
+<!-- Food Recipes -->
+<div class="content-card mb-4">
+    <div class="card-header-row">
+        <h5><i class="bi bi-egg-fried" style="color: var(--accent-green); margin-right: 4px;"></i> Food Recipes</h5>
+        <span class="text-muted" style="font-size: 0.82rem;">Target: 28–32% food cost</span>
+    </div>
+    {% if food_recipes|length > 0 %}
+    <div class="table-responsive">
+        <table class="table table-clean">
+            <thead>
+                <tr>
+                    <th>Recipe</th>
+                    <th>Subcategory</th>
+                    <th>Menu Price</th>
+                    <th>Cost</th>
+                    <th>Cost %</th>
+                    <th>Margin</th>
+                    <th>Margin %</th>
+                    <th>Source</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for rec in food_recipes %}
+                <tr>
+                    <td class="fw-semibold">{{ rec.name }}</td>
+                    <td><span class="category-tag">{{ rec.subcategory or '—' }}</span></td>
+                    <td>${{ "{:,.2f}".format(rec.menu_price) }}</td>
+                    <td>${{ "{:,.2f}".format(rec.total_cost) }}</td>
+                    <td>
+                        <span class="cost-pct {% if rec.cost_percent > 35 %}high{% elif rec.cost_percent > 32 %}warn{% else %}good{% endif %}">
+                            {{ "%.1f"|format(rec.cost_percent) }}%
+                        </span>
+                    </td>
+                    <td>${{ "{:,.2f}".format(rec.margin) }}</td>
+                    <td>{{ "%.1f"|format(rec.margin_percent) }}%</td>
+                    <td>
+                        {% if rec.xtra_chef_id %}
+                        <span class="source-tag csv">xtra chef</span>
+                        {% elif rec.toast_recipe_id %}
+                        <span class="source-tag toast">Toast</span>
+                        {% else %}
+                        <span class="source-tag manual">Manual</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <div class="d-flex gap-1">
+                            <button class="btn btn-sm btn-outline-primary" style="font-size: 0.72rem; padding: 3px 8px;" onclick="openEditRecipe({{ rec.id }})">
+                                <i class="bi bi-pencil"></i>
+                            </button>
+                            <button class="btn btn-sm btn-outline-danger" style="font-size: 0.72rem; padding: 3px 8px;" onclick="deleteRecipe({{ rec.id }}, '{{ rec.name }}')">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <p class="text-muted text-center py-4 mb-0">No food recipes yet. Import a CSV from xtra chef or create one manually.</p>
+    {% endif %}
+</div>
+
+<!-- Beverage Recipes -->
+<div class="content-card">
+    <div class="card-header-row">
+        <h5><i class="bi bi-cup-straw" style="color: var(--brand-orange); margin-right: 4px;"></i> Beverage Recipes</h5>
+        <span class="text-muted" style="font-size: 0.82rem;">Target: 18–22% beverage cost</span>
+    </div>
+    {% if beverage_recipes|length > 0 %}
+    <div class="table-responsive">
+        <table class="table table-clean">
+            <thead>
+                <tr>
+                    <th>Recipe</th>
+                    <th>Subcategory</th>
+                    <th>Menu Price</th>
+                    <th>Cost</th>
+                    <th>Cost %</th>
+                    <th>Margin</th>
+                    <th>Margin %</th>
+                    <th>Source</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for rec in beverage_recipes %}
+                <tr>
+                    <td class="fw-semibold">{{ rec.name }}</td>
+                    <td><span class="category-tag">{{ rec.subcategory or '—' }}</span></td>
+                    <td>${{ "{:,.2f}".format(rec.menu_price) }}</td>
+                    <td>${{ "{:,.2f}".format(rec.total_cost) }}</td>
+                    <td>
+                        <span class="cost-pct {% if rec.cost_percent > 25 %}high{% elif rec.cost_percent > 22 %}warn{% else %}good{% endif %}">
+                            {{ "%.1f"|format(rec.cost_percent) }}%
+                        </span>
+                    </td>
+                    <td>${{ "{:,.2f}".format(rec.margin) }}</td>
+                    <td>{{ "%.1f"|format(rec.margin_percent) }}%</td>
+                    <td>
+                        {% if rec.xtra_chef_id %}
+                        <span class="source-tag csv">xtra chef</span>
+                        {% elif rec.toast_recipe_id %}
+                        <span class="source-tag toast">Toast</span>
+                        {% else %}
+                        <span class="source-tag manual">Manual</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <div class="d-flex gap-1">
+                            <button class="btn btn-sm btn-outline-primary" style="font-size: 0.72rem; padding: 3px 8px;" onclick="openEditRecipe({{ rec.id }})">
+                                <i class="bi bi-pencil"></i>
+                            </button>
+                            <button class="btn btn-sm btn-outline-danger" style="font-size: 0.72rem; padding: 3px 8px;" onclick="deleteRecipe({{ rec.id }}, '{{ rec.name }}')">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <p class="text-muted text-center py-4 mb-0">No beverage recipes yet. Import a CSV from xtra chef or create one manually.</p>
+    {% endif %}
+</div>
+
+<!-- Pricing Info Banner -->
+<div class="content-card mb-4" style="padding: 14px 20px; background: linear-gradient(135deg, #f8f9fa 0%, #fff 100%);">
+    <div class="d-flex align-items-center gap-3">
+        <i class="bi bi-info-circle" style="font-size: 1.2rem; color: var(--accent-blue);"></i>
+        <div style="font-size: 0.84rem; color: #555;">
+            <strong>Live pricing</strong> — Ingredient costs linked to inventory update automatically when weekly invoices are imported.
+            Unlinked ingredients use their static cost. <span class="text-muted">Last invoice import updates all connected recipe margins.</span>
+        </div>
+    </div>
+</div>
+
+<!-- CSV Import Modal -->
+<div class="modal fade" id="csvModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content" style="border: none; border-radius: 12px;">
+            <form action="{{ url_for('import_recipe_csv') }}" method="POST" enctype="multipart/form-data">
+                <div class="modal-header" style="border-bottom: 1px solid #f0f2f5; padding: 20px 24px;">
+                    <h5 class="modal-title fw-bold">Import Recipes from CSV</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body" style="padding: 24px;">
+                    <p style="font-size: 0.85rem; color: #555;">Upload a CSV export from <strong>xtra chef</strong>. Supported formats:</p>
+                    <div class="mb-3 p-3" style="background: #f8f9fa; border-radius: 8px; font-family: monospace; font-size: 0.75rem; line-height: 1.8;">
+                        <strong>Format — one row per ingredient:</strong><br>
+                        recipe_name, category, subcategory, menu_price, ingredient, quantity, unit, unit_cost<br>
+                        Classic Burger, food, Entrees, 15.99, Ground Beef, 8, oz, 0.27<br>
+                        Classic Burger, food, Entrees, 15.99, Burger Bun, 1, each, 0.39
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">CSV File</label>
+                        <input type="file" name="recipe_csv" class="form-control" accept=".csv" required>
+                    </div>
+                    <p style="font-size: 0.78rem; color: #999;">
+                        Ingredients matching inventory items by name will be auto-linked for live pricing updates.
+                    </p>
+                </div>
+                <div class="modal-footer" style="border-top: 1px solid #f0f2f5; padding: 16px 24px;">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-brand">
+                        <i class="bi bi-upload"></i> Import Recipes
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Recipe Create/Edit Modal -->
+<div class="modal fade" id="recipeModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content" style="border: none; border-radius: 12px;">
+            <form id="recipeForm" method="POST">
+                <div class="modal-header" style="border-bottom: 1px solid #f0f2f5; padding: 20px 24px;">
+                    <h5 class="modal-title fw-bold" id="modalTitle">New Recipe</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body" style="padding: 24px;">
+                    <!-- Recipe Details -->
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-5">
+                            <label class="form-label small fw-semibold">Recipe Name</label>
+                            <input type="text" name="name" id="recipeName" class="form-control" required>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small fw-semibold">Category</label>
+                            <select name="category" id="recipeCategory" class="form-select" onchange="recalculate()">
+                                <option value="food">Food</option>
+                                <option value="beverage">Beverage</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small fw-semibold">Subcategory</label>
+                            <input type="text" name="subcategory" id="recipeSubcategory" class="form-control" placeholder="e.g. Entrees, Cocktails">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small fw-semibold">Menu Price ($)</label>
+                            <input type="number" name="menu_price" id="recipeMenuPrice" class="form-control" step="0.01" min="0" value="0" oninput="recalculate()">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small fw-semibold">Portion Size</label>
+                            <input type="text" name="portion_size" id="recipePortionSize" class="form-control" placeholder="e.g. 1 plate">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-semibold">Notes</label>
+                            <input type="text" name="notes" id="recipeNotes" class="form-control" placeholder="Prep notes, allergens, etc.">
+                        </div>
+                    </div>
+
+                    <!-- Live Cost/Margin Display -->
+                    <div class="cost-summary-bar mb-4">
+                        <div class="cost-metric">
+                            <span class="cost-metric-label">Total Cost</span>
+                            <span class="cost-metric-value" id="liveTotalCost">$0.00</span>
+                        </div>
+                        <div class="cost-metric">
+                            <span class="cost-metric-label">Cost %</span>
+                            <span class="cost-metric-value" id="liveCostPct">0.0%</span>
+                        </div>
+                        <div class="cost-metric">
+                            <span class="cost-metric-label">Margin</span>
+                            <span class="cost-metric-value" id="liveMargin">$0.00</span>
+                        </div>
+                        <div class="cost-metric">
+                            <span class="cost-metric-label">Margin %</span>
+                            <span class="cost-metric-value" id="liveMarginPct">0.0%</span>
+                        </div>
+                        <div class="cost-metric" id="costTarget">
+                            <span class="cost-metric-label">Target</span>
+                            <span class="cost-metric-value" id="liveTarget">28–32%</span>
+                        </div>
+                    </div>
+
+                    <!-- Ingredients -->
+                    <div class="d-flex align-items-center justify-content-between mb-3">
+                        <h6 class="fw-bold mb-0">Ingredients</h6>
+                        <button type="button" class="btn btn-sm btn-outline-brand" onclick="addIngredientRow()">
+                            <i class="bi bi-plus-lg"></i> Add Ingredient
+                        </button>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-sm" style="font-size: 0.85rem;" id="ingredientTable">
+                            <thead>
+                                <tr style="border-bottom: 2px solid #f0f2f5;">
+                                    <th style="width: 26%;">Ingredient</th>
+                                    <th style="width: 18%;">Inventory Link</th>
+                                    <th style="width: 12%;">Qty</th>
+                                    <th style="width: 12%;">Unit</th>
+                                    <th style="width: 14%;">Unit Cost ($)</th>
+                                    <th style="width: 12%;">Line Cost</th>
+                                    <th style="width: 6%;"></th>
+                                </tr>
+                            </thead>
+                            <tbody id="ingredientRows">
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="modal-footer" style="border-top: 1px solid #f0f2f5; padding: 16px 24px;">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-brand" id="saveRecipeBtn">Save Recipe</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Hidden recipe data for editing -->
+<script id="recipeData" type="application/json">
+{
+    {% for rec in food_recipes + beverage_recipes %}
+    "{{ rec.id }}": {
+        "name": {{ rec.name|tojson }},
+        "category": {{ rec.category|tojson }},
+        "subcategory": {{ rec.subcategory|tojson }},
+        "menu_price": {{ rec.menu_price }},
+        "portion_size": {{ (rec.portion_size or "")|tojson }},
+        "notes": {{ (rec.notes or "")|tojson }},
+        "ingredients": [
+            {% for ing in rec.ingredients %}
+            {"name": {{ ing.name|tojson }}, "inv_id": "{{ ing.inventory_item_id or '' }}", "quantity": {{ ing.quantity }}, "unit": {{ ing.unit|tojson }}, "unit_cost": {{ ing.unit_cost }}}{% if not loop.last %},{% endif %}
+            {% endfor %}
+        ]
+    }{% if not loop.last %},{% endif %}
+    {% endfor %}
+}
+</script>
+
+<!-- Inventory items for linking -->
+<script id="inventoryData" type="application/json">
+[
+    {% for item in inventory_items %}
+    {"id": {{ item.id }}, "name": {{ item.name|tojson }}, "unit": {{ item.unit|tojson }}, "last_cost": {{ item.last_cost }}}{% if not loop.last %},{% endif %}
+    {% endfor %}
+]
+</script>
+
+{% endblock %}
+
+{% block extra_js %}
+<style>
+    .category-tag {
+        font-size: 0.72rem; font-weight: 600; padding: 3px 8px;
+        border-radius: 4px; background: rgba(108,117,125,0.08); color: #6c757d;
+    }
+    .source-tag { font-size: 0.68rem; font-weight: 700; padding: 3px 8px; border-radius: 4px; text-transform: uppercase; letter-spacing: 0.3px; }
+    .source-tag.toast { background: rgba(232,93,4,0.12); color: #e85d04; }
+    .source-tag.csv { background: rgba(0,119,182,0.12); color: #0077b6; }
+    .source-tag.manual { background: rgba(108,117,125,0.08); color: #999; }
+
+    .cost-pct { font-weight: 700; font-size: 0.85rem; padding: 2px 8px; border-radius: 4px; }
+    .cost-pct.good { background: rgba(42,157,143,0.12); color: #2a9d8f; }
+    .cost-pct.warn { background: rgba(255,193,7,0.15); color: #d4a017; }
+    .cost-pct.high { background: rgba(230,57,70,0.12); color: #e63946; }
+
+    .cost-summary-bar {
+        display: flex; gap: 16px; padding: 16px 20px;
+        background: #f8f9fa; border-radius: 10px; flex-wrap: wrap;
+    }
+    .cost-metric { text-align: center; flex: 1; min-width: 80px; }
+    .cost-metric-label { display: block; font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: #888; margin-bottom: 4px; }
+    .cost-metric-value { font-size: 1.1rem; font-weight: 700; color: #1a1a2e; }
+    .cost-metric-value.good { color: #2a9d8f; }
+    .cost-metric-value.warn { color: #d4a017; }
+    .cost-metric-value.high { color: #e63946; }
+
+    #ingredientTable .form-control, #ingredientTable .form-select {
+        font-size: 0.82rem; padding: 4px 8px;
+    }
+    @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+    .spin { display: inline-block; animation: spin 1s linear infinite; }
+</style>
+
+<script>
+    const recipeData = JSON.parse(document.getElementById('recipeData').textContent);
+    const inventoryItems = JSON.parse(document.getElementById('inventoryData').textContent);
+    let editingId = null;
+
+    function invOptions(selectedId) {
+        let html = '<option value="">— None —</option>';
+        inventoryItems.forEach(item => {
+            const sel = (item.id == selectedId) ? ' selected' : '';
+            html += `<option value="${item.id}"${sel}>${item.name} ($${item.last_cost.toFixed(2)}/${item.unit})</option>`;
+        });
+        return html;
+    }
+
+    function addIngredientRow(data) {
+        data = data || {name: '', inv_id: '', quantity: '', unit: '', unit_cost: ''};
+        const tbody = document.getElementById('ingredientRows');
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td><input type="text" name="ing_name[]" class="form-control" value="${data.name}" placeholder="Ingredient name"></td>
+            <td>
+                <select name="ing_inv_id[]" class="form-select" onchange="linkInventory(this)">
+                    ${invOptions(data.inv_id)}
+                </select>
+            </td>
+            <td><input type="number" name="ing_qty[]" class="form-control" value="${data.quantity}" step="0.25" min="0" oninput="recalculate()" placeholder="0"></td>
+            <td><input type="text" name="ing_unit[]" class="form-control" value="${data.unit}" placeholder="oz, each"></td>
+            <td><input type="number" name="ing_cost[]" class="form-control" value="${data.unit_cost}" step="0.01" min="0" oninput="recalculate()" placeholder="0.00"></td>
+            <td class="line-cost fw-semibold" style="vertical-align: middle;">$0.00</td>
+            <td><button type="button" class="btn btn-sm btn-outline-danger" style="font-size: 0.72rem; padding: 2px 6px;" onclick="this.closest('tr').remove(); recalculate();"><i class="bi bi-x-lg"></i></button></td>
+        `;
+        tbody.appendChild(tr);
+        recalculate();
+    }
+
+    function linkInventory(sel) {
+        const row = sel.closest('tr');
+        const id = sel.value;
+        if (!id) return;
+        const item = inventoryItems.find(i => i.id == id);
+        if (!item) return;
+        row.querySelector('[name="ing_name[]"]').value = item.name;
+        row.querySelector('[name="ing_unit[]"]').value = item.unit;
+        row.querySelector('[name="ing_cost[]"]').value = item.last_cost.toFixed(2);
+        recalculate();
+    }
+
+    function recalculate() {
+        const rows = document.querySelectorAll('#ingredientRows tr');
+        let totalCost = 0;
+        rows.forEach(row => {
+            const qty = parseFloat(row.querySelector('[name="ing_qty[]"]')?.value) || 0;
+            const cost = parseFloat(row.querySelector('[name="ing_cost[]"]')?.value) || 0;
+            const line = qty * cost;
+            totalCost += line;
+            const lineCell = row.querySelector('.line-cost');
+            if (lineCell) lineCell.textContent = '$' + line.toFixed(2);
+        });
+
+        const menuPrice = parseFloat(document.getElementById('recipeMenuPrice').value) || 0;
+        const margin = menuPrice > 0 ? menuPrice - totalCost : 0;
+        const marginPct = menuPrice > 0 ? ((menuPrice - totalCost) / menuPrice * 100) : 0;
+        const costPct = menuPrice > 0 ? (totalCost / menuPrice * 100) : 0;
+
+        document.getElementById('liveTotalCost').textContent = '$' + totalCost.toFixed(2);
+        document.getElementById('liveMargin').textContent = '$' + margin.toFixed(2);
+        document.getElementById('liveMarginPct').textContent = marginPct.toFixed(1) + '%';
+
+        const costPctEl = document.getElementById('liveCostPct');
+        costPctEl.textContent = costPct.toFixed(1) + '%';
+        costPctEl.className = 'cost-metric-value';
+
+        const cat = document.getElementById('recipeCategory').value;
+        const target = cat === 'beverage' ? '18–22%' : '28–32%';
+        document.getElementById('liveTarget').textContent = target;
+
+        const highThresh = cat === 'beverage' ? 25 : 35;
+        const warnThresh = cat === 'beverage' ? 22 : 32;
+        if (menuPrice > 0) {
+            if (costPct > highThresh) costPctEl.classList.add('high');
+            else if (costPct > warnThresh) costPctEl.classList.add('warn');
+            else costPctEl.classList.add('good');
+        }
+    }
+
+    function openNewRecipe() {
+        editingId = null;
+        document.getElementById('modalTitle').textContent = 'New Recipe';
+        document.getElementById('recipeForm').action = '{{ url_for("create_recipe") }}';
+        document.getElementById('recipeName').value = '';
+        document.getElementById('recipeCategory').value = 'food';
+        document.getElementById('recipeSubcategory').value = '';
+        document.getElementById('recipeMenuPrice').value = '';
+        document.getElementById('recipePortionSize').value = '';
+        document.getElementById('recipeNotes').value = '';
+        document.getElementById('ingredientRows').innerHTML = '';
+        addIngredientRow();
+        addIngredientRow();
+        addIngredientRow();
+        recalculate();
+    }
+
+    function openEditRecipe(id) {
+        const rec = recipeData[id];
+        if (!rec) return;
+        editingId = id;
+        document.getElementById('modalTitle').textContent = 'Edit Recipe';
+        document.getElementById('recipeForm').action = `/recipes/${id}/edit`;
+        document.getElementById('recipeName').value = rec.name;
+        document.getElementById('recipeCategory').value = rec.category;
+        document.getElementById('recipeSubcategory').value = rec.subcategory || '';
+        document.getElementById('recipeMenuPrice').value = rec.menu_price;
+        document.getElementById('recipePortionSize').value = rec.portion_size || '';
+        document.getElementById('recipeNotes').value = rec.notes || '';
+        document.getElementById('ingredientRows').innerHTML = '';
+        rec.ingredients.forEach(ing => addIngredientRow(ing));
+        if (rec.ingredients.length === 0) addIngredientRow();
+        recalculate();
+        new bootstrap.Modal(document.getElementById('recipeModal')).show();
+    }
+
+    function deleteRecipe(id, name) {
+        if (!confirm(`Remove recipe "${name}"?`)) return;
+        fetch(`/recipes/${id}/delete`, { method: 'POST' }).then(() => window.location.reload());
+    }
+
+</script>
+{% endblock %}

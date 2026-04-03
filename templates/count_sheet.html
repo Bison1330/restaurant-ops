@@ -1,0 +1,260 @@
+{% extends "base.html" %}
+
+{% block title %}Count Sheet — RestaurantOps{% endblock %}
+
+{% block topbar %}
+<h1>Count Sheet — {{ session.count_date.strftime('%b %d, %Y') }}</h1>
+{% endblock %}
+
+{% block topbar_actions %}
+<span class="text-muted" style="font-size: 0.82rem;">
+    {% if session.counted_by %}Counting: {{ session.counted_by }} · {% endif %}
+    <span class="badge-status pending">In Progress</span>
+</span>
+<button class="btn btn-outline-brand btn-sm" onclick="saveAll()">
+    <i class="bi bi-cloud-check"></i> Save Progress
+</button>
+<button class="btn btn-brand btn-sm" onclick="submitCount()">
+    <i class="bi bi-check-lg"></i> Submit Count
+</button>
+{% endblock %}
+
+{% block content %}
+<!-- Running Totals Bar -->
+<div class="content-card mb-4" style="padding: 14px 20px;">
+    <div class="d-flex gap-4 flex-wrap">
+        <div>
+            <span class="text-muted" style="font-size: 0.72rem; text-transform: uppercase; font-weight: 600;">Items Counted</span>
+            <div class="fw-bold" id="countedCount">0 / {{ session.entries|length }}</div>
+        </div>
+        <div>
+            <span class="text-muted" style="font-size: 0.72rem; text-transform: uppercase; font-weight: 600;">Total Value</span>
+            <div class="fw-bold" id="totalValue">$0.00</div>
+        </div>
+        <div>
+            <span class="text-muted" style="font-size: 0.72rem; text-transform: uppercase; font-weight: 600;">Running Variance</span>
+            <div class="fw-bold" id="totalVariance">$0.00</div>
+        </div>
+    </div>
+</div>
+
+<!-- Zone Tabs -->
+<ul class="nav nav-tabs mb-0" role="tablist" style="border-bottom: none;">
+    {% set all_zones = [] %}
+    {% for zone in zones %}
+    {% if zone.id in entries_by_zone %}
+    <li class="nav-item">
+        <button class="nav-link {% if loop.first %}active{% endif %} zone-tab" data-bs-toggle="tab" data-bs-target="#zone-{{ zone.id }}" type="button">
+            {{ zone.name }}
+            <span class="text-muted" style="font-size: 0.72rem;">({{ entries_by_zone[zone.id]|length }})</span>
+        </button>
+    </li>
+    {% endif %}
+    {% endfor %}
+    {% if unzoned|length > 0 %}
+    <li class="nav-item">
+        <button class="nav-link {% if not zones or not entries_by_zone %}active{% endif %} zone-tab" data-bs-toggle="tab" data-bs-target="#zone-unassigned" type="button">
+            Unassigned
+            <span class="text-muted" style="font-size: 0.72rem;">({{ unzoned|length }})</span>
+        </button>
+    </li>
+    {% endif %}
+</ul>
+
+<!-- Zone Tab Content -->
+<div class="tab-content">
+    {% set first_tab = [true] %}
+    {% for zone in zones %}
+    {% if zone.id in entries_by_zone %}
+    <div class="tab-pane fade {% if first_tab[0] %}show active{% endif %}" id="zone-{{ zone.id }}">
+        {% if first_tab.pop() %}{% endif %}
+        {{ render_zone_table(entries_by_zone[zone.id], zone.name) }}
+    </div>
+    {% endif %}
+    {% endfor %}
+    {% if unzoned|length > 0 %}
+    <div class="tab-pane fade {% if not zones or not entries_by_zone %}show active{% endif %}" id="zone-unassigned">
+        {{ render_zone_table(unzoned, "Unassigned") }}
+    </div>
+    {% endif %}
+</div>
+
+<!-- Hidden submit form -->
+<form id="submitForm" action="{{ url_for('submit_count', id=session.id) }}" method="POST" style="display:none;">
+    {% for entry in session.entries %}
+    <input type="hidden" name="count_{{ entry.id }}" id="submit_{{ entry.id }}" value="0">
+    <input type="hidden" name="notes_{{ entry.id }}" id="submit_notes_{{ entry.id }}" value="">
+    {% endfor %}
+</form>
+
+{% macro render_zone_table(entries, zone_name) %}
+<div class="content-card" style="border-top-left-radius: 0; border-top-right-radius: 0;">
+    <div class="table-responsive">
+        <table class="table table-clean">
+            <thead>
+                <tr>
+                    <th>Item</th>
+                    <th>Category</th>
+                    <th>Unit</th>
+                    <th>Expected</th>
+                    <th>Actual Count</th>
+                    <th>Variance</th>
+                    <th>$ Variance</th>
+                    <th>Notes</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for entry in entries %}
+                <tr class="count-row" data-entry-id="{{ entry.id }}" data-unit-cost="{{ entry.unit_cost }}" data-expected="{{ entry.expected_count }}">
+                    <td class="fw-semibold">{{ entry.inventory_item.name }}</td>
+                    <td><span class="category-tag">{{ entry.inventory_item.category|capitalize if entry.inventory_item.category else '—' }}</span></td>
+                    <td>{{ entry.inventory_item.unit }}</td>
+                    <td>{{ entry.expected_count }}</td>
+                    <td>
+                        <input type="number" class="form-control form-control-sm count-input"
+                               value="{{ entry.actual_count }}" step="0.5" min="0"
+                               data-entry-id="{{ entry.id }}"
+                               oninput="updateRow(this)"
+                               style="width: 80px; font-size: 0.85rem;">
+                    </td>
+                    <td class="variance-cell" data-entry-id="{{ entry.id }}">—</td>
+                    <td class="variance-value-cell" data-entry-id="{{ entry.id }}">—</td>
+                    <td>
+                        <input type="text" class="form-control form-control-sm notes-input"
+                               value="{{ entry.notes or '' }}"
+                               data-entry-id="{{ entry.id }}"
+                               placeholder="Notes..."
+                               style="width: 120px; font-size: 0.82rem;">
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endmacro %}
+{% endblock %}
+
+{% block extra_js %}
+<style>
+    .zone-tab {
+        font-size: 0.85rem;
+        font-weight: 600;
+        padding: 10px 20px;
+        border: 1px solid #dee2e6;
+        border-bottom: none;
+        border-radius: 8px 8px 0 0;
+        background: #f8f9fa;
+        color: #666;
+    }
+    .zone-tab.active {
+        background: #fff;
+        color: var(--brand-orange);
+        border-color: #dee2e6;
+    }
+    .category-tag {
+        font-size: 0.72rem; font-weight: 600; padding: 3px 8px;
+        border-radius: 4px; background: rgba(108,117,125,0.08); color: #6c757d;
+    }
+    .count-input:focus {
+        border-color: var(--brand-orange);
+        box-shadow: 0 0 0 2px rgba(232,93,4,0.12);
+    }
+    .variance-neg { color: var(--accent-red); font-weight: 600; }
+    .variance-pos { color: var(--accent-green); font-weight: 600; }
+    .variance-ok { color: #666; }
+</style>
+<script>
+    function updateRow(input) {
+        const entryId = input.dataset.entryId;
+        const row = input.closest('.count-row');
+        const expected = parseFloat(row.dataset.expected) || 0;
+        const unitCost = parseFloat(row.dataset.unitCost) || 0;
+        const actual = parseFloat(input.value) || 0;
+        const variance = actual - expected;
+        const varianceValue = variance * unitCost;
+
+        const varCell = document.querySelector(`.variance-cell[data-entry-id="${entryId}"]`);
+        const valCell = document.querySelector(`.variance-value-cell[data-entry-id="${entryId}"]`);
+
+        varCell.textContent = variance.toFixed(1);
+        valCell.textContent = '$' + varianceValue.toFixed(2);
+
+        if (variance < -0.5) {
+            varCell.className = 'variance-cell variance-neg';
+            valCell.className = 'variance-value-cell variance-neg';
+        } else if (variance > 0.5) {
+            varCell.className = 'variance-cell variance-pos';
+            valCell.className = 'variance-value-cell variance-pos';
+        } else {
+            varCell.className = 'variance-cell variance-ok';
+            valCell.className = 'variance-value-cell variance-ok';
+        }
+
+        updateTotals();
+    }
+
+    function updateTotals() {
+        const rows = document.querySelectorAll('.count-row');
+        let counted = 0, totalValue = 0, totalVariance = 0;
+        rows.forEach(row => {
+            const input = row.querySelector('.count-input');
+            const actual = parseFloat(input.value) || 0;
+            const expected = parseFloat(row.dataset.expected) || 0;
+            const unitCost = parseFloat(row.dataset.unitCost) || 0;
+            if (actual > 0) counted++;
+            totalValue += actual * unitCost;
+            totalVariance += (actual - expected) * unitCost;
+        });
+        document.getElementById('countedCount').textContent = counted + ' / ' + rows.length;
+        document.getElementById('totalValue').textContent = '$' + totalValue.toFixed(2);
+        const varEl = document.getElementById('totalVariance');
+        varEl.textContent = '$' + totalVariance.toFixed(2);
+        varEl.style.color = totalVariance < -10 ? 'var(--accent-red)' : totalVariance > 10 ? 'var(--accent-green)' : '#333';
+    }
+
+    function gatherEntries() {
+        const entries = [];
+        document.querySelectorAll('.count-row').forEach(row => {
+            const entryId = row.dataset.entryId;
+            const actual = parseFloat(row.querySelector('.count-input').value) || 0;
+            const notes = row.querySelector('.notes-input').value;
+            entries.push({ id: parseInt(entryId), actual_count: actual, notes: notes });
+        });
+        return entries;
+    }
+
+    async function saveAll() {
+        const entries = gatherEntries();
+        const resp = await fetch('{{ url_for("save_count", id=session.id) }}', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ entries: entries }),
+        });
+        if (resp.ok) {
+            const btn = event.currentTarget;
+            const orig = btn.innerHTML;
+            btn.innerHTML = '<i class="bi bi-check-lg"></i> Saved';
+            setTimeout(() => btn.innerHTML = orig, 2000);
+        }
+    }
+
+    function submitCount() {
+        if (!confirm('Submit this count? Inventory levels will be updated and a variance report generated.')) return;
+        // Copy values into the hidden form
+        document.querySelectorAll('.count-row').forEach(row => {
+            const entryId = row.dataset.entryId;
+            const actual = parseFloat(row.querySelector('.count-input').value) || 0;
+            const notes = row.querySelector('.notes-input').value;
+            document.getElementById('submit_' + entryId).value = actual;
+            document.getElementById('submit_notes_' + entryId).value = notes;
+        });
+        document.getElementById('submitForm').submit();
+    }
+
+    // Initialize on load
+    document.addEventListener('DOMContentLoaded', () => {
+        document.querySelectorAll('.count-input').forEach(input => updateRow(input));
+    });
+</script>
+{% endblock %}

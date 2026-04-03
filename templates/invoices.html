@@ -1,0 +1,189 @@
+{% extends "base.html" %}
+
+{% block title %}Invoices — RestaurantOps{% endblock %}
+
+{% block topbar %}
+<h1>Invoices</h1>
+{% endblock %}
+
+{% block topbar_actions %}
+<button class="btn btn-outline-brand btn-sm" onclick="syncSource('gfs')">
+    <i class="bi bi-arrow-repeat"></i> Sync GFS
+</button>
+<button class="btn btn-outline-brand btn-sm" onclick="syncSource('fintech')">
+    <i class="bi bi-arrow-repeat"></i> Sync Fintech
+</button>
+<a href="{{ url_for('import_invoices') }}" class="btn btn-brand btn-sm">
+    <i class="bi bi-cloud-upload"></i> Upload Invoice
+</a>
+{% endblock %}
+
+{% block content %}
+<!-- Filter Tabs -->
+<div class="content-card mb-4" style="padding: 12px 20px;">
+    <div class="d-flex gap-1">
+        {% set filters = [('', 'All'), ('pending', 'Pending'), ('approved', 'Approved'), ('paid', 'Paid'), ('disputed', 'Disputed')] %}
+        {% for val, label in filters %}
+        <a href="{{ url_for('invoices', status=val if val else None) }}"
+           class="btn btn-sm {% if status_filter == val or (not status_filter and val == '') %}btn-brand{% else %}btn-light{% endif %}"
+           style="font-size: 0.82rem; font-weight: 600; border-radius: 6px; padding: 6px 16px;">
+            {{ label }}
+        </a>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- Invoices Table -->
+<div class="content-card">
+    <div class="card-header-row">
+        <h5>
+            {% if status_filter %}{{ status_filter|capitalize }}{% else %}All{% endif %} Invoices
+            <span class="text-muted" style="font-weight: 400; font-size: 0.85rem;">({{ invoices|length }})</span>
+        </h5>
+        <a href="{{ url_for('export_qb_invoices') }}" class="btn btn-outline-brand btn-sm">
+            <i class="bi bi-file-earmark-arrow-down"></i> Export to QB
+        </a>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-clean">
+            <thead>
+                <tr>
+                    <th>Invoice #</th>
+                    <th>Vendor</th>
+                    <th>Source</th>
+                    <th>Amount</th>
+                    <th>Due Date</th>
+                    <th>Status</th>
+                    <th>QB</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for inv in invoices %}
+                {% set today = now().date() if now is defined else None %}
+                <tr>
+                    <td class="fw-semibold">{{ inv.invoice_number }}</td>
+                    <td>{{ inv.vendor.name if inv.vendor else '—' }}</td>
+                    <td>
+                        {% if inv.source == 'gfs' %}
+                        <span class="source-tag gfs">GFS</span>
+                        {% elif inv.source == 'fintech' %}
+                        <span class="source-tag fintech">Fintech</span>
+                        {% elif inv.source == 'ocr' %}
+                        <span class="source-tag ocr">OCR</span>
+                        {% elif inv.source == 'email' %}
+                        <span class="source-tag email">Email</span>
+                        {% else %}
+                        <span class="source-tag manual">Manual</span>
+                        {% endif %}
+                    </td>
+                    <td>${{ "{:,.2f}".format(inv.total_amount) }}</td>
+                    <td>
+                        {% if inv.due_date %}
+                            {% if inv.status in ['pending', 'approved'] and inv.due_date < inv.due_date.__class__.today() %}
+                            <span class="low-stock">{{ inv.due_date.strftime('%b %d, %Y') }}</span>
+                            {% else %}
+                            {{ inv.due_date.strftime('%b %d, %Y') }}
+                            {% endif %}
+                        {% else %}
+                        —
+                        {% endif %}
+                    </td>
+                    <td><span class="badge-status {{ inv.status }}">{{ inv.status|capitalize }}</span></td>
+                    <td>
+                        {% if inv.qb_exported %}
+                        <i class="bi bi-check-circle-fill" style="color: var(--accent-green);"></i>
+                        {% else %}
+                        <i class="bi bi-dash" style="color: #ccc;"></i>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <div class="d-flex gap-1">
+                            {% if inv.status == 'pending' %}
+                            <button class="btn btn-sm btn-outline-primary action-btn" onclick="invoiceAction({{ inv.id }}, 'approve')" style="font-size: 0.75rem; padding: 3px 10px;">
+                                <i class="bi bi-check-lg"></i> Approve
+                            </button>
+                            {% endif %}
+                            {% if inv.status == 'approved' %}
+                            <button class="btn btn-sm btn-outline-success action-btn" onclick="invoiceAction({{ inv.id }}, 'pay')" style="font-size: 0.75rem; padding: 3px 10px;">
+                                <i class="bi bi-currency-dollar"></i> Mark Paid
+                            </button>
+                            {% endif %}
+                            {% if inv.status == 'paid' %}
+                            <span class="text-muted" style="font-size: 0.75rem; padding: 3px 0;">Completed</span>
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="8" class="text-center text-muted py-4">
+                        No invoices found. Import from GFS, Fintech, or upload a scan.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<style>
+    .source-tag {
+        font-size: 0.68rem;
+        font-weight: 700;
+        padding: 3px 8px;
+        border-radius: 4px;
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+    }
+    .source-tag.gfs { background: rgba(42,157,143,0.12); color: #2a9d8f; }
+    .source-tag.fintech { background: rgba(0,119,182,0.12); color: #0077b6; }
+    .source-tag.ocr { background: rgba(232,93,4,0.12); color: #e85d04; }
+    .source-tag.email { background: rgba(108,117,125,0.12); color: #6c757d; }
+    .source-tag.manual { background: rgba(108,117,125,0.08); color: #999; }
+
+    .action-btn { border-radius: 6px; font-weight: 600; }
+</style>
+<script>
+    async function invoiceAction(id, action) {
+        try {
+            const resp = await fetch(`/invoices/${id}/${action}`, { method: 'POST' });
+            if (resp.ok || resp.redirected) {
+                window.location.reload();
+            } else {
+                alert('Action failed. Please try again.');
+            }
+        } catch (e) {
+            alert('Action failed. Please try again.');
+        }
+    }
+
+    async function syncSource(source) {
+        const btn = event.currentTarget;
+        const origHtml = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = '<i class="bi bi-arrow-repeat spin"></i> Syncing...';
+
+        try {
+            const resp = await fetch(`/invoices/import/${source}`, { method: 'POST' });
+            if (resp.ok || resp.redirected) {
+                window.location.reload();
+            } else {
+                alert('Sync failed. Please try again.');
+                btn.disabled = false;
+                btn.innerHTML = origHtml;
+            }
+        } catch (e) {
+            alert('Sync failed. Please try again.');
+            btn.disabled = false;
+            btn.innerHTML = origHtml;
+        }
+    }
+</script>
+<style>
+    @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+    .spin { display: inline-block; animation: spin 1s linear infinite; }
+</style>
+{% endblock %}

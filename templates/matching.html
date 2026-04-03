@@ -1,0 +1,257 @@
+{% extends "base.html" %}
+
+{% block title %}Item Matching — RestaurantOps{% endblock %}
+
+{% block topbar %}
+<h1>Item Matching</h1>
+{% endblock %}
+
+{% block topbar_actions %}
+<form action="{{ url_for('relink_recipes') }}" method="POST" style="display:inline;">
+    <button class="btn btn-outline-brand btn-sm" type="submit">
+        <i class="bi bi-link-45deg"></i> Re-link Recipes
+    </button>
+</form>
+{% endblock %}
+
+{% block content %}
+<!-- Stats -->
+<div class="row g-3 mb-4">
+    <div class="col-md-4">
+        <div class="stat-card">
+            <div class="stat-icon orange"><i class="bi bi-question-circle"></i></div>
+            <div class="stat-value">{{ pending|length }}</div>
+            <div class="stat-label">Needs Review</div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="stat-card">
+            <div class="stat-icon green"><i class="bi bi-check-circle"></i></div>
+            <div class="stat-value">{{ resolved_count }}</div>
+            <div class="stat-label">Resolved</div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="stat-card">
+            <div class="stat-icon blue"><i class="bi bi-link-45deg"></i></div>
+            <div class="stat-value">{{ alias_count }}</div>
+            <div class="stat-label">Confirmed Aliases</div>
+        </div>
+    </div>
+</div>
+
+<!-- How it works -->
+<div class="content-card mb-4" style="padding: 14px 20px; background: linear-gradient(135deg, #f8f9fa 0%, #fff 100%);">
+    <div class="d-flex align-items-center gap-3">
+        <i class="bi bi-lightbulb" style="font-size: 1.2rem; color: var(--brand-orange);"></i>
+        <div style="font-size: 0.84rem; color: #555;">
+            <strong>How matching works:</strong> When invoices are imported, each line item is matched to inventory by SKU, then by saved aliases, then by name similarity.
+            Items below 75% confidence land here for your review. Once you confirm a match, the alias is saved permanently — the system learns and won't ask again.
+        </div>
+    </div>
+</div>
+
+<!-- Pending Review Queue -->
+<div class="content-card">
+    <div class="card-header-row">
+        <h5>Review Queue</h5>
+        {% if pending|length > 0 %}
+        <span class="badge-status pending">{{ pending|length }} pending</span>
+        {% endif %}
+    </div>
+
+    {% if pending|length > 0 %}
+    {% for item in pending %}
+    <div class="match-card mb-3">
+        <div class="match-card-header">
+            <div class="match-item-info">
+                <span class="fw-bold" style="font-size: 0.95rem;">{{ item.external_name or item.external_sku }}</span>
+                <div class="d-flex gap-2 mt-1">
+                    {% if item.external_sku %}
+                    <span class="match-detail"><i class="bi bi-upc"></i> {{ item.external_sku }}</span>
+                    {% endif %}
+                    <span class="match-detail"><i class="bi bi-box"></i> {{ item.unit or 'unknown' }}</span>
+                    {% if item.last_seen_cost %}
+                    <span class="match-detail"><i class="bi bi-currency-dollar"></i> ${{ "%.2f"|format(item.last_seen_cost) }}</span>
+                    {% endif %}
+                    <span class="source-tag {{ item.source }}">{{ item.source|upper }}</span>
+                </div>
+            </div>
+            <div class="match-confidence">
+                {% if item.suggested_confidence > 0 %}
+                <span class="confidence-score {% if item.suggested_confidence >= 0.6 %}medium{% elif item.suggested_confidence >= 0.4 %}low{% else %}very-low{% endif %}">
+                    {{ "%.0f"|format(item.suggested_confidence * 100) }}% best match
+                </span>
+                {% else %}
+                <span class="confidence-score very-low">No match found</span>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Suggested matches -->
+        {% if item._suggestions|length > 0 %}
+        <div class="suggestions-list">
+            <div class="suggestions-title">Suggested matches:</div>
+            {% for inv_item, score in item._suggestions %}
+            <div class="suggestion-row">
+                <div class="suggestion-info">
+                    <span class="fw-semibold">{{ inv_item.name }}</span>
+                    <span class="text-muted" style="font-size: 0.78rem;">
+                        {{ inv_item.category or '' }} · {{ inv_item.vendor.name if inv_item.vendor else '' }} · ${{ "%.2f"|format(inv_item.last_cost) }}/{{ inv_item.unit }}
+                    </span>
+                </div>
+                <div class="d-flex align-items-center gap-2">
+                    <span class="confidence-bar">
+                        <span class="confidence-fill {% if score >= 0.7 %}good{% elif score >= 0.5 %}medium{% else %}low{% endif %}" style="width: {{ (score * 100)|int }}%;"></span>
+                    </span>
+                    <span style="font-size: 0.75rem; font-weight: 600; color: #666; min-width: 35px;">{{ "%.0f"|format(score * 100) }}%</span>
+                    <form action="{{ url_for('matching_confirm') }}" method="POST" style="display:inline;">
+                        <input type="hidden" name="unmatched_id" value="{{ item.id }}">
+                        <input type="hidden" name="inventory_item_id" value="{{ inv_item.id }}">
+                        <button type="submit" class="btn btn-sm btn-outline-success" style="font-size: 0.72rem; padding: 2px 10px;">
+                            <i class="bi bi-check-lg"></i> Match
+                        </button>
+                    </form>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <!-- Manual match + actions -->
+        <div class="match-actions">
+            <form action="{{ url_for('matching_confirm') }}" method="POST" class="d-flex gap-2 align-items-center" style="flex: 1;">
+                <input type="hidden" name="unmatched_id" value="{{ item.id }}">
+                <select name="inventory_item_id" class="form-select form-select-sm" style="font-size: 0.82rem; max-width: 300px;">
+                    <option value="">— Select inventory item manually —</option>
+                    {% for inv in inventory_items %}
+                    <option value="{{ inv.id }}">{{ inv.name }} ({{ inv.vendor.name if inv.vendor else '?' }} · ${{ "%.2f"|format(inv.last_cost) }})</option>
+                    {% endfor %}
+                </select>
+                <button type="submit" class="btn btn-sm btn-outline-primary" style="font-size: 0.78rem;">
+                    <i class="bi bi-link"></i> Link
+                </button>
+            </form>
+            <div class="d-flex gap-1">
+                <form action="{{ url_for('matching_create_new') }}" method="POST" style="display:inline;">
+                    <input type="hidden" name="unmatched_id" value="{{ item.id }}">
+                    <select name="category" class="form-select form-select-sm" style="font-size: 0.78rem; width: auto; display: inline-block;">
+                        <option value="protein">Protein</option>
+                        <option value="produce">Produce</option>
+                        <option value="dairy">Dairy</option>
+                        <option value="bakery">Bakery</option>
+                        <option value="alcohol">Alcohol</option>
+                        <option value="supplies">Supplies</option>
+                        <option value="uncategorized">Uncategorized</option>
+                    </select>
+                    <button type="submit" class="btn btn-sm btn-outline-brand" style="font-size: 0.78rem;">
+                        <i class="bi bi-plus-lg"></i> New Item
+                    </button>
+                </form>
+                <form action="{{ url_for('matching_dismiss') }}" method="POST" style="display:inline;">
+                    <input type="hidden" name="unmatched_id" value="{{ item.id }}">
+                    <button type="submit" class="btn btn-sm btn-outline-secondary" style="font-size: 0.78rem;">
+                        <i class="bi bi-x-lg"></i> Dismiss
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+    {% else %}
+    <div class="text-center py-5">
+        <i class="bi bi-check-circle" style="font-size: 3rem; color: var(--accent-green); opacity: 0.5;"></i>
+        <p class="text-muted mt-3 mb-0">All items matched. New unmatched items will appear here when invoices are imported.</p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<style>
+    .match-card {
+        border: 1px solid #eee;
+        border-radius: 10px;
+        overflow: hidden;
+    }
+    .match-card-header {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        padding: 16px 20px;
+        background: #fafbfc;
+        border-bottom: 1px solid #f0f2f5;
+    }
+    .match-detail {
+        font-size: 0.78rem;
+        color: #888;
+    }
+    .match-detail i { margin-right: 2px; }
+
+    .source-tag { font-size: 0.65rem; font-weight: 700; padding: 2px 6px; border-radius: 3px; text-transform: uppercase; letter-spacing: 0.3px; }
+    .source-tag.gfs { background: rgba(42,157,143,0.12); color: #2a9d8f; }
+    .source-tag.fintech { background: rgba(0,119,182,0.12); color: #0077b6; }
+    .source-tag.ocr { background: rgba(232,93,4,0.12); color: #e85d04; }
+    .source-tag.manual { background: rgba(108,117,125,0.08); color: #999; }
+
+    .confidence-score {
+        font-size: 0.75rem;
+        font-weight: 600;
+        padding: 3px 8px;
+        border-radius: 6px;
+    }
+    .confidence-score.medium { background: rgba(255,193,7,0.15); color: #d4a017; }
+    .confidence-score.low { background: rgba(232,93,4,0.12); color: #e85d04; }
+    .confidence-score.very-low { background: rgba(230,57,70,0.12); color: #e63946; }
+
+    .suggestions-list {
+        padding: 12px 20px;
+        border-bottom: 1px solid #f0f2f5;
+    }
+    .suggestions-title {
+        font-size: 0.72rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: #888;
+        margin-bottom: 8px;
+    }
+    .suggestion-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 6px 0;
+        gap: 12px;
+    }
+    .suggestion-info {
+        display: flex;
+        flex-direction: column;
+        flex: 1;
+        font-size: 0.85rem;
+    }
+    .confidence-bar {
+        width: 60px;
+        height: 6px;
+        background: #eee;
+        border-radius: 3px;
+        overflow: hidden;
+    }
+    .confidence-fill {
+        height: 100%;
+        border-radius: 3px;
+        display: block;
+    }
+    .confidence-fill.good { background: #2a9d8f; }
+    .confidence-fill.medium { background: #f4a261; }
+    .confidence-fill.low { background: #e63946; }
+
+    .match-actions {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 12px 20px;
+        gap: 12px;
+        flex-wrap: wrap;
+    }
+</style>
+{% endblock %}

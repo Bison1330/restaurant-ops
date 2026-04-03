@@ -1,0 +1,141 @@
+{% extends "base.html" %}
+
+{% block title %}Inventory Counts — RestaurantOps{% endblock %}
+
+{% block topbar %}
+<h1>Inventory Counts</h1>
+{% endblock %}
+
+{% block topbar_actions %}
+<a href="{{ url_for('count_setup') }}" class="btn btn-outline-brand btn-sm">
+    <i class="bi bi-gear"></i> Setup Zones
+</a>
+<button class="btn btn-brand btn-sm" data-bs-toggle="modal" data-bs-target="#newCountModal">
+    <i class="bi bi-plus-lg"></i> New Count
+</button>
+{% endblock %}
+
+{% block content %}
+<!-- Summary -->
+<div class="row g-3 mb-4">
+    <div class="col-md-4">
+        <div class="stat-card">
+            <div class="stat-icon blue"><i class="bi bi-clipboard-check"></i></div>
+            <div class="stat-value">{{ sessions|length }}</div>
+            <div class="stat-label">Total Counts</div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="stat-card">
+            <div class="stat-icon orange"><i class="bi bi-clock-history"></i></div>
+            {% set in_progress = sessions|selectattr('status', 'equalto', 'in_progress')|list %}
+            <div class="stat-value">{{ in_progress|length }}</div>
+            <div class="stat-label">In Progress</div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="stat-card">
+            <div class="stat-icon green"><i class="bi bi-calendar-check"></i></div>
+            <div class="stat-value">{{ sessions[0].count_date.strftime('%b %d') if sessions|length > 0 else '—' }}</div>
+            <div class="stat-label">Last Count</div>
+        </div>
+    </div>
+</div>
+
+<!-- Count Sessions -->
+<div class="content-card">
+    <div class="card-header-row">
+        <h5>Count History</h5>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-clean">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Counted By</th>
+                    <th>Status</th>
+                    <th>Total Value</th>
+                    <th>Variance</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for s in sessions %}
+                <tr>
+                    <td class="fw-semibold">{{ s.count_date.strftime('%b %d, %Y') }}</td>
+                    <td>{{ s.counted_by or '—' }}</td>
+                    <td>
+                        {% if s.status == 'in_progress' %}
+                        <span class="badge-status pending">In Progress</span>
+                        {% elif s.status == 'submitted' %}
+                        <span class="badge-status approved">Submitted</span>
+                        {% elif s.status == 'reviewed' %}
+                        <span class="badge-status paid">Reviewed</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ "$%.2f"|format(s.total_value) if s.total_value else '—' }}</td>
+                    <td>
+                        {% if s.total_variance_value is not none and s.status != 'in_progress' %}
+                        <span class="{% if s.total_variance_value < -50 %}low-stock{% endif %}">
+                            {{ "$%.2f"|format(s.total_variance_value) }}
+                        </span>
+                        {% else %}
+                        —
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if s.status == 'in_progress' %}
+                        <a href="{{ url_for('count_sheet', id=s.id) }}" class="btn btn-sm btn-outline-brand" style="font-size: 0.75rem; padding: 3px 10px;">
+                            <i class="bi bi-pencil"></i> Continue
+                        </a>
+                        {% else %}
+                        <a href="{{ url_for('count_report', id=s.id) }}" class="btn btn-sm btn-outline-primary" style="font-size: 0.75rem; padding: 3px 10px;">
+                            <i class="bi bi-file-earmark-bar-graph"></i> Report
+                        </a>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="6" class="text-center text-muted py-4">No counts yet. Start your first weekly count.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- New Count Modal -->
+<div class="modal fade" id="newCountModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content" style="border: none; border-radius: 12px;">
+            <form action="{{ url_for('new_count') }}" method="POST">
+                <div class="modal-header" style="border-bottom: 1px solid #f0f2f5; padding: 20px 24px;">
+                    <h5 class="modal-title fw-bold">Start New Count</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body" style="padding: 24px;">
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">Count Date</label>
+                        <input type="date" name="count_date" class="form-control" value="{{ now.strftime('%Y-%m-%d') if now is defined else '' }}" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">Counted By</label>
+                        <input type="text" name="counted_by" class="form-control" placeholder="Manager name">
+                    </div>
+                    <p class="text-muted" style="font-size: 0.82rem;">
+                        A count sheet will be generated with all inventory items organized by storage zone.
+                        Expected quantities are calculated from your last count + purchases - estimated usage.
+                    </p>
+                </div>
+                <div class="modal-footer" style="border-top: 1px solid #f0f2f5; padding: 16px 24px;">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-brand">
+                        <i class="bi bi-clipboard-plus"></i> Start Count
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

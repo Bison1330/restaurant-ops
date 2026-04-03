@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+
+{% block title %}Employees — RestaurantOps{% endblock %}
+
+{% block topbar %}
+<h1>Employees</h1>
+{% endblock %}
+
+{% block topbar_actions %}
+<span class="text-muted" style="font-size: 0.82rem;">
+    {{ employees|length }} employee{{ 's' if employees|length != 1 else '' }}
+</span>
+{% endblock %}
+
+{% block content %}
+<div class="content-card">
+    <div class="card-header-row">
+        <h5>Team — {{ selected_restaurant.name if selected_restaurant else '' }}</h5>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-clean">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Role</th>
+                    <th>Pay Rate</th>
+                    <th>Pay Type</th>
+                    <th>Filing Status</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for emp in employees %}
+                <tr>
+                    <td class="fw-semibold">{{ emp.first_name }} {{ emp.last_name }}</td>
+                    <td>{{ emp.role }}</td>
+                    <td>
+                        {% if emp.pay_type == 'salary' %}
+                        ${{ "{:,.0f}".format(emp.pay_rate) }}/yr
+                        {% else %}
+                        ${{ "{:,.2f}".format(emp.pay_rate) }}/hr
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if emp.pay_type == 'salary' %}
+                        <span class="pay-type-badge salary">Salary</span>
+                        {% else %}
+                        <span class="pay-type-badge hourly">Hourly</span>
+                        {% endif %}
+                    </td>
+                    <td style="text-transform: capitalize;">{{ emp.filing_status or '—' }}</td>
+                    <td>
+                        {% if emp.active %}
+                        <span class="d-inline-flex align-items-center gap-1">
+                            <span class="status-dot active"></span> Active
+                        </span>
+                        {% else %}
+                        <span class="d-inline-flex align-items-center gap-1">
+                            <span class="status-dot inactive"></span> Inactive
+                        </span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="6" class="text-center text-muted py-4">No employees found for this restaurant.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<style>
+    .pay-type-badge {
+        font-size: 0.7rem;
+        font-weight: 700;
+        padding: 3px 10px;
+        border-radius: 4px;
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+    }
+    .pay-type-badge.salary { background: rgba(0,119,182,0.12); color: #0077b6; }
+    .pay-type-badge.hourly { background: rgba(42,157,143,0.12); color: #2a9d8f; }
+
+    .status-dot {
+        display: inline-block;
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+    }
+    .status-dot.active { background: #2a9d8f; }
+    .status-dot.inactive { background: #ccc; }
+</style>
+{% endblock %}

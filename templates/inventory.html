@@ -1,0 +1,144 @@
+{% extends "base.html" %}
+
+{% block title %}Inventory — RestaurantOps{% endblock %}
+
+{% block topbar %}
+<h1>Inventory</h1>
+{% endblock %}
+
+{% block topbar_actions %}
+<span class="text-muted" style="font-size: 0.82rem;">
+    {{ items|length }} item{{ 's' if items|length != 1 else '' }}
+</span>
+{% endblock %}
+
+{% block content %}
+
+{% macro inventory_table(item_list) %}
+<div class="table-responsive">
+    <table class="table table-clean">
+        <thead>
+            <tr>
+                <th>Item</th>
+                <th>Category</th>
+                <th>Vendor</th>
+                <th>Par Level</th>
+                <th>On Hand</th>
+                <th>Last Cost</th>
+                <th>Status</th>
+                <th>Adjust Stock</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in item_list %}
+            <tr>
+                <td class="fw-semibold">{{ item.name }}</td>
+                <td>
+                    <span class="category-tag">{{ item.category|capitalize if item.category else '—' }}</span>
+                </td>
+                <td>{{ item.vendor.name if item.vendor else '—' }}</td>
+                <td>{{ item.par_level }}</td>
+                <td>
+                    {% if item.current_stock < item.par_level %}
+                    <span class="low-stock">{{ item.current_stock }}</span>
+                    {% else %}
+                    {{ item.current_stock }}
+                    {% endif %}
+                </td>
+                <td>${{ "{:,.2f}".format(item.last_cost) }}</td>
+                <td>
+                    {% if item.current_stock < item.par_level %}
+                    <span class="badge-status overdue">Low</span>
+                    {% else %}
+                    <span class="badge-status paid">OK</span>
+                    {% endif %}
+                </td>
+                <td>
+                    <form action="{{ url_for('update_inventory', id=item.id) }}" method="POST" class="d-flex gap-1 align-items-center">
+                        <input type="number" name="current_stock" value="{{ item.current_stock }}" step="0.5" min="0"
+                               class="form-control form-control-sm stock-input" style="width: 70px; font-size: 0.82rem;">
+                        <input type="hidden" name="par_level" value="{{ item.par_level }}">
+                        <button type="submit" class="btn btn-sm btn-outline-primary" style="font-size: 0.72rem; padding: 3px 8px; border-radius: 5px;">
+                            <i class="bi bi-check-lg"></i>
+                        </button>
+                    </form>
+                </td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="8" class="text-center text-muted py-4">No items in this section.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endmacro %}
+
+<!-- Food Section -->
+<div class="content-card mb-4">
+    <div class="card-header-row">
+        <h5>
+            <i class="bi bi-egg-fried section-icon food-icon"></i>
+            Food
+            <span class="text-muted" style="font-weight: 400; font-size: 0.85rem;">({{ food_items|length }})</span>
+        </h5>
+        <div class="d-flex align-items-center gap-2">
+            {% set food_low = food_items|selectattr('current_stock')|list %}
+            {% set food_low_count = [] %}
+            {% for item in food_items if item.current_stock < item.par_level %}
+                {% if food_low_count.append(1) %}{% endif %}
+            {% endfor %}
+            {% if food_low_count|length > 0 %}
+            <span class="badge-status overdue">{{ food_low_count|length }} Low</span>
+            {% endif %}
+        </div>
+    </div>
+    {{ inventory_table(food_items) }}
+</div>
+
+<!-- Beverage Section -->
+<div class="content-card">
+    <div class="card-header-row">
+        <h5>
+            <i class="bi bi-cup-straw section-icon bev-icon"></i>
+            Beverage
+            <span class="text-muted" style="font-weight: 400; font-size: 0.85rem;">({{ beverage_items|length }})</span>
+        </h5>
+        <div class="d-flex align-items-center gap-2">
+            {% set bev_low_count = [] %}
+            {% for item in beverage_items if item.current_stock < item.par_level %}
+                {% if bev_low_count.append(1) %}{% endif %}
+            {% endfor %}
+            {% if bev_low_count|length > 0 %}
+            <span class="badge-status overdue">{{ bev_low_count|length }} Low</span>
+            {% endif %}
+        </div>
+    </div>
+    {{ inventory_table(beverage_items) }}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<style>
+    .category-tag {
+        font-size: 0.72rem;
+        font-weight: 600;
+        padding: 3px 8px;
+        border-radius: 4px;
+        background: rgba(108,117,125,0.08);
+        color: #6c757d;
+        text-transform: capitalize;
+    }
+    .stock-input:focus {
+        border-color: var(--brand-orange);
+        box-shadow: 0 0 0 2px rgba(232,93,4,0.12);
+    }
+    .section-icon {
+        font-size: 1.1rem;
+        margin-right: 4px;
+        vertical-align: -1px;
+    }
+    .food-icon { color: var(--accent-green); }
+    .bev-icon { color: var(--brand-orange); }
+</style>
+{% endblock %}

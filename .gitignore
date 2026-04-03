@@ -1,0 +1,24 @@
+# Environment & secrets
+.env
+
+# Python
+venv/
+__pycache__/
+*.pyc
+*.pyo
+
+# Database
+data/restaurant_ops.db
+
+# Uploads
+data/uploads/
+
+# Exports (generated files)
+exports/
+
+# Logs
+logs/*.log
+
+# OS files
+.DS_Store
+Thumbs.db

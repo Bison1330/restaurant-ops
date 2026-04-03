@@ -1,0 +1,217 @@
+{% extends "base.html" %}
+
+{% block title %}Count Setup — RestaurantOps{% endblock %}
+
+{% block topbar %}
+<h1>Count Setup</h1>
+{% endblock %}
+
+{% block topbar_actions %}
+<a href="{{ url_for('counts') }}" class="btn btn-outline-brand btn-sm">
+    <i class="bi bi-arrow-left"></i> Back to Counts
+</a>
+{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+    <!-- Storage Zones -->
+    <div class="col-lg-5">
+        <div class="content-card">
+            <div class="card-header-row">
+                <h5><i class="bi bi-geo-alt" style="color: var(--brand-orange); margin-right: 4px;"></i> Storage Zones</h5>
+            </div>
+            <p style="font-size: 0.84rem; color: #666; margin-bottom: 16px;">
+                Define the areas in your restaurant where inventory is stored.
+                The count sheet will be organized by these zones so managers can walk through each area.
+            </p>
+
+            <!-- Add Zone Form -->
+            <form action="{{ url_for('add_zone') }}" method="POST" class="d-flex gap-2 mb-4">
+                <input type="text" name="zone_name" class="form-control" placeholder="e.g. Keg Cooler, Behind Bar, Walk-in..." required style="font-size: 0.88rem;">
+                <button type="submit" class="btn btn-brand btn-sm" style="white-space: nowrap;">
+                    <i class="bi bi-plus-lg"></i> Add Zone
+                </button>
+            </form>
+
+            <!-- Zone List -->
+            {% if zones|length > 0 %}
+            <div class="zone-list" id="zoneList">
+                {% for zone in zones %}
+                <div class="zone-row" data-zone-id="{{ zone.id }}">
+                    <div class="d-flex align-items-center gap-2" style="flex: 1;">
+                        <i class="bi bi-grip-vertical drag-handle" style="cursor: grab; color: #ccc;"></i>
+                        <span class="zone-number">{{ loop.index }}</span>
+                        <span class="fw-semibold" style="font-size: 0.9rem;">{{ zone.name }}</span>
+                        {% set item_count = [] %}
+                        {% for item_id, zone_id in assignments.items() if zone_id == zone.id %}
+                            {% if item_count.append(1) %}{% endif %}
+                        {% endfor %}
+                        <span class="text-muted" style="font-size: 0.78rem;">{{ item_count|length }} item{{ 's' if item_count|length != 1 else '' }}</span>
+                    </div>
+                    <div class="d-flex gap-1">
+                        <button class="btn btn-sm btn-outline-secondary" style="font-size: 0.7rem; padding: 2px 6px;"
+                                onclick="renameZone({{ zone.id }}, '{{ zone.name }}')">
+                            <i class="bi bi-pencil"></i>
+                        </button>
+                        <form action="{{ url_for('delete_zone', id=zone.id) }}" method="POST" style="display:inline;"
+                              onsubmit="return confirm('Remove zone \'{{ zone.name }}\'? Items will be unassigned.')">
+                            <button type="submit" class="btn btn-sm btn-outline-danger" style="font-size: 0.7rem; padding: 2px 6px;">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </form>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="text-center py-4">
+                <i class="bi bi-geo-alt" style="font-size: 2rem; color: #ddd;"></i>
+                <p class="text-muted mt-2 mb-0" style="font-size: 0.85rem;">No zones set up yet. Add your first storage area above.</p>
+            </div>
+            {% endif %}
+
+            <div class="mt-3 p-3" style="background: #f8f9fa; border-radius: 8px; font-size: 0.8rem; color: #666;">
+                <strong>Common zones:</strong> Walk-in Cooler, Freezer, Dry Storage, Behind Bar, Keg Cooler,
+                Line/Prep, Office/Safe, Patio Storage
+            </div>
+        </div>
+    </div>
+
+    <!-- Item Assignments -->
+    <div class="col-lg-7">
+        <div class="content-card">
+            <div class="card-header-row">
+                <h5><i class="bi bi-box-seam" style="color: var(--accent-blue); margin-right: 4px;"></i> Item Zone Assignments</h5>
+            </div>
+            <p style="font-size: 0.84rem; color: #666; margin-bottom: 16px;">
+                Assign each inventory item to the zone where it's stored. This determines which tab it appears on during the count.
+            </p>
+
+            {% if zones|length > 0 and items|length > 0 %}
+            <form action="{{ url_for('assign_items_to_zones') }}" method="POST">
+                <!-- Filter -->
+                <div class="mb-3">
+                    <input type="text" id="itemFilter" class="form-control form-control-sm"
+                           placeholder="Filter items..." oninput="filterItems(this.value)"
+                           style="font-size: 0.85rem; max-width: 300px;">
+                </div>
+
+                <div class="table-responsive">
+                    <table class="table table-clean">
+                        <thead>
+                            <tr>
+                                <th>Item</th>
+                                <th>Category</th>
+                                <th>Zone</th>
+                            </tr>
+                        </thead>
+                        <tbody id="itemTableBody">
+                            {% for item in items %}
+                            <tr class="item-row">
+                                <td class="fw-semibold">{{ item.name }}</td>
+                                <td><span class="category-tag">{{ item.category|capitalize if item.category else '—' }}</span></td>
+                                <td>
+                                    <select name="zone_{{ item.id }}" class="form-select form-select-sm" style="font-size: 0.82rem; width: auto; min-width: 160px;">
+                                        <option value="">— Unassigned —</option>
+                                        {% for zone in zones %}
+                                        <option value="{{ zone.id }}" {% if assignments.get(item.id) == zone.id %}selected{% endif %}>
+                                            {{ zone.name }}
+                                        </option>
+                                        {% endfor %}
+                                    </select>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="d-flex justify-content-between align-items-center mt-3">
+                    <span class="text-muted" style="font-size: 0.82rem;">{{ items|length }} items total</span>
+                    <button type="submit" class="btn btn-brand">
+                        <i class="bi bi-check-lg"></i> Save Assignments
+                    </button>
+                </div>
+            </form>
+            {% elif zones|length == 0 %}
+            <div class="text-center py-4">
+                <p class="text-muted mb-0">Add storage zones first, then assign items to them.</p>
+            </div>
+            {% else %}
+            <div class="text-center py-4">
+                <p class="text-muted mb-0">No inventory items to assign.</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Rename Modal -->
+<div class="modal fade" id="renameModal" tabindex="-1">
+    <div class="modal-dialog modal-sm">
+        <div class="modal-content" style="border: none; border-radius: 12px;">
+            <form id="renameForm" method="POST">
+                <div class="modal-header" style="border-bottom: 1px solid #f0f2f5; padding: 16px 20px;">
+                    <h5 class="modal-title fw-bold" style="font-size: 1rem;">Rename Zone</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body" style="padding: 20px;">
+                    <input type="text" name="zone_name" id="renameInput" class="form-control" required>
+                </div>
+                <div class="modal-footer" style="border-top: 1px solid #f0f2f5; padding: 12px 20px;">
+                    <button type="button" class="btn btn-light btn-sm" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-brand btn-sm">Rename</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<style>
+    .zone-list { display: flex; flex-direction: column; gap: 6px; }
+    .zone-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 10px 12px;
+        background: #f8f9fa;
+        border-radius: 8px;
+        transition: background 0.15s;
+    }
+    .zone-row:hover { background: #f0f2f5; }
+    .zone-number {
+        width: 22px;
+        height: 22px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: var(--brand-orange);
+        color: #fff;
+        font-size: 0.7rem;
+        font-weight: 700;
+        border-radius: 6px;
+    }
+    .category-tag {
+        font-size: 0.72rem; font-weight: 600; padding: 3px 8px;
+        border-radius: 4px; background: rgba(108,117,125,0.08); color: #6c757d;
+    }
+</style>
+<script>
+    function renameZone(id, currentName) {
+        document.getElementById('renameForm').action = `/counts/setup/rename-zone/${id}`;
+        document.getElementById('renameInput').value = currentName;
+        new bootstrap.Modal(document.getElementById('renameModal')).show();
+    }
+
+    function filterItems(query) {
+        const rows = document.querySelectorAll('.item-row');
+        const q = query.toLowerCase();
+        rows.forEach(row => {
+            const name = row.querySelector('td').textContent.toLowerCase();
+            row.style.display = name.includes(q) ? '' : 'none';
+        });
+    }
+</script>
+{% endblock %}

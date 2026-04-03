@@ -1,0 +1,234 @@
+{% extends "base.html" %}
+
+{% block title %}Import Invoices — RestaurantOps{% endblock %}
+
+{% block topbar %}
+<h1>Import Invoices</h1>
+{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+    <!-- GFS Sync -->
+    <div class="col-md-6">
+        <div class="content-card" style="height: 100%;">
+            <div class="d-flex align-items-center gap-3 mb-3">
+                <div class="stat-icon green" style="width: 46px; height: 46px;">
+                    <i class="bi bi-truck"></i>
+                </div>
+                <div>
+                    <h5 class="mb-0" style="font-size: 1rem; font-weight: 700;">Gordon Food Service</h5>
+                    <small class="text-muted">SFTP invoice sync</small>
+                </div>
+            </div>
+            <p style="font-size: 0.85rem; color: #666;">
+                Pull latest invoices from GFS SFTP server for
+                <strong>{{ selected_restaurant.name if selected_restaurant else 'selected restaurant' }}</strong>.
+            </p>
+            <div class="d-flex align-items-center justify-content-between">
+                <button class="btn btn-brand btn-sm" id="gfsSyncBtn" onclick="syncSource('gfs', 'gfsSyncBtn')">
+                    <i class="bi bi-arrow-repeat"></i> Sync GFS Invoices
+                </button>
+                <small class="text-muted" id="gfsStatus">Ready to sync</small>
+            </div>
+        </div>
+    </div>
+
+    <!-- Fintech Sync -->
+    <div class="col-md-6">
+        <div class="content-card" style="height: 100%;">
+            <div class="d-flex align-items-center gap-3 mb-3">
+                <div class="stat-icon blue" style="width: 46px; height: 46px;">
+                    <i class="bi bi-credit-card"></i>
+                </div>
+                <div>
+                    <h5 class="mb-0" style="font-size: 1rem; font-weight: 700;">Fintech API</h5>
+                    <small class="text-muted">Alcohol distributor invoices</small>
+                </div>
+            </div>
+            <p style="font-size: 0.85rem; color: #666;">
+                Fetch pending invoices from connected alcohol distributors via Fintech integration.
+            </p>
+            <div class="d-flex align-items-center justify-content-between">
+                <button class="btn btn-brand btn-sm" id="fintechSyncBtn" onclick="syncSource('fintech', 'fintechSyncBtn')">
+                    <i class="bi bi-arrow-repeat"></i> Sync Fintech Invoices
+                </button>
+                <small class="text-muted" id="fintechStatus">Ready to sync</small>
+            </div>
+        </div>
+    </div>
+
+    <!-- File Upload -->
+    <div class="col-md-8">
+        <div class="content-card">
+            <div class="d-flex align-items-center gap-3 mb-3">
+                <div class="stat-icon orange" style="width: 46px; height: 46px;">
+                    <i class="bi bi-camera"></i>
+                </div>
+                <div>
+                    <h5 class="mb-0" style="font-size: 1rem; font-weight: 700;">Upload Invoice</h5>
+                    <small class="text-muted">Scan with Claude AI vision</small>
+                </div>
+            </div>
+            <form action="{{ url_for('import_upload') }}" method="POST" enctype="multipart/form-data" id="uploadForm">
+                <div class="upload-zone" id="dropZone">
+                    <i class="bi bi-cloud-arrow-up" style="font-size: 2.5rem; color: #ccc;"></i>
+                    <p style="margin: 12px 0 4px; font-weight: 600; color: #555;">Drag & drop invoice here</p>
+                    <p style="font-size: 0.8rem; color: #999; margin: 0;">PDF, JPG, PNG, or WEBP — max 10MB</p>
+                    <input type="file" name="invoice_file" id="fileInput" accept=".pdf,.jpg,.jpeg,.png,.webp"
+                           style="display: none;" onchange="handleFileSelect(this)">
+                    <button type="button" class="btn btn-outline-brand btn-sm mt-3" onclick="document.getElementById('fileInput').click()">
+                        <i class="bi bi-folder2-open"></i> Browse Files
+                    </button>
+                </div>
+
+                <!-- Preview Area -->
+                <div id="previewArea" style="display: none;" class="mt-3">
+                    <div class="d-flex align-items-center gap-3 p-3" style="background: #f8f9fa; border-radius: 8px;">
+                        <i class="bi bi-file-earmark-text" style="font-size: 1.8rem; color: var(--brand-orange);"></i>
+                        <div style="flex: 1;">
+                            <div id="fileName" class="fw-semibold" style="font-size: 0.88rem;"></div>
+                            <div id="fileSize" class="text-muted" style="font-size: 0.78rem;"></div>
+                        </div>
+                        <button type="button" class="btn btn-sm btn-light" onclick="clearFile()">
+                            <i class="bi bi-x-lg"></i>
+                        </button>
+                    </div>
+                    <button type="submit" class="btn btn-brand mt-3" id="extractBtn">
+                        <i class="bi bi-stars"></i> Extract with Claude AI
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Email Forwarding -->
+    <div class="col-md-4">
+        <div class="content-card" style="height: 100%;">
+            <div class="d-flex align-items-center gap-3 mb-3">
+                <div class="stat-icon blue" style="width: 46px; height: 46px;">
+                    <i class="bi bi-envelope"></i>
+                </div>
+                <div>
+                    <h5 class="mb-0" style="font-size: 1rem; font-weight: 700;">Email Forwarding</h5>
+                    <small class="text-muted">Auto-import from inbox</small>
+                </div>
+            </div>
+            <p style="font-size: 0.85rem; color: #666;">Forward vendor invoices to:</p>
+            <div class="p-2 mb-3" style="background: #f8f9fa; border-radius: 6px; font-family: monospace; font-size: 0.82rem; text-align: center; color: var(--brand-orange); font-weight: 600;">
+                invoices@your-domain.com
+            </div>
+            <p style="font-size: 0.78rem; color: #999;">
+                Attachments (PDF, JPG, PNG) are automatically extracted using Claude AI and added to your pending invoices.
+            </p>
+            <button class="btn btn-outline-brand btn-sm w-100" onclick="pollEmail()">
+                <i class="bi bi-envelope-arrow-down"></i> Check Email Now
+            </button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<style>
+    .upload-zone {
+        border: 2px dashed #dee2e6;
+        border-radius: 12px;
+        padding: 40px 20px;
+        text-align: center;
+        transition: all 0.2s ease;
+        cursor: pointer;
+    }
+    .upload-zone:hover, .upload-zone.dragover {
+        border-color: var(--brand-orange);
+        background: rgba(232,93,4,0.03);
+    }
+</style>
+<script>
+    const dropZone = document.getElementById('dropZone');
+    const fileInput = document.getElementById('fileInput');
+
+    dropZone.addEventListener('click', () => fileInput.click());
+
+    dropZone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        dropZone.classList.add('dragover');
+    });
+
+    dropZone.addEventListener('dragleave', () => {
+        dropZone.classList.remove('dragover');
+    });
+
+    dropZone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        dropZone.classList.remove('dragover');
+        if (e.dataTransfer.files.length) {
+            fileInput.files = e.dataTransfer.files;
+            handleFileSelect(fileInput);
+        }
+    });
+
+    function handleFileSelect(input) {
+        const file = input.files[0];
+        if (!file) return;
+        document.getElementById('fileName').textContent = file.name;
+        document.getElementById('fileSize').textContent = (file.size / 1024).toFixed(1) + ' KB';
+        document.getElementById('previewArea').style.display = 'block';
+        dropZone.style.display = 'none';
+    }
+
+    function clearFile() {
+        fileInput.value = '';
+        document.getElementById('previewArea').style.display = 'none';
+        dropZone.style.display = 'block';
+    }
+
+    async function syncSource(source, btnId) {
+        const btn = document.getElementById(btnId);
+        const statusEl = document.getElementById(source + 'Status');
+        const origHtml = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = '<i class="bi bi-arrow-repeat spin"></i> Syncing...';
+        statusEl.textContent = 'Syncing...';
+
+        try {
+            const resp = await fetch(`/invoices/import/${source}`, { method: 'POST' });
+            if (resp.ok || resp.redirected) {
+                statusEl.textContent = 'Synced just now';
+                statusEl.style.color = 'var(--accent-green)';
+                setTimeout(() => window.location.reload(), 800);
+            } else {
+                statusEl.textContent = 'Sync failed';
+                statusEl.style.color = 'var(--accent-red)';
+                btn.disabled = false;
+                btn.innerHTML = origHtml;
+            }
+        } catch (e) {
+            statusEl.textContent = 'Sync failed';
+            statusEl.style.color = 'var(--accent-red)';
+            btn.disabled = false;
+            btn.innerHTML = origHtml;
+        }
+    }
+
+    async function pollEmail() {
+        try {
+            const resp = await fetch('/invoices/import/email', { method: 'POST' });
+            if (resp.ok || resp.redirected) {
+                window.location.href = '/invoices';
+            }
+        } catch (e) {
+            alert('Email check failed.');
+        }
+    }
+
+    document.getElementById('uploadForm').addEventListener('submit', function() {
+        const btn = document.getElementById('extractBtn');
+        btn.disabled = true;
+        btn.innerHTML = '<i class="bi bi-arrow-repeat spin"></i> Extracting...';
+    });
+</script>
+<style>
+    @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+    .spin { display: inline-block; animation: spin 1s linear infinite; }
+</style>
+{% endblock %}

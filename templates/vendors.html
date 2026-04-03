@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+
+{% block title %}Vendors — RestaurantOps{% endblock %}
+
+{% block topbar %}
+<h1>Vendors</h1>
+{% endblock %}
+
+{% block content %}
+<div class="content-card">
+    <div class="card-header-row">
+        <h5>All Vendors <span class="text-muted" style="font-weight: 400; font-size: 0.85rem;">({{ vendors|length }})</span></h5>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-clean">
+            <thead>
+                <tr>
+                    <th>Vendor Name</th>
+                    <th>Type</th>
+                    <th>Account #</th>
+                    <th>Payment Terms</th>
+                    <th>Contact Email</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for v in vendors %}
+                <tr>
+                    <td class="fw-semibold">{{ v.name }}</td>
+                    <td>
+                        {% if v.type == 'broadline' %}
+                        <span class="vendor-type-badge broadline">Broadline</span>
+                        {% elif v.type == 'alcohol' %}
+                        <span class="vendor-type-badge alcohol">Alcohol</span>
+                        {% else %}
+                        <span class="vendor-type-badge other">{{ v.type|capitalize if v.type else 'Other' }}</span>
+                        {% endif %}
+                    </td>
+                    <td><code style="font-size: 0.82rem;">{{ v.account_number or '—' }}</code></td>
+                    <td>Net {{ v.payment_terms }} days</td>
+                    <td>
+                        {% if v.contact_email %}
+                        <a href="mailto:{{ v.contact_email }}" style="color: var(--accent-blue); text-decoration: none; font-size: 0.85rem;">{{ v.contact_email }}</a>
+                        {% else %}
+                        —
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if v.account_number and v.account_number != 'PENDING' %}
+                        <span class="badge-status paid">Active</span>
+                        {% else %}
+                        <span class="badge-status pending">Needs Setup</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="6" class="text-center text-muted py-4">No vendors configured.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<style>
+    .vendor-type-badge {
+        font-size: 0.7rem;
+        font-weight: 700;
+        padding: 3px 10px;
+        border-radius: 4px;
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+    }
+    .vendor-type-badge.broadline { background: rgba(42,157,143,0.12); color: #2a9d8f; }
+    .vendor-type-badge.alcohol { background: rgba(232,93,4,0.12); color: #e85d04; }
+    .vendor-type-badge.other { background: rgba(108,117,125,0.08); color: #6c757d; }
+</style>
+{% endblock %}

@@ -1,0 +1,195 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard — RestaurantOps{% endblock %}
+
+{% block topbar %}
+<div>
+    <h1>{{ selected_restaurant.name if selected_restaurant else 'Dashboard' }}</h1>
+    <small class="text-muted">{{ selected_restaurant.location if selected_restaurant else '' }}</small>
+</div>
+{% endblock %}
+
+{% block topbar_actions %}
+<button class="btn btn-brand btn-sm" id="syncBtn" onclick="syncNow()">
+    <i class="bi bi-arrow-repeat"></i> Sync Now
+</button>
+{% endblock %}
+
+{% block content %}
+<!-- Stat Cards -->
+<div class="row g-3 mb-4">
+    <div class="col-md-3">
+        <div class="stat-card">
+            <div class="d-flex align-items-center justify-content-between">
+                <div class="stat-icon orange"><i class="bi bi-clock-history"></i></div>
+            </div>
+            <div class="stat-value">{{ stats.pending_count|default(0) }}</div>
+            <div class="stat-label">Pending Invoices</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card">
+            <div class="d-flex align-items-center justify-content-between">
+                <div class="stat-icon red"><i class="bi bi-exclamation-triangle"></i></div>
+            </div>
+            <div class="stat-value">{{ stats.overdue_count|default(0) }}</div>
+            <div class="stat-label">Overdue</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card">
+            <div class="d-flex align-items-center justify-content-between">
+                <div class="stat-icon orange"><i class="bi bi-box-seam"></i></div>
+            </div>
+            <div class="stat-value">{{ stats.low_stock_count|default(0) }}</div>
+            <div class="stat-label">Low Stock Items</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card">
+            <div class="d-flex align-items-center justify-content-between">
+                <div class="stat-icon blue"><i class="bi bi-currency-dollar"></i></div>
+            </div>
+            <div class="stat-value">${{ "{:,.2f}".format(stats.thirty_day_spend|default(0)) }}</div>
+            <div class="stat-label">30-Day Spend</div>
+        </div>
+    </div>
+</div>
+
+<!-- Recent Invoices + Chart -->
+<div class="row g-3">
+    <div class="col-lg-7">
+        <div class="content-card">
+            <div class="card-header-row">
+                <h5>Recent Invoices</h5>
+                <a href="{{ url_for('invoices') }}" class="btn btn-outline-brand btn-sm">View All</a>
+            </div>
+            <table class="table table-clean">
+                <thead>
+                    <tr>
+                        <th>Invoice #</th>
+                        <th>Vendor</th>
+                        <th>Amount</th>
+                        <th>Status</th>
+                        <th>Date</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for inv in recent_invoices %}
+                    <tr>
+                        <td class="fw-semibold">{{ inv.invoice_number }}</td>
+                        <td>{{ inv.vendor.name if inv.vendor else '—' }}</td>
+                        <td>${{ "{:,.2f}".format(inv.total_amount) }}</td>
+                        <td><span class="badge-status {{ inv.status }}">{{ inv.status|capitalize }}</span></td>
+                        <td>{{ inv.invoice_date.strftime('%b %d, %Y') if inv.invoice_date else '—' }}</td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="5" class="text-center text-muted py-4">No invoices yet. Import some to get started.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <div class="col-lg-5">
+        <div class="content-card" style="height: 100%;">
+            <div class="card-header-row">
+                <h5>Spend by Vendor</h5>
+                <span class="text-muted" style="font-size: 0.78rem;">Last 30 days</span>
+            </div>
+            <div style="position: relative; width: 100%; max-width: 320px; margin: 0 auto;">
+                <canvas id="vendorChart"></canvas>
+            </div>
+            <div id="chartLegend" class="mt-3" style="font-size: 0.82rem;"></div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<script>
+    const CHART_COLORS = ['#e85d04', '#0077b6', '#2a9d8f', '#e63946', '#6c757d', '#f4a261', '#264653'];
+
+    function loadChart() {
+        const rid = {{ selected_restaurant.id if selected_restaurant else 0 }};
+        if (!rid) return;
+
+        fetch('/api/vendor-spend?restaurant_id=' + rid)
+            .then(r => r.json())
+            .then(data => {
+                const labels = data.vendors || [];
+                const values = data.amounts || [];
+
+                if (labels.length === 0) {
+                    document.getElementById('chartLegend').innerHTML =
+                        '<p class="text-muted text-center">No spend data available</p>';
+                    return;
+                }
+
+                const ctx = document.getElementById('vendorChart').getContext('2d');
+                new Chart(ctx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            data: values,
+                            backgroundColor: CHART_COLORS.slice(0, labels.length),
+                            borderWidth: 0,
+                            hoverOffset: 6
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        cutout: '65%',
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(ctx) {
+                                        return ctx.label + ': $' + ctx.parsed.toLocaleString('en-US', {minimumFractionDigits: 2});
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+
+                let legendHtml = '<div class="d-flex flex-wrap gap-3 justify-content-center">';
+                labels.forEach((label, i) => {
+                    const color = CHART_COLORS[i % CHART_COLORS.length];
+                    legendHtml += `<span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${color};margin-right:5px;"></span>${label}</span>`;
+                });
+                legendHtml += '</div>';
+                document.getElementById('chartLegend').innerHTML = legendHtml;
+            })
+            .catch(() => {
+                document.getElementById('chartLegend').innerHTML =
+                    '<p class="text-muted text-center">Could not load chart data</p>';
+            });
+    }
+
+    async function syncNow() {
+        const btn = document.getElementById('syncBtn');
+        btn.disabled = true;
+        btn.innerHTML = '<i class="bi bi-arrow-repeat spin"></i> Syncing...';
+
+        try {
+            await fetch('/invoices/import/gfs', { method: 'POST' });
+            await fetch('/invoices/import/fintech', { method: 'POST' });
+            window.location.reload();
+        } catch (e) {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-arrow-repeat"></i> Sync Now';
+            alert('Sync failed. Please try again.');
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', loadChart);
+</script>
+<style>
+    @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+    .spin { display: inline-block; animation: spin 1s linear infinite; }
+</style>
+{% endblock %}

@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+
+{% block title %}Payroll — RestaurantOps{% endblock %}
+
+{% block topbar %}
+<h1>Payroll</h1>
+{% endblock %}
+
+{% block topbar_actions %}
+<span class="text-muted" style="font-size: 0.82rem;">
+    <i class="bi bi-people"></i> {{ employee_count }} employee{{ 's' if employee_count != 1 else '' }}
+</span>
+{% endblock %}
+
+{% block content %}
+<div class="content-card">
+    <div class="card-header-row">
+        <h5>Payroll Runs</h5>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-clean">
+            <thead>
+                <tr>
+                    <th>Period</th>
+                    <th>Status</th>
+                    <th>Total Gross</th>
+                    <th>QB Exported</th>
+                    <th>Created</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for run in runs %}
+                <tr>
+                    <td class="fw-semibold">
+                        {{ run.period_start.strftime('%b %d') if run.period_start else '—' }}
+                        &mdash;
+                        {{ run.period_end.strftime('%b %d, %Y') if run.period_end else '—' }}
+                    </td>
+                    <td><span class="badge-status {{ run.status }}">{{ run.status|capitalize }}</span></td>
+                    <td>${{ "{:,.2f}".format(run.total_gross) }}</td>
+                    <td>
+                        {% if run.qb_exported %}
+                        <i class="bi bi-check-circle-fill" style="color: var(--accent-green);"></i>
+                        {% else %}
+                        <i class="bi bi-dash" style="color: #ccc;"></i>
+                        {% endif %}
+                    </td>
+                    <td>{{ run.created_at.strftime('%b %d, %Y') if run.created_at else '—' }}</td>
+                    <td>
+                        <a href="{{ url_for('export_payroll', id=run.id) }}" class="btn btn-sm btn-outline-brand" style="font-size: 0.75rem; padding: 3px 10px;">
+                            <i class="bi bi-file-earmark-arrow-down"></i> Export IIF
+                        </a>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="6" class="text-center text-muted py-4">No payroll runs found for this restaurant.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
