@@ -402,7 +402,10 @@
             <a href="{{ url_for('export_qb_invoices') }}" class="{% if request.path == '/invoices/export/qb' %}active{% endif %}">
                 <i class="bi bi-file-earmark-arrow-down"></i> QB Export
             </a>
-        </div>
+        
+            <a href="{{ url_for('xtrachef.xtra_chef') }}" class="{% if '/xtra-chef' in request.path %}active{% endif %}">
+                <i class="bi bi-graph-up-arrow"></i> xtraCHEF
+            </a></div>
 
         <div class="sidebar-status">
             <div class="status-title">Connections</div>
