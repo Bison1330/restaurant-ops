@@ -1,23 +1,49 @@
-name: Deploy to DigitalOcean
+name: CI / Deploy to DigitalOcean
 
 on:
   push:
     branches: [ main ]
+  pull_request:
+    branches: [ main ]
 
 jobs:
-  deploy:
+  # ─── Lint & Syntax Check ─────────────────────────────────────────
+  lint:
+    name: Python lint
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install lint dependencies
+        run: pip install flake8 pyflakes
+
+      - name: Flake8 (errors only)
+        run: flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+
+  # ─── Deploy to DigitalOcean ───────────────────────────────────────
+  deploy:
+    name: SSH deploy
+    needs: lint
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    steps:
       - name: Deploy via SSH
-        uses: appleboy/ssh-action@master
+        uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.DROPLET_HOST }}
           username: ${{ secrets.DROPLET_USER }}
           key: ${{ secrets.DROPLET_SSH_KEY }}
+          timeout: 60s
           script: |
+            set -e
             cd /opt/restaurant-ops
             git pull origin main
             source venv/bin/activate
             pip install -r requirements.txt --quiet
             sudo systemctl restart restaurant-ops
-            echo "Deployed at $(date)"
+            echo "Deployed successfully at $(date)"
