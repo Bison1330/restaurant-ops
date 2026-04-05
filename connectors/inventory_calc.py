@@ -114,6 +114,60 @@ def _estimate_usage(item, since_date, until_date):
     return round(daily_rate * days, 2)
 
 
+# ── xtraCHEF COGS helpers ────────────────────────────────────────────────────
+
+def compute_cogs_for_period(start_date, end_date):
+    """
+    Sum all invoice line totals for the given date range.
+    Used by xtrachef_api.fetch_cogs_summary() to calculate COGS.
+    """
+    from datetime import datetime
+    try:
+        result = (
+            db.session.query(db.func.sum(InvoiceLine.total_price))
+            .join(Invoice, InvoiceLine.invoice_id == Invoice.id)
+            .filter(
+                Invoice.invoice_date >= start_date,
+                Invoice.invoice_date <= end_date,
+                Invoice.status == "complete",
+            )
+            .scalar()
+        )
+        return float(result or 0)
+    except Exception:
+        return 0.0
+
+
+def compute_cogs_by_category():
+    """
+    Return COGS and estimated net sales grouped by category.
+    Returns dict: { category_name: (cogs, net_sales) }
+    Based on invoice data grouped by vendor category mapping.
+    """
+    try:
+        rows = (
+            db.session.query(
+                InventoryItem.category,
+                db.func.sum(InvoiceLine.total_price),
+            )
+            .join(InventoryItem, InvoiceLine.item_id == InventoryItem.id, isouter=True)
+            .join(Invoice, InvoiceLine.invoice_id == Invoice.id)
+            .filter(Invoice.status == "complete")
+            .group_by(InventoryItem.category)
+            .all()
+        )
+        result = {}
+        for cat, cogs in rows:
+            cat = cat or "Other"
+            result[cat] = (float(cogs or 0), float(cogs or 0) * 2.5)  # estimated sales
+        # Ensure standard xtraCHEF categories exist
+        for default in ["Food", "Beer", "Liquor", "NA Bev"]:
+            if default not in result:
+                result[default] = (0.0, 0.0)
+        return result
+    except Exception:
+        return {"Food": (0.0, 0.0), "Beer": (0.0, 0.0), "Liquor": (0.0, 0.0), "NA Bev": (0.0, 0.0)}
+
 def generate_variance_report(session_id):
     """
     Generate a variance report for a completed count session.
