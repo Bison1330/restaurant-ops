@@ -4,221 +4,221 @@
 {% block content %}
 <div class="container-fluid px-4 py-3">
 
-  {# ─── Page Header ─────────────────────────────────────────────── #}
-  <div class="d-flex justify-content-between align-items-center mb-3">
-    <div>
-      <h2 class="mb-0">
-        <i class="bi bi-graph-up-arrow text-warning me-2"></i>xtraCHEF Dashboard
-      </h2>
-      <small class="text-muted">{{ location }}</small>
+    {# ─── Page Header ─────────────────────────────────────────────── #}
+    <div class="d-flex justify-content-between align-items-center mb-3">
+          <div>
+                  <h2 class="mb-0">
+                            <i class="bi bi-graph-up-arrow text-warning me-2"></i>i>xtraCHEF Dashboard
+                  </h2>h2>
+                  <small class="text-muted">{{ location }}</small>small>
+          </div>
+          <form method="post" action="{{ url_for('xtra_chef.sync') }}" class="d-inline">
+                  <button type="submit" class="btn btn-sm btn-outline-success">
+                            <i class="bi bi-arrow-clockwise me-1"></i>i>Sync Data
+                  </button>button>
+          </form>form>
     </div>
-    <form method="post" action="{{ url_for('xtrachef.sync') }}" class="d-inline">
-      <button type="submit" class="btn btn-sm btn-outline-success">
-        <i class="bi bi-arrow-clockwise me-1"></i>Sync Data
-      </button>
-    </form>
-  </div>
 
-  {# ─── Period Selector ──────────────────────────────────────────── #}
-  <div class="card shadow-sm mb-3">
-    <div class="card-body py-2">
-      <div class="d-flex align-items-center gap-3 flex-wrap">
-        <span class="fw-semibold text-muted small">PERIOD:</span>
-        {% for pnum, (pstart, pend) in periods.items() %}
-          <a href="?year={{ year }}&period={{ pnum }}"
-             class="btn btn-sm {% if pnum == period %}btn-primary{% else %}btn-outline-secondary{% endif %}">
-            P{{ pnum }} &ndash; {{ pstart[:6] }}
-          </a>
-        {% endfor %}
-        <span class="ms-auto text-muted small">
-          {% if summary %}{{ summary.period_start }} &rarr; {{ summary.period_end }}{% endif %}
-        </span>
-      </div>
+    {# ─── Period Selector ──────────────────────────────────────────── #}
+    <div class="card shadow-sm mb-3">
+          <div class="card-body py-2">
+                  <div class="d-flex align-items-center gap-3 flex-wrap">
+                            <span class="fw-semibold text-muted small">PERIOD:</span>span>
+                            {% for pnum, (pstart, pend) in periods.items() %}
+                            <a href="?period={{ pnum }}"
+                                         class="btn btn-sm {% if pnum == selected_period %}btn-primary{% else %}btn-outline-secondary{% endif %}">
+                                        P{{ pnum }} &ndash; {{ pstart[:6] }}
+                            </a>a>
+                            {% endfor %}
+                            <span class="ms-auto text-muted small">
+                                        {% if summary %}{{ summary.period_start }} &rarr; {{ summary.period_end }}{% endif %}
+                            </span>span>
+                  </div>
+          </div>
     </div>
-  </div>
 
-  {# ─── Nav Tabs ─────────────────────────────────────────────────── #}
-  <ul class="nav nav-tabs mb-3">
-    <li class="nav-item">
-      <a class="nav-link {% if active_tab == 'dashboard' %}active{% endif %}"
-         href="{{ url_for('xtrachef.xtra_chef', year=year, period=period) }}">
-        <i class="bi bi-speedometer2 me-1"></i>Summary
-      </a>
-    </li>
-    <li class="nav-item">
-      <a class="nav-link {% if active_tab == 'cogs' %}active{% endif %}"
-         href="{{ url_for('xtrachef.cogs', year=year, period=period) }}">
-        <i class="bi bi-cart3 me-1"></i>COGS
-      </a>
-    </li>
-    <li class="nav-item">
-      <a class="nav-link {% if active_tab == 'invoices' %}active{% endif %}"
-         href="{{ url_for('xtrachef.invoices', year=year, period=period) }}">
-        <i class="bi bi-receipt me-1"></i>Invoices
-      </a>
-    </li>
-    <li class="nav-item">
-      <a class="nav-link {% if active_tab == 'items' %}active{% endif %}"
-         href="{{ url_for('xtrachef.items', year=year, period=period) }}">
-        <i class="bi bi-box-seam me-1"></i>Item Library
-      </a>
-    </li>
-    <li class="nav-item">
-      <a class="nav-link {% if active_tab == 'vendors' %}active{% endif %}"
-         href="{{ url_for('xtrachef.vendors', year=year, period=period) }}">
-        <i class="bi bi-truck me-1"></i>Vendors
-      </a>
-    </li>
-  </ul>
+    {# ─── Nav Tabs ─────────────────────────────────────────────────── #}
+    <ul class="nav nav-tabs mb-3">
+          <li class="nav-item">
+                  <a class="nav-link {% if active_tab == 'dashboard' %}active{% endif %}"
+                             href="{{ url_for('xtra_chef.dashboard') }}">
+                            <i class="bi bi-speedometer2 me-1"></i>i>Summary
+                  </a>a>
+          </li>li>
+          <li class="nav-item">
+                  <a class="nav-link {% if active_tab == 'cogs' %}active{% endif %}"
+                             href="{{ url_for('xtra_chef.cogs') }}">
+                            <i class="bi bi-cart3 me-1"></i>i>COGS
+                  </a>a>
+          </li>li>
+          <li class="nav-item">
+                  <a class="nav-link {% if active_tab == 'invoices' %}active{% endif %}"
+                             href="{{ url_for('xtra_chef.invoices') }}">
+                            <i class="bi bi-receipt me-1"></i>i>Invoices
+                  </a>a>
+          </li>li>
+          <li class="nav-item">
+                  <a class="nav-link {% if active_tab == 'items' %}active{% endif %}"
+                             href="{{ url_for('xtra_chef.items') }}">
+                            <i class="bi bi-box-seam me-1"></i>i>Item Library
+                  </a>a>
+          </li>li>
+          <li class="nav-item">
+                  <a class="nav-link {% if active_tab == 'vendors' %}active{% endif %}"
+                             href="{{ url_for('xtra_chef.vendors') }}">
+                            <i class="bi bi-truck me-1"></i>i>Vendors
+                  </a>a>
+          </li>li>
+    </ul>ul>
 
-  {# ═══════════════════════════════════════════════════════════════ #}
-  {# TAB: DASHBOARD                                                  #}
-  {# ═══════════════════════════════════════════════════════════════ #}
-  {% if active_tab == 'dashboard' and summary %}
+    {# ═══════════════════════════════════════════════════════════════ #}
+    {# TAB: DASHBOARD                                                  #}
+    {# ═══════════════════════════════════════════════════════════════ #}
+    {% if active_tab == 'dashboard' and summary %}
 
-  {# KPI Cards #}
-  <div class="row g-3 mb-4">
-    <div class="col-sm-6 col-xl-2">
-      <div class="card text-bg-primary h-100 shadow-sm">
-        <div class="card-body">
-          <div class="small text-white-50 mb-1">Revenue</div>
-          <div class="fs-5 fw-bold">{{ summary.revenue | dollar }}</div>
-        </div>
-      </div>
+    {# KPI Cards #}
+    <div class="row g-3 mb-4">
+          <div class="col-sm-6 col-xl-2">
+                  <div class="card text-bg-primary h-100 shadow-sm">
+                            <div class="card-body">
+                                        <div class="small text-white-50 mb-1">Revenue</div>
+                                        <div class="fs-5 fw-bold">{{ summary.total_revenue | currency }}</div>
+                            </div>
+                  </div>
+          </div>
+          <div class="col-sm-6 col-xl-2">
+                  <div class="card text-bg-warning h-100 shadow-sm">
+                            <div class="card-body">
+                                        <div class="small text-dark mb-1">Prime Cost</div>
+                                        <div class="fs-5 fw-bold">{{ summary.prime_cost | currency }}</div>
+                                        <div class="small">{{ summary.prime_cost_pct | pct }}</div>
+                            </div>
+                  </div>
+          </div>
+          <div class="col-sm-6 col-xl-2">
+                  <div class="card text-bg-info h-100 shadow-sm">
+                            <div class="card-body">
+                                        <div class="small text-white-50 mb-1">COGS</div>
+                                        <div class="fs-5 fw-bold">{{ summary.total_cogs | currency }}</div>
+                                        <div class="small">{{ summary.cogs_pct | pct }}</div>
+                            </div>
+                  </div>
+          </div>
+          <div class="col-sm-6 col-xl-2">
+                  <div class="card text-bg-secondary h-100 shadow-sm">
+                            <div class="card-body">
+                                        <div class="small text-white-50 mb-1">Labor</div>
+                                        <div class="fs-5 fw-bold">{{ summary.total_labor | currency }}</div>
+                                        <div class="small">{{ summary.labor_pct | pct }}</div>
+                            </div>
+                  </div>
+          </div>
+          <div class="col-sm-6 col-xl-2">
+                  <div class="card text-bg-success h-100 shadow-sm">
+                            <div class="card-body">
+                                        <div class="small text-white-50 mb-1">Gross Profit</div>
+                                        <div class="fs-5 fw-bold">{{ summary.gross_profit | currency }}</div>
+                                        <div class="small">{{ summary.gross_profit_pct | pct }}</div>
+                            </div>
+                  </div>
+          </div>
+          <div class="col-sm-6 col-xl-2">
+                  <div class="card {% if summary.net_income >= 0 %}text-bg-success{% else %}text-bg-danger{% endif %} h-100 shadow-sm">
+                            <div class="card-body">
+                                        <div class="small text-white-50 mb-1">Net Income</div>
+                                        <div class="fs-5 fw-bold">{{ summary.net_income | currency }}</div>
+                                        <div class="small">{{ summary.net_income_pct | pct }}</div>
+                            </div>
+                  </div>
+          </div>
     </div>
-    <div class="col-sm-6 col-xl-2">
-      <div class="card text-bg-warning h-100 shadow-sm">
-        <div class="card-body">
-          <div class="small text-dark-50 mb-1">Prime Cost</div>
-          <div class="fs-5 fw-bold">{{ summary.prime_cost | dollar }}</div>
-          <div class="small">{{ summary.prime_cost_pct | pct }}</div>
-        </div>
-      </div>
-    </div>
-    <div class="col-sm-6 col-xl-2">
-      <div class="card text-bg-info h-100 shadow-sm">
-        <div class="card-body">
-          <div class="small text-white-50 mb-1">COGS</div>
-          <div class="fs-5 fw-bold">{{ summary.cogs | dollar }}</div>
-          <div class="small">{{ summary.cogs_pct | pct }}</div>
-        </div>
-      </div>
-    </div>
-    <div class="col-sm-6 col-xl-2">
-      <div class="card text-bg-secondary h-100 shadow-sm">
-        <div class="card-body">
-          <div class="small text-white-50 mb-1">Labor</div>
-          <div class="fs-5 fw-bold">{{ summary.labor | dollar }}</div>
-          <div class="small">{{ summary.labor_pct | pct }}</div>
-        </div>
-      </div>
-    </div>
-    <div class="col-sm-6 col-xl-2">
-      <div class="card text-bg-success h-100 shadow-sm">
-        <div class="card-body">
-          <div class="small text-white-50 mb-1">Gross Profit</div>
-          <div class="fs-5 fw-bold">{{ summary.gross_profit | dollar }}</div>
-          <div class="small">{{ summary.gross_profit_pct | pct }}</div>
-        </div>
-      </div>
-    </div>
-    <div class="col-sm-6 col-xl-2">
-      <div class="card {% if summary.net_profit >= 0 %}text-bg-success{% else %}text-bg-danger{% endif %} h-100 shadow-sm">
-        <div class="card-body">
-          <div class="small text-white-50 mb-1">Net Profit</div>
-          <div class="fs-5 fw-bold">{{ summary.net_profit | dollar }}</div>
-          <div class="small">{{ summary.net_profit_pct | pct }}</div>
-        </div>
-      </div>
-    </div>
-  </div>
 
-  {# Trend Chart Row #}
-  {% if trend and trend | length > 1 %}
-  <div class="row g-3 mb-4">
-    <div class="col-md-8">
-      <div class="card shadow-sm h-100">
-        <div class="card-header fw-semibold">Revenue vs. Net Profit — 2026 Trend</div>
-        <div class="card-body"><canvas id="trendChart" height="120"></canvas></div>
-      </div>
+    {# Trend Chart Row #}
+    {% if trend and trend.labels | length > 1 %}
+    <div class="row g-3 mb-4">
+          <div class="col-md-8">
+                  <div class="card shadow-sm h-100">
+                            <div class="card-header fw-semibold">Revenue vs. Net Income — Trend</div>
+                            <div class="card-body"><canvas id="trendChart" height="120"></canvas>canvas></div>
+                  </div>
+          </div>
+          <div class="col-md-4">
+                  <div class="card shadow-sm h-100">
+                            <div class="card-header fw-semibold">Cost Breakdown — Period {{ selected_period }}</div>
+                            <div class="card-body d-flex align-items-center justify-content-center">
+                                        <canvas id="costPieChart" height="200"></canvas>canvas>
+                            </div>
+                  </div>
+          </div>
     </div>
-    <div class="col-md-4">
-      <div class="card shadow-sm h-100">
-        <div class="card-header fw-semibold">Cost Breakdown — Period {{ period }}</div>
-        <div class="card-body d-flex align-items-center justify-content-center">
-          <canvas id="costPieChart" height="200"></canvas>
-        </div>
-      </div>
-    </div>
-  </div>
-  {% endif %}
+    {% endif %}
 
-  {# P&L Table #}
-  <div class="card shadow-sm mb-3">
-    <div class="card-header fw-semibold">Operating Summary Statement — {{ summary.period }}</div>
-    <div class="card-body p-0">
-      <table class="table table-sm table-hover mb-0">
-        <thead class="table-light">
-          <tr><th>Line Item</th><th class="text-end">Actual $</th><th class="text-end">% of Sales</th></tr>
-        </thead>
-        <tbody>
-          <tr class="table-primary fw-semibold"><td>Revenue</td><td class="text-end">{{ summary.revenue | dollar }}</td><td class="text-end">100.0%</td></tr>
-          <tr><td class="ps-4">COGS</td><td class="text-end">{{ summary.cogs | dollar }}</td><td class="text-end">{{ summary.cogs_pct | pct }}</td></tr>
-          <tr><td class="ps-4">Labor</td><td class="text-end">{{ summary.labor | dollar }}</td><td class="text-end">{{ summary.labor_pct | pct }}</td></tr>
-          <tr class="fw-semibold"><td>Prime Cost (COGS + Labor)</td><td class="text-end">{{ summary.prime_cost | dollar }}</td><td class="text-end">{{ summary.prime_cost_pct | pct }}</td></tr>
-          <tr class="table-success fw-semibold"><td>Gross Profit</td><td class="text-end">{{ summary.gross_profit | dollar }}</td><td class="text-end">{{ summary.gross_profit_pct | pct }}</td></tr>
-          <tr><td class="ps-4">Operating Costs</td><td class="text-end">{{ summary.operating_costs | dollar }}</td><td class="text-end">{{ summary.operating_costs_pct | pct }}</td></tr>
-          <tr class="{% if summary.net_profit >= 0 %}table-success{% else %}table-danger{% endif %} fw-bold"><td>Net Profit</td><td class="text-end">{{ summary.net_profit | dollar }}</td><td class="text-end">{{ summary.net_profit_pct | pct }}</td></tr>
-        </tbody>
-      </table>
+    {# P&L Table #}
+    <div class="card shadow-sm mb-3">
+          <div class="card-header fw-semibold">Operating Summary — {{ summary.period_label }}</div>
+          <div class="card-body p-0">
+                  <table class="table table-sm table-hover mb-0">
+                            <thead class="table-light">
+                                        <tr><th>Line Item</th><th class="text-end">Actual $</th><th class="text-end">% of Sales</th></tr>
+                            </thead>thead>
+                          <tbody>
+                                      <tr class="table-primary fw-semibold"><td>Revenue</td><td class="text-end">{{ summary.total_revenue | currency }}</td><td class="text-end">100.0%</td></tr>tr>
+                            <tr><td class="ps-4">COGS</td>td><td class="text-end">{{ summary.total_cogs | currency }}</td>td><td class="text-end">{{ summary.cogs_pct | pct }}</td>td></tr>
+                            <tr><td class="ps-4">Labor</td>td><td class="text-end">{{ summary.total_labor | currency }}</td>td><td class="text-end">{{ summary.labor_pct | pct }}</td>td></tr>
+                            <tr class="fw-semibold"><td>Prime Cost (COGS + Labor)</td><td class="text-end">{{ summary.prime_cost | currency }}</td><td class="text-end">{{ summary.prime_cost_pct | pct }}</td></tr>
+                            <tr class="table-success fw-semibold"><td>Gross Profit</td><td class="text-end">{{ summary.gross_profit | currency }}</td><td class="text-end">{{ summary.gross_profit_pct | pct }}</td></tr>
+                            <tr><td class="ps-4">Operating Expenses</td>td><td class="text-end">{{ summary.operating_expenses | currency }}</td>td><td class="text-end">{{ summary.operating_expenses_pct | pct }}</td>td></tr>
+                            <tr class="{% if summary.net_income >= 0 %}table-success{% else %}table-danger{% endif %} fw-bold"><td>Net Income</td>td><td class="text-end">{{ summary.net_income | currency }}</td>td><td class="text-end">{{ summary.net_income_pct | pct }}</td>td></tr>
+                          </tbody>
+                  </table>table>
+          </div>
     </div>
-  </div>
 
   {% endif %}{# end dashboard #}
 
   {# ═══════════════════════════════════════════════════════════════ #}
   {# TAB: COGS                                                       #}
   {# ═══════════════════════════════════════════════════════════════ #}
-  {% if active_tab == 'cogs' and cogs_detail %}
+  {% if active_tab == 'cogs' and cogs %}
   <div class="row g-3 mb-4">
-    <div class="col-md-4">
-      <div class="card shadow-sm h-100">
-        <div class="card-header fw-semibold">COGS by Category</div>
-        <div class="card-body d-flex align-items-center justify-content-center">
-          <canvas id="cogsCatChart"></canvas>
-        </div>
+      <div class="col-md-4">
+            <div class="card shadow-sm h-100">
+                    <div class="card-header fw-semibold">COGS by Category</div>
+                    <div class="card-body d-flex align-items-center justify-content-center">
+                              <canvas id="cogsCatChart"></canvas>canvas>
+                    </div>
+            </div>
       </div>
-    </div>
-    <div class="col-md-8">
-      <div class="card shadow-sm h-100">
-        <div class="card-header fw-semibold">COGS Detail</div>
-        <div class="card-body p-0">
-          <table class="table table-sm table-hover mb-0">
-            <thead class="table-light">
-              <tr><th>Category</th><th class="text-end">COGS $</th><th class="text-end">Net Sales $</th><th class="text-end">Cost %</th></tr>
-            </thead>
-            <tbody>
-              {% for g in cogs_detail.groups %}
-              <tr>
-                <td>{{ g.name }}</td>
-                <td class="text-end">{{ g.cogs | dollar }}</td>
-                <td class="text-end">{{ g.net_sales | dollar }}</td>
-                <td class="text-end">{{ g.ratio | pct }}</td>
-              </tr>
-              {% endfor %}
-            </tbody>
-            <tfoot class="table-secondary fw-bold">
-              <tr>
-                <td>Total</td>
-                <td class="text-end">{{ cogs_detail.cogs | dollar }}</td>
-                <td class="text-end">{{ cogs_detail.net_sales | dollar }}</td>
-                <td class="text-end">{{ cogs_detail.cost_ratio | pct }}</td>
-              </tr>
-            </tfoot>
-          </table>
-        </div>
+      <div class="col-md-8">
+            <div class="card shadow-sm h-100">
+                    <div class="card-header fw-semibold">COGS Detail</div>
+                    <div class="card-body p-0">
+                              <table class="table table-sm table-hover mb-0">
+                                          <thead class="table-light">
+                                                        <tr><th>Category</th><th class="text-end">COGS $</th><th class="text-end">Net Sales $</th><th class="text-end">Cost %</th></tr>
+                                          </thead>thead>
+                                          <tbody>
+                                                          {% for g in cogs.groups %}
+                                                          <tr>
+                                                                            <td>{{ g.name }}</td>
+                                              <td class="text-end">{{ g.cogs | currency }}</td>
+                                              <td class="text-end">{{ g.net_sales | currency }}</td>
+                                              <td class="text-end">{{ g.ratio | pct }}</td>
+                                                          </tr>
+                                            {% endfor %}
+                                          </tbody>
+                                          <tfoot class="table-secondary fw-bold">
+                                            <tr>
+                                              <td>Total</td>
+                                              <td class="text-end">{{ cogs.total_cogs | currency }}</td>
+                                              <td class="text-end">{{ cogs.net_sales | currency }}</td>
+                                              <td class="text-end">{{ cogs.cost_ratio | pct }}</td>
+                                            </tr>
+                                          </tfoot>tfoot>
+                              </table>table>
+                    </div>
+            </div>
       </div>
-    </div>
   </div>
   {% endif %}
 
@@ -227,51 +227,49 @@
   {# ═══════════════════════════════════════════════════════════════ #}
   {% if active_tab == 'invoices' %}
   <div class="card shadow-sm mb-3">
-    <div class="card-header d-flex justify-content-between align-items-center">
-      <span class="fw-semibold">Invoices ({{ invoices | length }})</span>
-      <form class="d-flex gap-2" method="get">
-        <input type="hidden" name="year" value="{{ year }}">
-        <input type="hidden" name="period" value="{{ period }}">
-        <select name="vendor" class="form-select form-select-sm" onchange="this.form.submit()">
-          <option value="">All Vendors</option>
-          {% for v in vendors %}
-            <option value="{{ v }}" {% if v == vendor_filter %}selected{% endif %}>{{ v }}</option>
-          {% endfor %}
-        </select>
-      </form>
-    </div>
-    <div class="card-body p-0">
-      <table class="table table-sm table-hover mb-0">
-        <thead class="table-light">
-          <tr>
-            <th>Vendor</th><th>Invoice #</th>
-            <th>Invoice Date</th><th class="text-end">Amount</th><th>Status</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for inv in invoices %}
-          <tr>
-            <td>{{ inv.vendor }}</td>
-            <td><code>{{ inv.invoice_number }}</code></td>
-            <td>{{ inv.invoice_date }}</td>
-            <td class="text-end fw-semibold">{{ inv.amount | dollar }}</td>
-            <td><span class="badge bg-success">{{ inv.status | upper }}</span></td>
-          </tr>
-          {% else %}
-          <tr><td colspan="5" class="text-center text-muted py-3">No invoices found.</td></tr>
-          {% endfor %}
-        </tbody>
-        {% if invoices %}
-        <tfoot class="table-secondary fw-bold">
-          <tr>
-            <td colspan="3">Total</td>
-            <td class="text-end">{{ invoices | sum(attribute='amount') | dollar }}</td>
-            <td></td>
-          </tr>
-        </tfoot>
-        {% endif %}
-      </table>
-    </div>
+      <div class="card-header d-flex justify-content-between align-items-center">
+            <span class="fw-semibold">Invoices ({{ invoices | length }})</span>span>
+            <form class="d-flex gap-2" method="get">
+                    <select name="vendor" class="form-select form-select-sm" onchange="this.form.submit()">
+                              <option value="">All Vendors</option>option>
+                              {% for v in vendors %}
+                              <option value="{{ v }}" {% if v == vendor_filter %}selected{% endif %}>{{ v }}</option>option>
+                              {% endfor %}
+                    </select>select>
+            </form>form>
+      </div>
+      <div class="card-body p-0">
+            <table class="table table-sm table-hover mb-0">
+                    <thead class="table-light">
+                              <tr>
+                                            <th>Vendor</th><th>Invoice #</th>
+                                <th>Invoice Date</th><th class="text-end">Amount</th><th>Status</th>
+                              </tr>
+                    </thead>thead>
+                    <tbody>
+                                {% for inv in invoices %}
+                                <tr>
+                                              <td>{{ inv.vendor_name }}</td>
+                        <td><code>{{ inv.invoice_number }}</code></td>
+                        <td>{{ inv.invoice_date }}</td>
+                        <td class="text-end fw-semibold">{{ inv.amount | currency }}</td>
+                        <td><span class="badge bg-success">{{ inv.status | upper }}</span>span></td>
+                                </tr>
+                      {% else %}
+                      <tr><td colspan="5" class="text-center text-muted py-3">No invoices found.</td>td></tr>
+                      {% endfor %}
+                    </tbody>
+                    {% if invoices %}
+                    <tfoot class="table-secondary fw-bold">
+                      <tr>
+                                    <td colspan="3">Total</td>td>
+                                    <td class="text-end">{{ invoices | sum(attribute='amount') | currency }}</td>td>
+                                    <td></td>
+                      </tr>
+                    </tfoot>tfoot>
+                    {% endif %}
+            </table>table>
+      </div>
   </div>
   {% endif %}
 
@@ -280,45 +278,57 @@
   {# ═══════════════════════════════════════════════════════════════ #}
   {% if active_tab == 'items' %}
   <div class="card shadow-sm mb-3">
-    <div class="card-header d-flex justify-content-between align-items-center">
-      <span class="fw-semibold">Item Library ({{ items | length }})</span>
-      <form class="d-flex gap-2" method="get">
-        <input type="hidden" name="year" value="{{ year }}">
-        <input type="hidden" name="period" value="{{ period }}">
-        <select name="category" class="form-select form-select-sm" onchange="this.form.submit()">
-          <option value="">All Categories</option>
-          {% for cat in categories %}
-            <option value="{{ cat }}" {% if cat == category_filter %}selected{% endif %}>{{ cat }}</option>
-          {% endfor %}
-        </select>
-      </form>
-    </div>
-    <div class="card-body p-0">
-      <table class="table table-sm table-hover mb-0">
-        <thead class="table-light">
-          <tr>
-            <th>Item</th><th>SKU</th><th>Category</th>
-            <th>Vendor</th><th>Last Purchased</th>
-            <th class="text-end">Unit Price</th><th>Unit</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for it in items %}
-          <tr>
-            <td>{{ it.item }}</td>
-            <td><code>{{ it.sku }}</code></td>
-            <td><span class="badge bg-secondary">{{ it.category }}</span></td>
-            <td>{{ it.vendor }}</td>
-            <td>{{ it.last_purchased }}</td>
-            <td class="text-end">{{ it.unit_price | dollar }}</td>
-            <td>{{ it.unit }}</td>
-          </tr>
-          {% else %}
-          <tr><td colspan="7" class="text-center text-muted py-3">No items found.</td></tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
+      <div class="card-header d-flex justify-content-between align-items-center">
+            <span class="fw-semibold">Item Library ({{ items | length }})</span>span>
+            <form class="d-flex gap-2" method="get">
+                    <select name="category" class="form-select form-select-sm" onchange="this.form.submit()">
+                              <option value="">All Categories</option>option>
+                              {% for cat in categories %}
+                              <option value="{{ cat }}" {% if cat == category_filter %}selected{% endif %}>{{ cat }}</option>option>
+                              {% endfor %}
+                    </select>select>
+                    <select name="status" class="form-select form-select-sm" onchange="this.form.submit()">
+                              <option value="">All Statuses</option>option>
+                              {% for s in statuses %}
+                              <option value="{{ s }}" {% if s == status_filter %}selected{% endif %}>{{ s }}</option>option>
+                              {% endfor %}
+                    </select>select>
+            </form>form>
+      </div>
+      <div class="card-body p-0">
+            <table class="table table-sm table-hover mb-0">
+                    <thead class="table-light">
+                              <tr>
+                                <th>Item</th><th>SKU</th><th>Category</th>
+                                <th>Vendor</th><th>Status</th>
+                                <th class="text-end">Unit Price</th><th>Unit</th>
+                              </tr>
+                    </thead>thead>
+                    <tbody>
+                                {% for it in items %}
+                                <tr>
+                                              <td>{{ it.name }}</td>
+                        <td><code>{{ it.sku }}</code></td>
+                        <td><span class="badge bg-secondary">{{ it.category }}</span>span></td>
+                        <td>{{ it.vendor }}</td>
+                        <td>
+                          {% if it.status == 'active' %}
+                          <span class="badge bg-success">{{ it.status }}</span>span>
+                          {% elif it.status == 'to_review' %}
+                          <span class="badge bg-warning text-dark">{{ it.status }}</span>span>
+                          {% else %}
+                          <span class="badge bg-secondary">{{ it.status }}</span>span>
+                          {% endif %}
+                        </td>
+                        <td class="text-end">{{ it.unit_price | currency }}</td>
+                        <td>{{ it.unit }}</td>
+                                </tr>
+                      {% else %}
+                      <tr><td colspan="7" class="text-center text-muted py-3">No items found.</td>td></tr>
+                      {% endfor %}
+                    </tbody>
+            </table>table>
+      </div>
   </div>
   {% endif %}
 
@@ -327,25 +337,37 @@
   {# ═══════════════════════════════════════════════════════════════ #}
   {% if active_tab == 'vendors' %}
   <div class="card shadow-sm mb-3">
-    <div class="card-header fw-semibold">Vendors ({{ vendor_list | length }})</div>
-    <div class="card-body p-0">
-      <table class="table table-sm table-hover mb-0">
-        <thead class="table-light">
-          <tr><th>Vendor Name</th><th>Code</th><th>Category</th></tr>
-        </thead>
-        <tbody>
-          {% for v in vendor_list %}
-          <tr>
-            <td>{{ v.name }}</td>
-            <td><code>{{ v.code }}</code></td>
-            <td><span class="badge bg-secondary">{{ v.category }}</span></td>
-          </tr>
-          {% else %}
-          <tr><td colspan="3" class="text-center text-muted py-3">No vendors found.</td></tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
+      <div class="card-header d-flex justify-content-between align-items-center">
+            <span class="fw-semibold">Vendors ({{ vendors | length }})</span>span>
+            <form class="d-flex gap-2" method="get">
+                    <select name="category" class="form-select form-select-sm" onchange="this.form.submit()">
+                              <option value="">All Categories</option>option>
+                              {% for cat in categories %}
+                              <option value="{{ cat }}" {% if cat == category_filter %}selected{% endif %}>{{ cat }}</option>option>
+                              {% endfor %}
+                    </select>select>
+            </form>form>
+      </div>
+      <div class="card-body p-0">
+            <table class="table table-sm table-hover mb-0">
+                    <thead class="table-light">
+                              <tr><th>Vendor Name</th><th>Code</th><th>Category</th><th>Contact</th><th>Phone</th></tr>
+                    </thead>thead>
+                    <tbody>
+                                {% for v in vendors %}
+                                <tr>
+                                              <td>{{ v.name }}</td>
+                        <td><code>{{ v.code }}</code></td>
+                        <td><span class="badge bg-secondary">{{ v.category }}</span>span></td>
+                        <td>{{ v.contact | default('—') }}</td>
+                        <td>{{ v.phone | default('—') }}</td>
+                                </tr>
+                      {% else %}
+                      <tr><td colspan="5" class="text-center text-muted py-3">No vendors found.</td>td></tr>
+                      {% endfor %}
+                    </tbody>
+            </table>table>
+      </div>
   </div>
   {% endif %}
 
@@ -356,66 +378,79 @@
 {{ super() }}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script>
-(function () {
-  // ── Trend Chart (Revenue vs Net Profit)
-  const trendEl = document.getElementById('trendChart');
-  if (trendEl) {
-    const trendData = {{ trend | tojson }};
-    new Chart(trendEl, {
-      type: 'bar',
-      data: {
-        labels: trendData.map(d => d.label),
-        datasets: [
-          {
-            label: 'Revenue',
-            data: trendData.map(d => d.revenue),
-            backgroundColor: 'rgba(13,110,253,0.7)',
-          },
-          {
-            label: 'Net Profit',
-            data: trendData.map(d => d.net_profit),
-            backgroundColor: trendData.map(d => d.net_profit >= 0 ? 'rgba(25,135,84,0.8)' : 'rgba(220,53,69,0.8)'),
-          }
-        ]
-      },
-      options: { responsive: true, plugins: { legend: { position: 'top' } } }
-    });
+  (function () {
+      // ── Trend Chart (Revenue vs Net Income)
+      const trendEl = document.getElementById('trendChart');
+      if (trendEl) {
+            const trendData = {{ trend | tojson }};
+        new Chart(trendEl, {
+                type: 'bar',
+                data: {
+                          labels: trendData.labels,
+                          datasets: [
+                            {
+                                          label: 'Revenue',
+                                          data: trendData.revenue,
+                                          backgroundColor: 'rgba(13,110,253,0.7)',
+                            },
+                            {
+                                          label: 'Net Income',
+                                          data: trendData.net_income,
+                                          backgroundColor: trendData.net_income.map(v => v >= 0 ? 'rgba(25,135,84,0.8)' : 'rgba(220,53,69,0.8)'),
+                            }
+                                    ]
+                },
+                options: { responsive: true, plugins: { legend: { position: 'top' } } }
+        });
   }
 
-  // ── Cost Pie Chart (current period)
-  const pieEl = document.getElementById('costPieChart');
-  if (pieEl) {
-    const s = {{ summary | tojson if summary else '{}' }};
-    new Chart(pieEl, {
-      type: 'doughnut',
-      data: {
-        labels: ['COGS', 'Labor', 'Op. Costs', 'Net Profit'],
-        datasets: [{
-          data: [s.cogs || 0, s.labor || 0, s.operating_costs || 0, Math.max(s.net_profit || 0, 0)],
-          backgroundColor: ['#fd7e14','#6c757d','#adb5bd','#198754']
-        }]
-      },
-      options: { responsive: true, plugins: { legend: { position: 'bottom' } } }
-    });
+     // ── Cost Pie Chart (current period)
+     const pieEl = document.getElementById('costPieChart');
+    if (pieEl) {
+          const s = {{ summary | tojson if summary else '{}' }};
+      new Chart(pieEl, {
+              type: 'doughnut',
+              data: {
+                        labels: ['COGS', 'Labor', 'Op. Expenses', 'Net Income'],
+                        datasets: [{
+                                    data: [s.total_cogs || 0, s.total_labor || 0, s.operating_expenses || 0, Math.max(s.net_income || 0, 0)],
+                                    backgroundColor: ['#fd7e14','#6c757d','#adb5bd','#198754']
+                        }]
+              },
+              options: { responsive: true, plugins: { legend: { position: 'bottom' } } }
+      });
   }
 
-  // ── COGS Category Pie
-  const cogsEl = document.getElementById('cogsCatChart');
-  if (cogsEl) {
-    const cogs = {{ cogs_detail | tojson if cogs_detail else '{}' }};
-    const groups = cogs.groups || [];
-    new Chart(cogsEl, {
-      type: 'pie',
-      data: {
-        labels: groups.map(g => g.name),
-        datasets: [{
-          data: groups.map(g => g.cogs),
-          backgroundColor: ['#fd7e14','#0dcaf0','#6f42c1','#20c997']
-        }]
-      },
-      options: { responsive: true }
-    });
+    // ── COGS Category Pie
+    const cogsEl = document.getElementById('cogsCatChart');
+    if (cogsEl) {
+          const cogs = {{ cogs | tojson if cogs else '{}' }};
+      const groups = cogs.groups || [];
+      new Chart(cogsEl, {
+              type: 'pie',
+              data: {
+                        labels: groups.map(g => g.name),
+                        datasets: [{
+                                    data: groups.map(g => g.cogs),
+                                    backgroundColor: ['#fd7e14','#0dcaf0','#6f42c1','#20c997','#dc3545','#ffc107']
+                        }]
+              },
+              options: { responsive: true }
+      });
   }
-})();
-</script>
+  })();
+    </script>
 {% endblock %}
+</script></tr></code></td></td>
+                                </tr>
+                    </tbody></th></th></tr></tr></code></td></td>
+                                </tr>
+                    </tbody></th></th></td>
+                      </tr></tr></code></td></td>
+                                </tr>
+                    </tbody></th></th>
+                              </tr></td></td>
+                                                          </tr>
+                                          </tbody></th></tr></tr></td></td></tr></tr></td>
+                          </tbody></th></tr>
+          </div>
