@@ -1,0 +1,10 @@
+recipe_name,menu_price,food_cost,food_cost_pct,gross_margin,status,recipe_group,ingredients
+Tito's Vodka Soda,9.00,1.08,12.0,7.92,active,Cocktails,"Tito's Handmade Vodka 1.75L (1.5oz): $0.92; Club Soda (4oz): $0.06; Lime Wedge (0.25ea): $0.05; Ice (4oz): $0.05"
+Patron Margarita,12.00,1.61,13.4,10.39,active,Cocktails,"Patron Silver Tequila 750ml (1.5oz): $1.29; Triple Sec (0.5oz): $0.14; Lime Juice (1oz): $0.08; Agave Syrup (0.5oz): $0.07; Salt (rim): $0.02; Ice (4oz): $0.05; Lime Wedge (0.25ea): $0.05"
+Well Vodka Soda,7.00,0.72,10.3,6.28,active,Cocktails,"Svedka Vodka 1.75L (1.5oz): $0.54; Club Soda (4oz): $0.06; Lime Wedge (0.25ea): $0.05; Ice (4oz): $0.05; Garnish: $0.02"
+Well Margarita,9.00,1.12,12.4,7.88,active,Cocktails,"Svedka Vodka 1.75L (1.5oz): $0.54; Triple Sec (0.5oz): $0.14; Lime Juice (1oz): $0.08; Simple Syrup (0.5oz): $0.05; Ice (4oz): $0.05; Lime Wedge (0.25ea): $0.05; Tajin (rim): $0.03"
+Patron Tequila Shot,8.00,1.29,16.1,6.71,active,Shots,"Patron Silver Tequila 750ml (1.5oz): $1.29"
+Tito's Vodka Shot,7.00,0.92,13.1,6.08,active,Shots,"Tito's Handmade Vodka 1.75L (1.5oz): $0.92"
+Well Shot,5.00,0.54,10.8,4.46,active,Shots,"Svedka Vodka 1.75L (1.5oz): $0.54"
+Long Island Iced Tea,12.00,2.18,18.2,9.82,active,Cocktails,"Tito's Handmade Vodka (0.5oz): $0.31; Svedka Vodka (0.5oz): $0.18; Patron Silver (0.5oz): $0.43; Triple Sec (0.5oz): $0.14; Sour Mix (1oz): $0.12; Cola (2oz): $0.05; Lemon Wedge (0.25ea): $0.05; Ice (6oz): $0.07"
+Cantina Mule,11.00,1.62,14.7,9.38,active,Cocktails,"Tito's Handmade Vodka 1.75L (1.5oz): $0.92; Ginger Beer (4oz): $0.45; Lime Juice (0.5oz): $0.04; Mint Leaves (3ea): $0.08; Ice (6oz): $0.07; Lime Wedge (0.25ea): $0.05"
