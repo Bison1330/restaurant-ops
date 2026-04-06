@@ -1,0 +1,12 @@
+recipe_name,menu_price,food_cost,food_cost_pct,gross_margin,status,recipe_group,ingredients
+Miller Lite Draft Pint,6.00,0.65,10.8,5.35,active,Draft Beer,"Miller Lite 1/2 BBL keg (16oz pour): $0.65"
+Coors Light Draft Pint,6.00,0.65,10.8,5.35,active,Draft Beer,"Coors Light 1/2 BBL keg (16oz pour): $0.65"
+Corona Extra Draft Pint,7.00,0.61,8.7,6.39,active,Draft Beer,"Corona Extra 1/4 BBL keg (16oz pour): $0.61"
+Modelo Especial Draft Pint,7.00,0.65,9.3,6.35,active,Draft Beer,"Modelo Especial 1/4 BBL keg (16oz pour): $0.65"
+Revolution Anti Hero IPA Pint,8.00,0.84,10.5,7.16,active,Draft Beer,"Revolution Anti Hero IPA 15.5gal keg (16oz pour): $0.84"
+Miller Lite Pitcher,18.00,1.95,10.8,16.05,active,Draft Beer,"Miller Lite 1/2 BBL keg (48oz pitcher): $1.95"
+Coors Light Pitcher,18.00,1.95,10.8,16.05,active,Draft Beer,"Coors Light 1/2 BBL keg (48oz pitcher): $1.95"
+Corona Extra Bottle,5.50,1.80,32.7,3.70,active,Bottled/Canned Beer,"Corona Extra 12oz bottle: $1.80"
+Miller Lite Bottle,4.50,0.80,17.8,3.70,active,Bottled/Canned Beer,"Miller Lite 12oz bottle: $0.80"
+Coors Light Bottle,4.50,0.80,17.8,3.70,active,Bottled/Canned Beer,"Coors Light 12oz bottle: $0.80"
+Modelo Especial Bottle,5.50,1.90,34.5,3.60,active,Bottled/Canned Beer,"Modelo Especial 12oz bottle: $1.90"
