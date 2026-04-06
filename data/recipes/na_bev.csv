@@ -1,0 +1,10 @@
+recipe_name,menu_price,food_cost,food_cost_pct,gross_margin,status,recipe_group,ingredients
+Nespresso Espresso,4.00,0.45,11.3,3.55,active,Hot Beverages,"Nespresso Capsule (1ea): $0.40; Hot Water (2oz): $0.01; Sugar Packet (opt): $0.04"
+Nespresso Americano,4.50,0.48,10.7,4.02,active,Hot Beverages,"Nespresso Capsule (1ea): $0.40; Hot Water (6oz): $0.02; Sugar Packet (opt): $0.04; Cream (opt): $0.02"
+Nespresso Latte,5.50,0.76,13.8,4.74,active,Hot Beverages,"Nespresso Capsule (1ea): $0.40; Steamed Milk (4oz): $0.32; Sugar Packet (opt): $0.04"
+Fountain Soda,3.50,0.25,7.1,3.25,active,Soft Drinks,"Soda Syrup & CO2 (12oz): $0.22; Ice (4oz): $0.02; Straw: $0.01"
+Bottled Water,3.00,0.35,11.7,2.65,active,Non-Alcoholic,"Bottled Water (16.9oz): $0.35"
+Sparkling Water,3.50,0.55,15.7,2.95,active,Non-Alcoholic,"Sparkling Water (12oz): $0.50; Lime Wedge (0.25ea): $0.05"
+Lemonade,4.50,0.72,16.0,3.78,active,Soft Drinks,"Lemon Juice (2oz): $0.22; Simple Syrup (1oz): $0.08; Water (8oz): $0.03; Lemon Wedge (0.5ea): $0.10; Ice (6oz): $0.07; Mint (opt): $0.05; Straw: $0.01; Cup: $0.12"
+Virgin Margarita,7.00,0.68,9.7,6.32,active,Mocktails,"Lime Juice (2oz): $0.16; Agave Syrup (1oz): $0.14; Orange Juice (1oz): $0.08; Salt (rim): $0.02; Ice (4oz): $0.05; Lime Wedge (0.25ea): $0.05; Tajin (opt): $0.03; Garnish: $0.10; Cup: $0.05"
+Arnold Palmer,5.00,0.52,10.4,4.48,active,Soft Drinks,"Iced Tea (6oz): $0.18; Lemonade (6oz): $0.30; Ice (4oz): $0.07; Lemon Wedge (0.25ea): $0.05; Straw: $0.01; Cup: $0.12"
