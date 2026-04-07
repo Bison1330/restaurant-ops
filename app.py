@@ -775,7 +775,7 @@ def sync_toast_recipes():
     if not r:
         flash("No restaurant selected.", "error")
         return redirect(url_for("recipes"))
-    menu_items = fetch_toast_menu(r.toast_location_id)
+    menu_items = fetch_toast_menu(r)
     count = 0
     for item in menu_items:
         existing = Recipe.query.filter_by(

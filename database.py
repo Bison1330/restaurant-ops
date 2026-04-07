@@ -10,6 +10,8 @@ class Restaurant(db.Model):
     location = db.Column(db.String(200))
     gfs_account = db.Column(db.String(20))
     toast_location_id = db.Column(db.String(50))
+    toast_client_id = db.Column(db.String(100))
+    toast_client_secret = db.Column(db.String(200))
     active = db.Column(db.Boolean, default=True)
 
 class Vendor(db.Model):

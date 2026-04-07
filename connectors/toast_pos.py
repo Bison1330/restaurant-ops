@@ -3,73 +3,85 @@ import os
 import time
 from datetime import datetime
 
-TOAST_CLIENT_ID = os.environ.get("TOAST_CLIENT_ID")
-TOAST_CLIENT_SECRET = os.environ.get("TOAST_CLIENT_SECRET")
 TOAST_API_BASE = "https://ws-api.toasttab.com"
 
-# Token cache: (token, expires_at_epoch_seconds)
-_TOKEN_CACHE = {"token": None, "expires_at": 0}
+# Per-client_id token cache: { client_id: {"token": str, "expires_at": float} }
+_TOKEN_CACHE = {}
 _TOKEN_TTL_SECONDS = 23 * 60 * 60  # 23 hours
 
 
-def get_toast_token():
-    """Authenticate against Toast and return a bearer token, cached for 23h."""
+def _resolve_credentials(restaurant):
+    """Pull client_id, client_secret, location_id from a Restaurant object,
+    falling back to env vars if the DB columns are NULL."""
+    client_id = getattr(restaurant, "toast_client_id", None) or os.environ.get("TOAST_CLIENT_ID")
+    client_secret = getattr(restaurant, "toast_client_secret", None) or os.environ.get("TOAST_CLIENT_SECRET")
+    location_id = getattr(restaurant, "toast_location_id", None)
+    if not client_id or not client_secret or not location_id:
+        raise ValueError(
+            f"Missing Toast credentials for restaurant id={getattr(restaurant, 'id', '?')}: "
+            f"client_id={'set' if client_id else 'MISSING'}, "
+            f"client_secret={'set' if client_secret else 'MISSING'}, "
+            f"location_id={'set' if location_id else 'MISSING'}"
+        )
+    return client_id, client_secret, location_id
+
+
+def get_toast_token(restaurant):
+    """Authenticate against Toast for the given restaurant and return a bearer
+    token, cached for 23h per client_id so multiple restaurants can hold
+    independent tokens at once."""
+    client_id, client_secret, _ = _resolve_credentials(restaurant)
     now = time.time()
-    if _TOKEN_CACHE["token"] and _TOKEN_CACHE["expires_at"] > now:
-        return _TOKEN_CACHE["token"]
+    cached = _TOKEN_CACHE.get(client_id)
+    if cached and cached["expires_at"] > now:
+        return cached["token"]
 
     resp = requests.post(
         f"{TOAST_API_BASE}/authentication/v1/authentication/login",
         json={
-            "clientId": TOAST_CLIENT_ID,
-            "clientSecret": TOAST_CLIENT_SECRET,
+            "clientId": client_id,
+            "clientSecret": client_secret,
             "userAccessType": "TOAST_MACHINE_CLIENT",
         },
     )
     resp.raise_for_status()
     token = resp.json().get("token", {}).get("accessToken", "")
-    _TOKEN_CACHE["token"] = token
-    _TOKEN_CACHE["expires_at"] = now + _TOKEN_TTL_SECONDS
+    _TOKEN_CACHE[client_id] = {"token": token, "expires_at": now + _TOKEN_TTL_SECONDS}
     return token
 
 
-def _get_auth_token():
-    """Backwards-compatible alias used by fetch_toast_menu."""
-    return get_toast_token()
-
-
-def _auth_headers(location_id):
+def _auth_headers(restaurant):
+    _, _, location_id = _resolve_credentials(restaurant)
     return {
-        "Authorization": f"Bearer {get_toast_token()}",
+        "Authorization": f"Bearer {get_toast_token(restaurant)}",
         "Toast-Restaurant-External-ID": location_id,
     }
 
 
-def _job_lookup(location_id):
-    """Fetch jobs for a location and return {job_guid: title}."""
+def _job_lookup(restaurant):
+    """Fetch jobs for a restaurant and return {job_guid: title}."""
     resp = requests.get(
         f"{TOAST_API_BASE}/labor/v1/jobs",
-        headers=_auth_headers(location_id),
+        headers=_auth_headers(restaurant),
     )
     resp.raise_for_status()
     return {j.get("guid"): j.get("title", "") for j in resp.json()}
 
 
-def fetch_employees(location_id):
-    """Return a list of employee dicts for the given Toast restaurant GUID.
+def fetch_employees(restaurant):
+    """Return a list of employee dicts for the given Restaurant.
 
     Each dict: {guid, first_name, last_name, email, wage, job_title}.
-    `wage` is the first wageOverride (if any), `job_title` is resolved from the
-    first jobReference via the /labor/v1/jobs lookup.
+    Skips employees flagged deleted.
     """
     resp = requests.get(
         f"{TOAST_API_BASE}/labor/v1/employees",
-        headers=_auth_headers(location_id),
+        headers=_auth_headers(restaurant),
     )
     resp.raise_for_status()
     raw = resp.json()
 
-    jobs = _job_lookup(location_id)
+    jobs = _job_lookup(restaurant)
     employees = []
     for e in raw:
         if e.get("deleted"):
@@ -89,7 +101,7 @@ def fetch_employees(location_id):
     return employees
 
 
-def fetch_timesheets(location_id, start_date, end_date):
+def fetch_timesheets(restaurant, start_date, end_date):
     """Fetch time entries between start_date and end_date (ISO-8601 strings).
 
     Returns list of {employee_guid, in_date, out_date, hours, job_guid}.
@@ -97,7 +109,7 @@ def fetch_timesheets(location_id, start_date, end_date):
     params = {"startDate": start_date, "endDate": end_date}
     resp = requests.get(
         f"{TOAST_API_BASE}/labor/v1/timeEntries",
-        headers=_auth_headers(location_id),
+        headers=_auth_headers(restaurant),
         params=params,
     )
     resp.raise_for_status()
@@ -124,7 +136,7 @@ def fetch_timesheets(location_id, start_date, end_date):
     return entries
 
 
-def fetch_menu(location_id):
+def fetch_menu(restaurant):
     """Fetch the published menu and flatten to a list of items.
 
     The /menus/v2/menus response is a dict containing a `menus` array. Each menu
@@ -134,7 +146,7 @@ def fetch_menu(location_id):
     """
     resp = requests.get(
         f"{TOAST_API_BASE}/menus/v2/menus",
-        headers=_auth_headers(location_id),
+        headers=_auth_headers(restaurant),
     )
     resp.raise_for_status()
     payload = resp.json()
@@ -160,7 +172,7 @@ def fetch_menu(location_id):
     return items
 
 
-def fetch_orders(location_id, start_date, end_date):
+def fetch_orders(restaurant, start_date, end_date):
     """Fetch orders between start_date and end_date (ISO-8601 strings).
 
     Returns list of {guid, opened_date, total, items: [{name, qty, price}]}.
@@ -178,7 +190,7 @@ def fetch_orders(location_id, start_date, end_date):
         }
         resp = requests.get(
             f"{TOAST_API_BASE}/orders/v2/ordersBulk",
-            headers=_auth_headers(location_id),
+            headers=_auth_headers(restaurant),
             params=params,
         )
         resp.raise_for_status()
@@ -206,17 +218,18 @@ def fetch_orders(location_id, start_date, end_date):
     return summaries
 
 
-def fetch_toast_menu(location_id):
+def fetch_toast_menu(restaurant):
     """Legacy shape used by older callers — wraps fetch_menu().
 
     Returns a list of recipe dicts: {toast_recipe_id, name, category,
     subcategory, menu_price, portion_size, ingredients}. Falls back to
-    _mock_menu() when credentials or location_id are missing.
+    _mock_menu() when credentials are missing for the restaurant.
     """
-    if not TOAST_CLIENT_ID or not TOAST_CLIENT_SECRET or not location_id:
+    try:
+        items = fetch_menu(restaurant)
+    except (ValueError, requests.HTTPError):
         return _mock_menu()
 
-    items = fetch_menu(location_id)
     return [
         {
             "toast_recipe_id": it["toast_guid"],
