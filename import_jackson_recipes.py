@@ -1,15 +1,14 @@
-"""Import hale_summary.csv into the DB for restaurant_id=1 (Hale Street Cantina).
+"""Import jackson_summary.csv into the DB for restaurant_id=2 (Jackson Avenue Pub).
 
 Replaces any existing recipes for the restaurant. The CSV has no ingredients
-column, so RecipeIngredient rows are NOT created here — those come from a
-separate source (augment_recipes_from_json.py).
+column, so RecipeIngredient rows are NOT created here.
 """
 import csv
 from app import app, db
 from database import Recipe
 
-RESTAURANT_ID = 1
-SOURCE = "/root/restaurant-ops/data/recipes/hale_summary.csv"
+RESTAURANT_ID = 2
+SOURCE = "/root/restaurant-ops/data/recipes/jackson_summary.csv"
 
 BEVERAGE_KEYWORDS = ("beer", "wine", "liquor", "cocktail", "bev", "marg", "mixer", "shots")
 STATUS_MAP = {"COMPLETE": "active", "DRAFT": "draft"}
@@ -25,7 +24,10 @@ def normalize_status(raw: str) -> str:
 
 
 def normalize_subcategory(raw: str) -> str:
-    """ALL-CAPS -> Title Case; mixed/lowercase left as-is; blank/'--' -> 'Uncategorized'."""
+    """Match the casing rule used for Hale Street in the DB:
+    ALL-CAPS values get title-cased; mixed/lowercase values are left as-is;
+    blanks and '--' become 'Uncategorized'.
+    """
     s = (raw or "").strip()
     if not s or s == "--":
         return "Uncategorized"
@@ -35,6 +37,7 @@ def normalize_subcategory(raw: str) -> str:
 
 
 def to_float(raw: str) -> float:
+    """Convert a CSV cell to float. Empty -> 0.0."""
     if raw is None:
         return 0.0
     s = raw.strip()

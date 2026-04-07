@@ -1,15 +1,14 @@
-"""Import hale_summary.csv into the DB for restaurant_id=1 (Hale Street Cantina).
+"""Import main_summary.csv into the DB for restaurant_id=3 (Main Street Pub).
 
 Replaces any existing recipes for the restaurant. The CSV has no ingredients
-column, so RecipeIngredient rows are NOT created here — those come from a
-separate source (augment_recipes_from_json.py).
+column, so RecipeIngredient rows are NOT created here.
 """
 import csv
 from app import app, db
 from database import Recipe
 
-RESTAURANT_ID = 1
-SOURCE = "/root/restaurant-ops/data/recipes/hale_summary.csv"
+RESTAURANT_ID = 3
+SOURCE = "/root/restaurant-ops/data/recipes/main_summary.csv"
 
 BEVERAGE_KEYWORDS = ("beer", "wine", "liquor", "cocktail", "bev", "marg", "mixer", "shots")
 STATUS_MAP = {"COMPLETE": "active", "DRAFT": "draft"}
