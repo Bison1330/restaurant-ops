@@ -595,7 +595,7 @@ def recipes():
     r = _get_selected_restaurant()
     if not r:
         return render_template("recipes.html", food_recipes=[], beverage_recipes=[], inventory_items=[])
-    all_recipes = Recipe.query.filter_by(restaurant_id=r.id, active=True).all()
+    all_recipes = Recipe.query.filter_by(restaurant_id=r.id, status='active').all()
     food_recipes = [rec for rec in all_recipes if rec.category == "food"]
     beverage_recipes = [rec for rec in all_recipes if rec.category == "beverage"]
     inventory_items = InventoryItem.query.filter_by(restaurant_id=r.id).all()
@@ -686,7 +686,7 @@ def edit_recipe(id):
 def delete_recipe(id):
     recipe = Recipe.query.get_or_404(id)
     name = recipe.name
-    recipe.active = False
+    recipe.status = 'inactive'
     db.session.commit()
     flash(f"Recipe '{name}' removed.", "success")
     return redirect(url_for("recipes"))

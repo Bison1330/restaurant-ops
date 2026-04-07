@@ -103,13 +103,16 @@ class Recipe(db.Model):
     restaurant_id = db.Column(db.Integer, db.ForeignKey('restaurants.id'))
     name = db.Column(db.String(200), nullable=False)
     category = db.Column(db.String(20))  # food or beverage
-    subcategory = db.Column(db.String(50))  # appetizer, entree, cocktail, beer, wine, etc.
+    subcategory = db.Column(db.String(100))  # appetizer, entree, cocktail, beer, wine, etc.
     menu_price = db.Column(db.Float, default=0)
+    food_cost = db.Column(db.Float, default=0)
+    food_cost_pct = db.Column(db.Float, default=0)
+    gross_margin = db.Column(db.Float, default=0)
     portion_size = db.Column(db.String(50))
     toast_recipe_id = db.Column(db.String(50))
     xtra_chef_id = db.Column(db.String(50))
     notes = db.Column(db.Text)
-    active = db.Column(db.Boolean, default=True)
+    status = db.Column(db.String(20), default='active')
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     restaurant = db.relationship('Restaurant', backref='recipes')
@@ -146,6 +149,7 @@ class RecipeIngredient(db.Model):
     quantity = db.Column(db.Float, default=0)
     unit = db.Column(db.String(30))
     unit_cost = db.Column(db.Float, default=0)  # fallback cost when no inventory link
+    yield_percent = db.Column(db.Float, default=100)
     inventory_item = db.relationship('InventoryItem', backref='recipe_ingredients')
 
     @property
