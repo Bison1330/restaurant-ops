@@ -35,6 +35,10 @@ class InventoryItem(db.Model):
     yield_units = db.Column(db.Float, default=1)  # how many recipe units per purchase unit (e.g. 640 oz per 40lb case)
     vendor_id = db.Column(db.Integer, db.ForeignKey('vendors.id'))
     vendor_sku = db.Column(db.String(50))
+    toast_guid = db.Column(db.String(100))
+    gfs_sku = db.Column(db.String(50))
+    fintech_code = db.Column(db.String(50))
+    xtra_chef_id = db.Column(db.String(100))
     restaurant = db.relationship('Restaurant', backref='inventory_items')
     vendor = db.relationship('Vendor', backref='inventory_items')
 
@@ -111,6 +115,8 @@ class Recipe(db.Model):
     portion_size = db.Column(db.String(50))
     toast_recipe_id = db.Column(db.String(50))
     xtra_chef_id = db.Column(db.String(50))
+    toast_guid = db.Column(db.String(100))
+    pos_id = db.Column(db.String(100))
     notes = db.Column(db.Text)
     status = db.Column(db.String(20), default='active')
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
@@ -247,6 +253,22 @@ class CountSession(db.Model):
     submitted_at = db.Column(db.DateTime)
     restaurant = db.relationship('Restaurant', backref='count_sessions')
     entries = db.relationship('CountEntry', backref='session', cascade='all, delete-orphan')
+
+
+class ItemMap(db.Model):
+    """Universal cross-system ID map for inventory items / recipe components."""
+    __tablename__ = 'item_maps'
+    id = db.Column(db.Integer, primary_key=True)
+    internal_name = db.Column(db.String(200))
+    toast_guid = db.Column(db.String(100), index=True)
+    xtra_chef_id = db.Column(db.String(100), index=True)
+    gfs_sku = db.Column(db.String(50), index=True)
+    fintech_code = db.Column(db.String(50), index=True)
+    category = db.Column(db.String(50))
+    restaurant_id = db.Column(db.Integer, db.ForeignKey('restaurants.id'))
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    notes = db.Column(db.String(300))
+    restaurant = db.relationship('Restaurant', backref='item_maps')
 
 
 class CountEntry(db.Model):

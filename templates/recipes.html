@@ -53,133 +53,107 @@
     </div>
 </div>
 
-<!-- Food Recipes -->
+{% macro render_recipe_table(recipes) %}
+<div class="table-responsive">
+    <table class="table table-clean">
+        <thead>
+            <tr>
+                <th>Recipe</th>
+                <th>Category</th>
+                <th>Subcategory</th>
+                <th>Menu Price</th>
+                <th>Cost</th>
+                <th>Cost %</th>
+                <th>Margin</th>
+                <th>Margin %</th>
+                <th>Source</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for rec in recipes %}
+            {% set high_thresh = 25 if rec.category == 'beverage' else 35 %}
+            {% set warn_thresh = 22 if rec.category == 'beverage' else 32 %}
+            <tr>
+                <td class="fw-semibold"><a href="{{ url_for('recipe_detail', recipe_id=rec.id) }}">{{ rec.name }}</a></td>
+                <td>
+                    {% if rec.category == 'beverage' %}
+                    <span class="category-tag bev"><i class="bi bi-cup-straw"></i> Beverage</span>
+                    {% else %}
+                    <span class="category-tag food"><i class="bi bi-egg-fried"></i> Food</span>
+                    {% endif %}
+                </td>
+                <td><span class="category-tag">{{ rec.subcategory or '—' }}</span></td>
+                <td>${{ "{:,.2f}".format(rec.menu_price) }}</td>
+                <td>${{ "{:,.2f}".format(rec.total_cost) }}</td>
+                <td>
+                    <span class="cost-pct {% if rec.cost_percent > high_thresh %}high{% elif rec.cost_percent > warn_thresh %}warn{% else %}good{% endif %}">
+                        {{ "%.1f"|format(rec.cost_percent) }}%
+                    </span>
+                </td>
+                <td>${{ "{:,.2f}".format(rec.margin) }}</td>
+                <td>{{ "%.1f"|format(rec.margin_percent) }}%</td>
+                <td>
+                    {% if rec.xtra_chef_id %}
+                    <span class="source-tag csv">xtra chef</span>
+                    {% elif rec.toast_recipe_id %}
+                    <span class="source-tag toast">Toast</span>
+                    {% else %}
+                    <span class="source-tag manual">Manual</span>
+                    {% endif %}
+                </td>
+                <td>
+                    <div class="d-flex gap-1">
+                        <button class="btn btn-sm btn-outline-primary" style="font-size: 0.72rem; padding: 3px 8px;" onclick="openEditRecipe({{ rec.id }})">
+                            <i class="bi bi-pencil"></i>
+                        </button>
+                        <button class="btn btn-sm btn-outline-danger" style="font-size: 0.72rem; padding: 3px 8px;" onclick="deleteRecipe({{ rec.id }}, '{{ rec.name }}')">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endmacro %}
+
+<!-- Recipes grouped by subcategory -->
 <div class="content-card mb-4">
     <div class="card-header-row">
-        <h5><i class="bi bi-egg-fried" style="color: var(--accent-green); margin-right: 4px;"></i> Food Recipes</h5>
-        <span class="text-muted" style="font-size: 0.82rem;">Target: 28–32% food cost</span>
+        <h5><i class="bi bi-tags" style="color: var(--accent-blue); margin-right: 4px;"></i> Recipes by Subcategory</h5>
+        <span class="text-muted" style="font-size: 0.82rem;">{{ all_recipes|length }} total</span>
     </div>
-    {% if food_recipes|length > 0 %}
-    <div class="table-responsive">
-        <table class="table table-clean">
-            <thead>
-                <tr>
-                    <th>Recipe</th>
-                    <th>Subcategory</th>
-                    <th>Menu Price</th>
-                    <th>Cost</th>
-                    <th>Cost %</th>
-                    <th>Margin</th>
-                    <th>Margin %</th>
-                    <th>Source</th>
-                    <th>Actions</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for rec in food_recipes %}
-                <tr>
-                    <td class="fw-semibold">{{ rec.name }}</td>
-                    <td><span class="category-tag">{{ rec.subcategory or '—' }}</span></td>
-                    <td>${{ "{:,.2f}".format(rec.menu_price) }}</td>
-                    <td>${{ "{:,.2f}".format(rec.total_cost) }}</td>
-                    <td>
-                        <span class="cost-pct {% if rec.cost_percent > 35 %}high{% elif rec.cost_percent > 32 %}warn{% else %}good{% endif %}">
-                            {{ "%.1f"|format(rec.cost_percent) }}%
-                        </span>
-                    </td>
-                    <td>${{ "{:,.2f}".format(rec.margin) }}</td>
-                    <td>{{ "%.1f"|format(rec.margin_percent) }}%</td>
-                    <td>
-                        {% if rec.xtra_chef_id %}
-                        <span class="source-tag csv">xtra chef</span>
-                        {% elif rec.toast_recipe_id %}
-                        <span class="source-tag toast">Toast</span>
-                        {% else %}
-                        <span class="source-tag manual">Manual</span>
-                        {% endif %}
-                    </td>
-                    <td>
-                        <div class="d-flex gap-1">
-                            <button class="btn btn-sm btn-outline-primary" style="font-size: 0.72rem; padding: 3px 8px;" onclick="openEditRecipe({{ rec.id }})">
-                                <i class="bi bi-pencil"></i>
-                            </button>
-                            <button class="btn btn-sm btn-outline-danger" style="font-size: 0.72rem; padding: 3px 8px;" onclick="deleteRecipe({{ rec.id }}, '{{ rec.name }}')">
-                                <i class="bi bi-trash"></i>
-                            </button>
-                        </div>
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
-    {% else %}
-    <p class="text-muted text-center py-4 mb-0">No food recipes yet. Import a CSV from xtra chef or create one manually.</p>
-    {% endif %}
-</div>
 
-<!-- Beverage Recipes -->
-<div class="content-card">
-    <div class="card-header-row">
-        <h5><i class="bi bi-cup-straw" style="color: var(--brand-orange); margin-right: 4px;"></i> Beverage Recipes</h5>
-        <span class="text-muted" style="font-size: 0.82rem;">Target: 18–22% beverage cost</span>
-    </div>
-    {% if beverage_recipes|length > 0 %}
-    <div class="table-responsive">
-        <table class="table table-clean">
-            <thead>
-                <tr>
-                    <th>Recipe</th>
-                    <th>Subcategory</th>
-                    <th>Menu Price</th>
-                    <th>Cost</th>
-                    <th>Cost %</th>
-                    <th>Margin</th>
-                    <th>Margin %</th>
-                    <th>Source</th>
-                    <th>Actions</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for rec in beverage_recipes %}
-                <tr>
-                    <td class="fw-semibold">{{ rec.name }}</td>
-                    <td><span class="category-tag">{{ rec.subcategory or '—' }}</span></td>
-                    <td>${{ "{:,.2f}".format(rec.menu_price) }}</td>
-                    <td>${{ "{:,.2f}".format(rec.total_cost) }}</td>
-                    <td>
-                        <span class="cost-pct {% if rec.cost_percent > 25 %}high{% elif rec.cost_percent > 22 %}warn{% else %}good{% endif %}">
-                            {{ "%.1f"|format(rec.cost_percent) }}%
-                        </span>
-                    </td>
-                    <td>${{ "{:,.2f}".format(rec.margin) }}</td>
-                    <td>{{ "%.1f"|format(rec.margin_percent) }}%</td>
-                    <td>
-                        {% if rec.xtra_chef_id %}
-                        <span class="source-tag csv">xtra chef</span>
-                        {% elif rec.toast_recipe_id %}
-                        <span class="source-tag toast">Toast</span>
-                        {% else %}
-                        <span class="source-tag manual">Manual</span>
-                        {% endif %}
-                    </td>
-                    <td>
-                        <div class="d-flex gap-1">
-                            <button class="btn btn-sm btn-outline-primary" style="font-size: 0.72rem; padding: 3px 8px;" onclick="openEditRecipe({{ rec.id }})">
-                                <i class="bi bi-pencil"></i>
-                            </button>
-                            <button class="btn btn-sm btn-outline-danger" style="font-size: 0.72rem; padding: 3px 8px;" onclick="deleteRecipe({{ rec.id }}, '{{ rec.name }}')">
-                                <i class="bi bi-trash"></i>
-                            </button>
-                        </div>
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+    {% if subcategory_groups|length > 0 %}
+    <ul class="nav nav-tabs subcategory-tabs mb-3" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="tab-all" data-bs-toggle="tab" data-bs-target="#pane-all" type="button" role="tab">
+                All <span class="tab-count">{{ all_recipes|length }}</span>
+            </button>
+        </li>
+        {% for grp in subcategory_groups %}
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="tab-{{ grp.slug }}" data-bs-toggle="tab" data-bs-target="#pane-{{ grp.slug }}" type="button" role="tab">
+                {{ grp.name }} <span class="tab-count">{{ grp.count }}</span>
+            </button>
+        </li>
+        {% endfor %}
+    </ul>
+
+    <div class="tab-content">
+        <div class="tab-pane fade show active" id="pane-all" role="tabpanel">
+            {{ render_recipe_table(all_recipes) }}
+        </div>
+        {% for grp in subcategory_groups %}
+        <div class="tab-pane fade" id="pane-{{ grp.slug }}" role="tabpanel">
+            {{ render_recipe_table(grp.recipes) }}
+        </div>
+        {% endfor %}
     </div>
     {% else %}
-    <p class="text-muted text-center py-4 mb-0">No beverage recipes yet. Import a CSV from xtra chef or create one manually.</p>
+    <p class="text-muted text-center py-4 mb-0">No recipes yet. Import a CSV from xtra chef or create one manually.</p>
     {% endif %}
 </div>
 
@@ -367,6 +341,25 @@
         font-size: 0.72rem; font-weight: 600; padding: 3px 8px;
         border-radius: 4px; background: rgba(108,117,125,0.08); color: #6c757d;
     }
+    .category-tag.food { background: rgba(42,157,143,0.12); color: #2a9d8f; }
+    .category-tag.bev { background: rgba(232,93,4,0.12); color: #e85d04; }
+    .subcategory-tabs { border-bottom: 1px solid #e9ecef; flex-wrap: wrap; }
+    .subcategory-tabs .nav-link {
+        font-size: 0.82rem; font-weight: 600; color: #6c757d;
+        border: none; border-bottom: 2px solid transparent;
+        padding: 8px 14px; background: transparent;
+    }
+    .subcategory-tabs .nav-link:hover { color: var(--accent-blue); border-color: transparent; }
+    .subcategory-tabs .nav-link.active {
+        color: var(--accent-blue); background: transparent;
+        border-bottom-color: var(--accent-blue);
+    }
+    .tab-count {
+        display: inline-block; min-width: 20px; padding: 1px 7px;
+        margin-left: 4px; font-size: 0.7rem; font-weight: 700;
+        background: rgba(108,117,125,0.12); color: #6c757d; border-radius: 10px;
+    }
+    .nav-link.active .tab-count { background: rgba(0,119,182,0.15); color: var(--accent-blue); }
     .source-tag { font-size: 0.68rem; font-weight: 700; padding: 3px 8px; border-radius: 4px; text-transform: uppercase; letter-spacing: 0.3px; }
     .source-tag.toast { background: rgba(232,93,4,0.12); color: #e85d04; }
     .source-tag.csv { background: rgba(0,119,182,0.12); color: #0077b6; }

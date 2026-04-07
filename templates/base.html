@@ -9,13 +9,17 @@
     <style>
         :root {
             --sidebar-width: 220px;
-            --sidebar-bg: #1a1a2e;
-            --sidebar-hover: #16213e;
-            --brand-orange: #e85d04;
-            --brand-orange-light: #f4a261;
-            --accent-blue: #0077b6;
-            --accent-green: #2a9d8f;
-            --accent-red: #e63946;
+            --bg: #000000;
+            --surface: #111111;
+            --surface-hover: #1a1a1a;
+            --border: #2a2a2a;
+            --text: #ffffff;
+            --text-muted: #888888;
+            --accent: #3ddc84;
+            --accent-dim: rgba(61, 220, 132, 0.15);
+            --amber: #ffc107;
+            --blue: #4ea8de;
+            --red: #ff5c5c;
         }
 
         * { box-sizing: border-box; }
@@ -23,8 +27,22 @@
         body {
             margin: 0;
             font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
-            background: #f0f2f5;
-            color: #2d3436;
+            background: var(--bg);
+            color: var(--text);
+        }
+
+        h1, h2, h3, h4, h5, h6 {
+            color: var(--accent);
+        }
+
+        a {
+            color: var(--accent);
+            text-decoration: none;
+        }
+
+        a:hover {
+            color: var(--accent);
+            opacity: 0.85;
         }
 
         /* Sidebar */
@@ -34,8 +52,9 @@
             left: 0;
             width: var(--sidebar-width);
             height: 100vh;
-            background: var(--sidebar-bg);
-            color: #ccc;
+            background: var(--surface);
+            border-right: 1px solid var(--border);
+            color: var(--text-muted);
             display: flex;
             flex-direction: column;
             z-index: 1000;
@@ -44,20 +63,20 @@
 
         .sidebar-brand {
             padding: 24px 20px 20px;
-            border-bottom: 1px solid rgba(255,255,255,0.06);
+            border-bottom: 1px solid var(--border);
         }
 
         .sidebar-brand h4 {
             margin: 0;
             font-weight: 700;
-            font-size: 1.2rem;
-            color: #fff;
-            letter-spacing: -0.3px;
+            font-size: 1.15rem;
+            color: var(--accent);
+            letter-spacing: 0.5px;
         }
 
         .sidebar-brand small {
-            color: var(--brand-orange);
-            font-size: 0.75rem;
+            color: var(--text-muted);
+            font-size: 0.7rem;
             font-weight: 600;
             letter-spacing: 0.5px;
             text-transform: uppercase;
@@ -69,12 +88,12 @@
         }
 
         .sidebar-nav .nav-section {
-            padding: 8px 20px 6px;
+            padding: 10px 20px 6px;
             font-size: 0.65rem;
             font-weight: 600;
             text-transform: uppercase;
             letter-spacing: 0.8px;
-            color: #666;
+            color: var(--text-muted);
         }
 
         .sidebar-nav a {
@@ -82,7 +101,7 @@
             align-items: center;
             gap: 10px;
             padding: 10px 20px;
-            color: #999;
+            color: var(--text-muted);
             text-decoration: none;
             font-size: 0.85rem;
             font-weight: 500;
@@ -91,14 +110,15 @@
         }
 
         .sidebar-nav a:hover {
-            background: var(--sidebar-hover);
-            color: #fff;
+            background: var(--surface-hover);
+            color: var(--text);
+            opacity: 1;
         }
 
         .sidebar-nav a.active {
-            background: var(--sidebar-hover);
-            color: #fff;
-            border-left-color: var(--brand-orange);
+            background: var(--surface-hover);
+            color: var(--accent);
+            border-left-color: var(--accent);
         }
 
         .sidebar-nav a i {
@@ -109,7 +129,7 @@
 
         .sidebar-status {
             padding: 16px 20px;
-            border-top: 1px solid rgba(255,255,255,0.06);
+            border-top: 1px solid var(--border);
         }
 
         .sidebar-status .status-title {
@@ -117,7 +137,7 @@
             font-weight: 600;
             text-transform: uppercase;
             letter-spacing: 0.8px;
-            color: #666;
+            color: var(--text-muted);
             margin-bottom: 8px;
         }
 
@@ -130,7 +150,7 @@
         }
 
         .sidebar-status .status-item span.label {
-            color: #888;
+            color: var(--text-muted);
         }
 
         .status-badge {
@@ -138,16 +158,19 @@
             padding: 2px 8px;
             border-radius: 10px;
             font-weight: 600;
+            border: 1px solid var(--border);
         }
 
         .status-badge.mock {
-            background: rgba(255, 193, 7, 0.15);
-            color: #ffc107;
+            background: rgba(255, 193, 7, 0.12);
+            color: var(--amber);
+            border-color: rgba(255, 193, 7, 0.3);
         }
 
         .status-badge.live {
-            background: rgba(42, 157, 143, 0.15);
-            color: var(--accent-green);
+            background: var(--accent-dim);
+            color: var(--accent);
+            border-color: rgba(61, 220, 132, 0.35);
         }
 
         /* Main content */
@@ -155,25 +178,26 @@
             margin-left: var(--sidebar-width);
             padding: 24px 30px;
             min-height: 100vh;
+            background: var(--bg);
         }
 
         /* Topbar */
         .topbar {
-            background: #fff;
+            background: var(--surface);
+            border: 1px solid var(--border);
             border-radius: 12px;
             padding: 16px 24px;
             margin-bottom: 24px;
             display: flex;
             align-items: center;
             justify-content: space-between;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.04);
         }
 
         .topbar h1 {
             font-size: 1.3rem;
             font-weight: 700;
             margin: 0;
-            color: #1a1a2e;
+            color: var(--accent);
         }
 
         .topbar .topbar-actions {
@@ -183,32 +207,32 @@
         }
 
         .restaurant-selector {
-            border: 1px solid #dee2e6;
+            border: 1px solid var(--border);
             border-radius: 8px;
             padding: 6px 12px;
             font-size: 0.85rem;
-            background: #fff;
-            color: #333;
+            background: var(--surface-hover);
+            color: var(--text);
             cursor: pointer;
         }
 
         .restaurant-selector:focus {
             outline: none;
-            border-color: var(--brand-orange);
-            box-shadow: 0 0 0 2px rgba(232, 93, 4, 0.15);
+            border-color: var(--accent);
+            box-shadow: 0 0 0 2px var(--accent-dim);
         }
 
         /* Stat cards */
         .stat-card {
-            background: #fff;
+            background: var(--surface);
+            border: 1px solid var(--border);
             border-radius: 12px;
             padding: 20px 24px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.04);
-            transition: box-shadow 0.2s ease;
+            transition: border-color 0.2s ease;
         }
 
         .stat-card:hover {
-            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            border-color: var(--accent);
         }
 
         .stat-card .stat-icon {
@@ -219,33 +243,39 @@
             align-items: center;
             justify-content: center;
             font-size: 1.2rem;
+            background: var(--accent-dim);
+            color: var(--accent);
+            border: 1px solid var(--border);
         }
 
-        .stat-card .stat-icon.blue { background: rgba(0,119,182,0.1); color: var(--accent-blue); }
-        .stat-card .stat-icon.orange { background: rgba(232,93,4,0.1); color: var(--brand-orange); }
-        .stat-card .stat-icon.red { background: rgba(230,57,70,0.1); color: var(--accent-red); }
-        .stat-card .stat-icon.green { background: rgba(42,157,143,0.1); color: var(--accent-green); }
+        .stat-card .stat-icon.blue,
+        .stat-card .stat-icon.orange,
+        .stat-card .stat-icon.red,
+        .stat-card .stat-icon.green {
+            background: var(--accent-dim);
+            color: var(--accent);
+        }
 
         .stat-card .stat-value {
             font-size: 1.6rem;
             font-weight: 700;
-            color: #1a1a2e;
+            color: var(--text);
             margin-top: 12px;
         }
 
         .stat-card .stat-label {
             font-size: 0.78rem;
-            color: #888;
+            color: var(--text-muted);
             font-weight: 500;
             margin-top: 2px;
         }
 
         /* Content cards */
         .content-card {
-            background: #fff;
+            background: var(--surface);
+            border: 1px solid var(--border);
             border-radius: 12px;
             padding: 24px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.04);
         }
 
         .content-card .card-header-row {
@@ -259,34 +289,78 @@
             font-size: 1rem;
             font-weight: 700;
             margin: 0;
-            color: #1a1a2e;
+            color: var(--accent);
         }
 
         /* Tables */
-        .table-clean {
+        .table, .table-clean {
+            color: var(--text);
             margin: 0;
         }
 
         .table-clean thead th {
-            border-bottom: 2px solid #f0f2f5;
+            background: transparent;
+            border-bottom: 1px solid var(--border);
             font-size: 0.75rem;
             font-weight: 600;
             text-transform: uppercase;
             letter-spacing: 0.5px;
-            color: #888;
+            color: var(--text-muted);
             padding: 10px 12px;
         }
 
         .table-clean tbody td {
             padding: 12px;
             font-size: 0.85rem;
-            border-bottom: 1px solid #f7f8fa;
+            border-bottom: 1px solid var(--border);
             vertical-align: middle;
+            color: var(--text);
+            background: transparent;
         }
 
-        .table-clean tbody tr:hover {
-            background: #fafbfc;
+        .table-clean tbody tr:hover td {
+            background: var(--surface-hover);
         }
+
+        .table-clean tfoot th {
+            color: var(--text);
+            border-top: 1px solid var(--border);
+        }
+
+        .table > :not(caption) > * > * {
+            background-color: transparent;
+            color: var(--text);
+        }
+
+        /* Form inputs */
+        .form-control,
+        .form-select,
+        input[type="text"],
+        input[type="number"],
+        input[type="email"],
+        input[type="password"],
+        input[type="file"],
+        input[type="date"],
+        textarea,
+        select {
+            background-color: var(--surface-hover);
+            border: 1px solid var(--border);
+            color: var(--text);
+        }
+
+        .form-control:focus,
+        .form-select:focus,
+        textarea:focus,
+        select:focus {
+            background-color: var(--surface-hover);
+            border-color: var(--accent);
+            color: var(--text);
+            box-shadow: 0 0 0 2px var(--accent-dim);
+            outline: none;
+        }
+
+        .form-control::placeholder { color: #555; }
+        .form-label { color: var(--text-muted); }
 
         /* Badges */
         .badge-status {
@@ -294,18 +368,40 @@
             padding: 4px 10px;
             border-radius: 6px;
             font-weight: 600;
+            border: 1px solid var(--border);
         }
 
-        .badge-status.pending { background: rgba(255,193,7,0.12); color: #d4a017; }
-        .badge-status.approved { background: rgba(0,119,182,0.12); color: var(--accent-blue); }
-        .badge-status.paid { background: rgba(42,157,143,0.12); color: var(--accent-green); }
-        .badge-status.draft { background: rgba(108,117,125,0.12); color: #6c757d; }
-        .badge-status.overdue { background: rgba(230,57,70,0.12); color: var(--accent-red); }
+        .badge-status.pending {
+            background: rgba(255, 193, 7, 0.12);
+            color: var(--amber);
+            border-color: rgba(255, 193, 7, 0.3);
+        }
+        .badge-status.approved {
+            background: rgba(78, 168, 222, 0.12);
+            color: var(--blue);
+            border-color: rgba(78, 168, 222, 0.3);
+        }
+        .badge-status.paid {
+            background: var(--accent-dim);
+            color: var(--accent);
+            border-color: rgba(61, 220, 132, 0.35);
+        }
+        .badge-status.draft {
+            background: var(--surface-hover);
+            color: var(--text-muted);
+        }
+        .badge-status.disputed,
+        .badge-status.overdue {
+            background: rgba(255, 92, 92, 0.12);
+            color: var(--red);
+            border-color: rgba(255, 92, 92, 0.3);
+        }
 
         /* Buttons */
-        .btn-brand {
-            background: var(--brand-orange);
-            color: #fff;
+        .btn-brand,
+        .btn-primary {
+            background: var(--accent);
+            color: #000;
             border: none;
             font-weight: 600;
             font-size: 0.85rem;
@@ -313,14 +409,16 @@
             border-radius: 8px;
         }
 
-        .btn-brand:hover {
-            background: #d4520a;
-            color: #fff;
+        .btn-brand:hover,
+        .btn-primary:hover {
+            background: #5fe89a;
+            color: #000;
         }
 
-        .btn-outline-brand {
-            border: 1px solid var(--brand-orange);
-            color: var(--brand-orange);
+        .btn-outline-brand,
+        .btn-outline-primary {
+            border: 1px solid var(--accent);
+            color: var(--accent);
             font-weight: 600;
             font-size: 0.85rem;
             padding: 8px 18px;
@@ -328,9 +426,32 @@
             background: transparent;
         }
 
-        .btn-outline-brand:hover {
-            background: var(--brand-orange);
-            color: #fff;
+        .btn-outline-brand:hover,
+        .btn-outline-primary:hover {
+            background: var(--accent);
+            color: #000;
+        }
+
+        .btn-light {
+            background: var(--surface-hover);
+            color: var(--text);
+            border: 1px solid var(--border);
+        }
+
+        .btn-light:hover {
+            background: var(--border);
+            color: var(--text);
+        }
+
+        .btn-outline-danger {
+            border: 1px solid var(--red);
+            color: var(--red);
+            background: transparent;
+        }
+
+        .btn-outline-danger:hover {
+            background: var(--red);
+            color: #000;
         }
 
         /* Flash messages */
@@ -339,16 +460,48 @@
         }
 
         .flash-container .alert {
-            border: none;
+            border: 1px solid var(--border);
             border-radius: 10px;
             font-size: 0.85rem;
             font-weight: 500;
+            background: var(--surface);
+            color: var(--text);
+        }
+
+        .flash-container .alert-success {
+            border-color: rgba(61, 220, 132, 0.35);
+            color: var(--accent);
+        }
+
+        .flash-container .alert-danger {
+            border-color: rgba(255, 92, 92, 0.35);
+            color: var(--red);
+        }
+
+        /* Modals */
+        .modal-content {
+            background: var(--surface);
+            color: var(--text);
+            border: 1px solid var(--border);
+        }
+
+        .modal-header,
+        .modal-footer {
+            border-color: var(--border) !important;
+        }
+
+        .btn-close {
+            filter: invert(1) grayscale(100%) brightness(200%);
         }
 
         /* Low stock highlight */
         .low-stock {
-            color: var(--accent-red);
+            color: var(--red);
             font-weight: 600;
+        }
+
+        .text-muted {
+            color: var(--text-muted) !important;
         }
     </style>
 </head>
@@ -356,8 +509,8 @@
     <!-- Sidebar -->
     <div class="sidebar">
         <div class="sidebar-brand">
-            <h4>RestaurantOps</h4>
-            <small>by Bison</small>
+            <h4>BISON STOCKYARD</h4>
+            <small>RestaurantOps</small>
         </div>
 
         <div class="sidebar-nav">
@@ -377,7 +530,7 @@
             <a href="{{ url_for('counts') }}" class="{% if '/counts' in request.path %}active{% endif %}">
                 <i class="bi bi-clipboard-check"></i> Weekly Counts
             </a>
-            <a href="{{ url_for('recipes') }}" class="{% if '/recipes' in request.path %}active{% endif %}"
+            <a href="{{ url_for('recipes') }}" class="{% if '/recipes' in request.path %}active{% endif %}">
                 <i class="bi bi-book"></i> Recipes
             </a>
             <a href="{{ url_for('vendors') }}" class="{% if '/vendors' in request.path %}active{% endif %}">
@@ -386,7 +539,7 @@
             <a href="{{ url_for('matching') }}" class="{% if '/matching' in request.path %}active{% endif %}" style="position: relative;">
                 <i class="bi bi-link-45deg"></i> Item Matching
                 {% if unmatched_count is defined and unmatched_count > 0 %}
-                <span style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); background: var(--accent-red); color: #fff; font-size: 0.6rem; font-weight: 700; padding: 1px 6px; border-radius: 8px;">{{ unmatched_count }}</span>
+                <span style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); background: var(--red); color: #000; font-size: 0.6rem; font-weight: 700; padding: 1px 6px; border-radius: 8px;">{{ unmatched_count }}</span>
                 {% endif %}
             </a>
 
@@ -402,10 +555,10 @@
             <a href="{{ url_for('export_qb_invoices') }}" class="{% if request.path == '/invoices/export/qb' %}active{% endif %}">
                 <i class="bi bi-file-earmark-arrow-down"></i> QB Export
             </a>
-        
-            <a href="{{ url_for('xtrachef.xtra_chef') }}" class="{% if '/xtra-chef' in request.path %}active{% endif %}">
+            <a href="{{ url_for('xtra_chef.cogs') }}" class="{% if '/xtra-chef' in request.path %}active{% endif %}">
                 <i class="bi bi-graph-up-arrow"></i> xtraCHEF
-            </a></div>
+            </a>
+        </div>
 
         <div class="sidebar-status">
             <div class="status-title">Connections</div>

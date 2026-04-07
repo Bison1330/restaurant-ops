@@ -6,6 +6,8 @@ Strategy:
 - Skip JSON entries whose status is null
 - Add RecipeIngredient rows from each match
 - Populate Recipe.xtra_chef_id from the JSON 'id' field
+- Populate Recipe.pos_id and Recipe.toast_guid from sizes[0] (posId / guid)
+  when the recipe has size variants in the source JSON
 - Existing ingredients are NOT touched (none should exist for the 620
   CSV-imported recipes, but we don't delete just in case)
 """
@@ -68,6 +70,14 @@ def main():
             xc_id = jr.get("id")
             if xc_id is not None:
                 r.xtra_chef_id = str(xc_id)
+
+            sizes = jr.get("sizes") or []
+            if sizes:
+                first = sizes[0] or {}
+                if first.get("posId"):
+                    r.pos_id = str(first["posId"])
+                if first.get("guid"):
+                    r.toast_guid = str(first["guid"])
 
             for ing in jr.get("ingredients", []):
                 name = (ing.get("name") or "").strip()

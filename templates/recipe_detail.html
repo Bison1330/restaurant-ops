@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+
+{% block title %}{{ recipe.name }} — RestaurantOps{% endblock %}
+
+{% block topbar %}
+<h1 style="color: var(--accent-green);">{{ recipe.name }}</h1>
+{% endblock %}
+
+{% block topbar_actions %}
+<a href="{{ url_for('recipes') }}" class="btn btn-outline-brand btn-sm">
+    <i class="bi bi-arrow-left"></i> Back to Recipes
+</a>
+{% endblock %}
+
+{% block content %}
+
+<!-- Summary Cards -->
+<div class="row g-3 mb-4">
+    <div class="col-md-3">
+        <div class="stat-card">
+            <div class="stat-icon blue"><i class="bi bi-currency-dollar"></i></div>
+            <div class="stat-value">${{ "{:,.2f}".format(recipe.menu_price) }}</div>
+            <div class="stat-label">Menu Price</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card">
+            <div class="stat-icon orange"><i class="bi bi-cash-stack"></i></div>
+            <div class="stat-value">${{ "{:,.2f}".format(recipe.total_cost) }}</div>
+            <div class="stat-label">Food Cost</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card">
+            <div class="stat-icon red"><i class="bi bi-percent"></i></div>
+            <div class="stat-value">{{ "%.1f"|format(recipe.cost_percent) }}%</div>
+            <div class="stat-label">Food Cost %</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stat-card">
+            <div class="stat-icon green"><i class="bi bi-graph-up-arrow"></i></div>
+            <div class="stat-value">${{ "{:,.2f}".format(recipe.margin) }}</div>
+            <div class="stat-label">Gross Margin</div>
+        </div>
+    </div>
+</div>
+
+<!-- Meta Cards -->
+<div class="row g-3 mb-4">
+    <div class="col-md-4">
+        <div class="stat-card">
+            <div class="stat-label">Status</div>
+            <div class="stat-value" style="font-size: 1.1rem;">{{ recipe.status|title }}</div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="stat-card">
+            <div class="stat-label">Category</div>
+            <div class="stat-value" style="font-size: 1.1rem;">{{ recipe.category|title }}</div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="stat-card">
+            <div class="stat-label">Subcategory</div>
+            <div class="stat-value" style="font-size: 1.1rem;">{{ recipe.subcategory or '—' }}</div>
+        </div>
+    </div>
+</div>
+
+<!-- Ingredients Table -->
+<div class="content-card">
+    <div class="card-header-row">
+        <h5><i class="bi bi-list-ul" style="color: var(--accent-green); margin-right: 4px;"></i> Ingredients</h5>
+    </div>
+    {% if ingredients|length > 0 %}
+    <div class="table-responsive">
+        <table class="table table-clean">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Quantity</th>
+                    <th>Unit</th>
+                    <th class="text-end">Cost</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% set total = namespace(value=0) %}
+                {% for ing in ingredients %}
+                {% set line_cost = ing.quantity * ing.unit_cost %}
+                {% set total.value = total.value + line_cost %}
+                <tr>
+                    <td class="fw-semibold">{{ ing.name }}</td>
+                    <td>{{ ing.quantity }}</td>
+                    <td>{{ ing.unit }}</td>
+                    <td class="text-end">${{ "{:,.2f}".format(line_cost) }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+            <tfoot>
+                <tr>
+                    <th colspan="3" class="text-end" style="padding: 12px; border-top: 2px solid #f0f2f5;">Total Food Cost</th>
+                    <th class="text-end" style="padding: 12px; border-top: 2px solid #f0f2f5; color: var(--accent-green);">${{ "{:,.2f}".format(total.value) }}</th>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+    {% else %}
+    <p class="text-muted text-center py-4 mb-0">No ingredients listed for this recipe.</p>
+    {% endif %}
+</div>
+
+{% endblock %}

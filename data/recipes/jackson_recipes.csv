@@ -1,0 +1,1061 @@
+recipe_name,recipe_group,status,menu_price,food_cost,food_cost_pct
+Chicken Salad Sandwich,Food,COMPLETE,--,$4.24,
+Chicken Salad Mix,Food,COMPLETE,N/A,$2.76,
+Cobb Salad,Food,COMPLETE,--,$5.30,
+Teriyaki Burger,--,COMPLETE,--,$1.12,
+Blind Corner Glass Morning Static,Draft Beer,COMPLETE,--,$2.53,
+1911 Cherry Cider,Draft Beer,COMPLETE,--,$1.62,
+Maplewood Crushinator,Draft Beer,COMPLETE,--,$1.53,
+Sierra Nevada Hazy Little thing,Draft Beer,COMPLETE,$7.50,$1.58,21.08%
+POS ID: --,Draft Beer,DRAFT,--,$1.45,
+Bucket,CannedBottle Beer,COMPLETE,$15.00,$0.00,
+Modelo Draft,Draft Beer,COMPLETE,$5.00,$1.45,29.03%
+Blackened Chicken Sliders,Food,COMPLETE,$16.00,$3.46,21.62%
+Triple Cheese Quesadilla,Food,COMPLETE,$11.00,$1.66,15.11%
+Spinach Artichoke Dip,Food,COMPLETE,$13.00,$3.30,25.4%
+Chicken Wings,Food,COMPLETE,$14.00,$1.04,7.47%
+2 Brothers Domain Dupage,Draft Beer,COMPLETE,$7.50,$2.23,29.72%
+Revolution Freedom Of Speech,Draft Beer,COMPLETE,$7.00,$1.58,22.58%
+Buckledown Good Times,Draft Beer,COMPLETE,$7.50,$1.94,25.84%
+Hugo Spritz,COCKTAILS,COMPLETE,--,$3.29,
+Pub Nachos,Food,DRAFT,--,$2.87,
+Maplewood Double Charlatan,Draft Beer,DRAFT,--,$0.00,
+Jack Rye Neat,LIQUOR,COMPLETE,$10.75,$0.00,
+3 Floyds Deluxe Lager,Draft Beer,COMPLETE,--,$1.26,
+Alaskan Amber,Draft Beer,COMPLETE,--,$1.40,
+Blind Corner Taper,Draft Beer,COMPLETE,--,$1.40,
+Blind Corner Moon Cloak,Draft Beer,DRAFT,--,$1.97,
+Blind Corner Smell The Roses,--,DRAFT,--,$0.00,
+Solemn Oath Snaggletooth Bandana,Draft Beer,COMPLETE,$7.50,$1.85,24.73%
+Miller Lite Draft,--,DRAFT,--,$1.00,
+Pollyanna Blackberry,Draft Beer,DRAFT,--,$0.00,
+93 Octane Tailgate,Draft Beer,COMPLETE,--,$2.06,
+Art History MInor,Draft Beer,COMPLETE,$7.50,$2.30,30.68%
+Solemn Oath Cold Black Night,--,COMPLETE,$7.50,$2.45,32.62%
+Lagunitas Hazy IPA,Draft Beer,COMPLETE,$7.50,$1.53,20.43%
+Strawberry Mojito,COCKTAILS,COMPLETE,--,$1.93,
+Three Floyd's Zombie Dust,Draft Beer,COMPLETE,$7.50,$1.70,22.69%
+Dovetail Pilsner,Draft Beer,COMPLETE,--,$1.60,
+Don Julio Blanco Double,LIQUOR,COMPLETE,$15.60,$3.85,24.66%
+Glenfiddich 15 Year Double,LIQUOR,COMPLETE,$15.60,$0.00,
+Glenfiddich 15 Year Neat,LIQUOR,COMPLETE,$14.16,$0.00,
+Glenlivet 12 Year Neat,LIQUOR,COMPLETE,$11.80,$3.61,30.6%
+Hennessy Neat,LIQUOR,COMPLETE,$11.80,$0.00,
+J&B Double,LIQUOR,COMPLETE,$11.05,$0.00,
+J&B Neat,LIQUOR,COMPLETE,$10.03,$0.00,
+Johnnie Walker Black Neat,LIQUOR,COMPLETE,$11.80,$2.82,23.93%
+Monkey Shoulder Double,LIQUOR,COMPLETE,$16.90,$3.52,20.8%
+Monkey Shoulder Neat,LIQUOR,COMPLETE,$15.34,$2.81,18.33%
+Talisker 10 Year Double,LIQUOR,COMPLETE,$16.90,$0.00,
+Talisker 10 Year Neat,LIQUOR,COMPLETE,$15.34,$0.00,
+Bailey's Double,LIQUOR,COMPLETE,$11.05,$2.91,26.3%
+Bailey's Neat,LIQUOR,COMPLETE,$10.03,$2.32,23.18%
+Barone Fini Pinot Grigio,Wine,COMPLETE,$10.00,$2.25,22.48%
+Joel Gott 815 Cabernet,Wine,COMPLETE,$13.00,$2.66,20.47%
+Sambuca Double,LIQUOR,COMPLETE,$11.05,$0.00,
+Sambuca Neat,LIQUOR,COMPLETE,$10.03,$0.00,
+Rumple Minze Double,LIQUOR,COMPLETE,$11.05,$2.55,23.12%
+Rumple Minze Neat,LIQUOR,COMPLETE,$10.03,$2.04,20.37%
+Chalk Hill Chardonnay,Wine,COMPLETE,$12.00,$2.84,23.66%
+Amaretto Neat,LIQUOR,COMPLETE,$8.85,$0.93,10.55%
+Aperol Double,LIQUOR,COMPLETE,$10.40,$2.07,19.9%
+Aperol Neat,LIQUOR,COMPLETE,$9.44,$1.66,17.54%
+Blue Curacao Neat,LIQUOR,COMPLETE,$8.85,$0.89,10.05%
+Butterscotch Schnapps Neat,LIQUOR,COMPLETE,$8.85,$0.80,9.05%
+Chambord Double,LIQUOR,COMPLETE,$11.05,$2.71,24.53%
+Chambord Neat,LIQUOR,COMPLETE,$10.03,$2.17,21.62%
+Cointreau Double,LIQUOR,COMPLETE,$11.05,$3.70,33.45%
+Cointreau Neat,LIQUOR,COMPLETE,$10.03,$2.96,29.48%
+Creme de Banana Neat,LIQUOR,COMPLETE,$8.85,$0.00,
+Creme de Cacao Neat,LIQUOR,COMPLETE,$8.85,$0.00,
+Creme de Menthe Neat,LIQUOR,COMPLETE,$8.85,$0.00,
+Frangelico Neat,LIQUOR,COMPLETE,$8.85,$2.40,27.14%
+Grand Marnier Double,LIQUOR,COMPLETE,$11.05,$0.22,2.04%
+Grand Marnier Neat,LIQUOR,COMPLETE,$10.03,$0.18,1.8%
+Kahula Neat,LIQUOR,COMPLETE,$8.85,$0.00,
+Malort Double,LIQUOR,COMPLETE,$9.10,$0.00,
+Malort Neat,LIQUOR,COMPLETE,$8.26,$0.00,
+Midori Neat,LIQUOR,COMPLETE,$8.85,$1.66,18.79%
+Razzmatazz Neat,LIQUOR,COMPLETE,$8.85,$0.00,
+Sour Apple Neat,LIQUOR,COMPLETE,$8.85,$0.00,
+Triple Sec Neat,LIQUOR,COMPLETE,$8.85,$0.46,5.26%
+Watermelon Pucker Neat,LIQUOR,COMPLETE,$8.85,$0.00,
+Apple Pucker Neat,LIQUOR,COMPLETE,$8.85,$0.00,
+Disaronno Double,LIQUOR,COMPLETE,$12.35,$0.00,
+Disaronno Neat,LIQUOR,COMPLETE,$11.21,$0.00,
+Peach Schnapps Neat,LIQUOR,COMPLETE,$8.85,$0.30,3.35%
+Meiomi,Wine,COMPLETE,$15.00,$3.08,20.5%
+Buffalo Bleu,Burgers,COMPLETE,$18.00,$1.14,6.34%
+California,Burgers,COMPLETE,$18.00,$1.33,7.41%
+Country Bloomin',Burgers,COMPLETE,$18.00,$1.01,5.63%
+Classic,Burgers,COMPLETE,$18.00,$1.02,5.7%
+Columbia Crest H3 Cabernet,Wine,COMPLETE,$11.00,$2.13,19.36%
+Kim Crawford Sauvignon Blanc,Wine,COMPLETE,$12.00,$2.37,19.76%
+Layer Cake Malbec,Wine,COMPLETE,$12.00,$2.42,20.21%
+Unshackled Red Blend,Wine,COMPLETE,$14.00,$3.08,22.02%
+Diablo,Burgers,COMPLETE,$18.00,$1.47,8.18%
+Hangover,Burgers,COMPLETE,$18.00,$0.84,4.68%
+Honey Bleu,Burgers,COMPLETE,$18.00,$1.61,8.93%
+Sunny Side,Burgers,COMPLETE,$18.00,$1.83,10.17%
+Cajun Fries,Food,COMPLETE,$5.00,$0.40,8.07%
+House Fries,Food,COMPLETE,$5.00,$0.17,3.41%
+Sweet Potato Fries,Food,COMPLETE,$7.00,$1.22,17.39%
+Truffle Parmesan Fries,Food,COMPLETE,$7.00,$3.79,54.13%
+Tater Tots,Food,COMPLETE,$7.00,$0.98,13.99%
+Bacon Wrapped Dates,Food,COMPLETE,$13.00,$0.11,0.84%
+Beer Cheese Pretzel Sticks,Food,COMPLETE,$13.00,$3.42,26.32%
+BBQ Chicken Flatbread,Food,COMPLETE,$14.00,$2.82,20.13%
+Chateau St Sulpice Bordeaux,Wine,COMPLETE,$12.00,$2.84,23.66%
+Locations Sauvignon Blanc,Wine,COMPLETE,$11.00,$2.60,23.66%
+Azteca Wrap,Food,COMPLETE,$16.00,$7.39,46.2%
+Whispering Angel Rosé,Wine,COMPLETE,$14.00,$4.61,32.95%
+Fish And Chips,--,COMPLETE,$19.00,$6.12,32.24%
+Beer Batter,Food,COMPLETE,N/A,$2.08,
+March Madness Trio,Food,COMPLETE,--,$3.55,
+Miller Buckets,--,COMPLETE,--,$5.30,
+Ruben,Food,COMPLETE,--,$4.30,
+Farm House Burger,Burgers,COMPLETE,--,$1.32,
+Boulevard Whiskey Barrel Aged Stout,Draft Beer,COMPLETE,--,$1.57,
+Creamy Broccoli Soup,Food,COMPLETE,N/A,$35.19,
+Noon Whistle Gummysaurus,Draft Beer,COMPLETE,--,$1.73,
+Old Irving Crushy Mango Peach,--,COMPLETE,--,$2.67,
+Pollyanna Strawberry Kiwi,Draft Beer,COMPLETE,$7.50,$2.36,31.43%
+Spicy Honey Butter Chicken Sandwich,--,COMPLETE,$18.00,$1.22,6.78%
+Chip Refill,LIQUOR,COMPLETE,$2.00,$0.27,13.7%
+Salmon Sliders,--,DRAFT,$18.00,$4.98,27.69%
+Elvis Burger,Burgers,DRAFT,$0.00,$0.00,
+Santas Mule,--,COMPLETE,$12.00,$3.66,30.54%
+Pomegranate Martini,COCKTAILS,COMPLETE,$14.00,$20.79,148.51%
+Pineapple Basil Margarita,COCKTAILS,COMPLETE,$10.00,$1.46,14.62%
+New Holland Dragon's Milk,Draft Beer,COMPLETE,$7.00,$1.30,18.51%
+Spicy Honey Butter Sauce,Food,COMPLETE,N/A,$14.54,
+Guinness,BOTTLED BEER,COMPLETE,$5.00,$1.84,36.83%
+Lychee Spritz,COCKTAILS,DRAFT,$11.00,$1.34,12.15%
+Weds Avissi Split,Wine,COMPLETE,$6.00,$3.00,50%
+Weds Whispering Angel,Wine,COMPLETE,$7.00,$4.61,65.91%
+Weds Barone Fini Pinot Grigio,Wine,COMPLETE,$5.00,$2.25,44.95%
+Weds Kim Crawford,Wine,COMPLETE,$6.00,$2.37,39.52%
+Weds Chateau St Sulpice,Wine,COMPLETE,$6.00,$2.84,47.32%
+Weds Unshackled,Wine,COMPLETE,$7.00,$3.08,44.04%
+Weds Meiomi Pinot Noir,Wine,COMPLETE,$7.50,$3.08,41.01%
+Weds Layer Cake,Wine,COMPLETE,$6.00,$2.42,40.42%
+Weds Pub Sangria $5,Wine,COMPLETE,$5.00,$1.67,33.33%
+Pub Sangria Red,Wine,COMPLETE,$12.00,$1.67,13.89%
+WEDS Joel Gott 815,Wine,COMPLETE,$6.50,$2.66,40.95%
+Weds H3 Cab 1/2,Wine,COMPLETE,$5.50,$2.13,38.72%
+Woodford Reserve,LIQUOR,COMPLETE,$12.50,$1.98,15.82%
+Three Floyds GumballHead,Draft Beer,COMPLETE,$7.50,$1.58,21.08%
+Bulleit Bourbon Honey Glaze,Food,COMPLETE,N/A,$8.29,
+Bistro,Food,COMPLETE,$0.00,$1.18,
+Bulleit Bourbon,Burgers,COMPLETE,$18.00,$1.45,8.06%
+Manhattan,COCKTAILS,COMPLETE,$13.00,$1.54,11.83%
+JAX Manhattan,LIQUOR,COMPLETE,$10.00,$3.69,36.91%
+Caramelized Onions,Food,COMPLETE,N/A,$3.48,
+Crispy Onion Strings,Food,COMPLETE,N/A,$1.54,
+Half Acre Far Star,Draft Beer,COMPLETE,--,$4.63,
+2 Towns Cosmic Berry,Draft Beer,DRAFT,--,$0.00,
+Thurs Well Tequila,LIQUOR,COMPLETE,$4.00,$1.01,25.23%
+Sierra Nevada Pale Ale,Draft Beer,COMPLETE,--,$1.54,
+Tortilla Chips,Food,COMPLETE,N/A,$26.31,
+Chicken Po-boy Special,Food,COMPLETE,--,$3.28,
+Bronco Brat,Food,COMPLETE,$16.00,$3.23,20.17%
+Grapefruit Juice,NA Bev,COMPLETE,$3.50,$1.08,30.96%
+Siesta,COCKTAILS,COMPLETE,$12.00,$1.40,11.7%
+Paloma,COCKTAILS,COMPLETE,$11.00,$1.82,16.54%
+Sea Breeze,COCKTAILS,COMPLETE,$7.75,$1.33,17.12%
+Grapefruit Martini,COCKTAILS,COMPLETE,$13.00,$2.36,18.14%
+Guinness,Draft Beer,COMPLETE,$9.50,$2.30,24.17%
+Chicken Pozole Verde,Food,COMPLETE,N/A,$20.68,
+French Dip Sandwich,Food,COMPLETE,$18.00,$3.32,18.45%
+Boneless Wing Appetizer,Food,COMPLETE,--,$2.15,
+Beer Battered Boneless Wings,--,COMPLETE,N/A,$49.07,
+January Mocktail,NA Bev,COMPLETE,--,$0.78,
+Blind Corner Circa 09,Draft Beer,DRAFT,--,$0.00,
+Revolution Anti Hero,Draft Beer,COMPLETE,--,$2.03,
+Millenial Burger,Burgers,COMPLETE,--,$0.00,
+Boulevard Cherries Jubilee,Draft Beer,COMPLETE,--,$1.57,
+Half Acre Bodem,Draft Beer,COMPLETE,--,$2.25,
+Revolution Cold Time,Draft Beer,COMPLETE,$7.00,$1.59,22.67%
+Three Floyds Vodka Splash,CannedBottle Beer,COMPLETE,--,$2.80,
+Corona Light,BOTTLED BEER,COMPLETE,$6.00,$1.46,24.3%
+3 Floyds Alpha Klaus,Draft Beer,COMPLETE,--,$2.70,
+Right Bee Rose,Draft Beer,COMPLETE,--,$1.62,
+Blakes Triple Jam,Draft Beer,COMPLETE,--,$1.33,
+1911 Honeycrisp,Draft Beer,COMPLETE,$7.00,$1.62,23.1%
+Miskatonic West Coast Wizard,Draft Beer,COMPLETE,--,$2.52,
+Warpigs Foggy Geezer,Draft Beer,COMPLETE,--,$2.47,
+Maplewood Brownie Points,Draft Beer,COMPLETE,--,$0.84,
+Art History Erebus,--,COMPLETE,--,$1.51,
+Three Floyds Triple Crime Spree,Draft Beer,COMPLETE,--,$0.77,
+Three Floyds Turbo Reaper,Draft Beer,COMPLETE,--,$1.58,
+Solemn Oath Kidnapped By Vikings,Draft Beer,COMPLETE,$7.50,$1.77,23.66%
+Noon Whistle Da Gummy,Draft Beer,COMPLETE,--,$1.73,
+Blind Corner Micro Tweaks,Draft Beer,DRAFT,--,$0.00,
+Blind Corner Booter,Draft Beer,COMPLETE,--,$1.81,
+Two Brothers DuPage County,Draft Beer,COMPLETE,$7.50,$1.50,20%
+Glenfiddich 15 Year,LIQUOR,COMPLETE,$13.00,$0.00,
+Old Forester Statesman Martini,LIQUOR,COMPLETE,$16.50,$29.77,180.42%
+Basil Hayden's Martini,LIQUOR,COMPLETE,$18.00,$3.73,20.7%
+Crown Royal Martini,LIQUOR,COMPLETE,$13.50,$3.30,24.42%
+Jefferson's Reserve Martini,LIQUOR,COMPLETE,$15.00,$0.00,
+Jim Beam Martini,LIQUOR,COMPLETE,$12.50,$2.03,16.26%
+Old Forester Martini,LIQUOR,COMPLETE,$13.50,$3.71,27.49%
+Jim Beam Double,LIQUOR,COMPLETE,$10.75,$1.69,15.76%
+Elijah Craig Double,LIQUOR,COMPLETE,$13.75,$25.73,187.12%
+Knob Creek Double,LIQUOR,COMPLETE,$14.50,$2.81,19.38%
+Jack Fire Double,LIQUOR,COMPLETE,$11.00,$2.63,23.91%
+Well Whiskey Double,LIQUOR,COMPLETE,$10.50,$0.60,5.71%
+Jameson Double,LIQUOR,COMPLETE,$12.50,$2.44,19.52%
+Whiskey Acres Rye Double,LIQUOR,COMPLETE,$11.00,$0.00,
+Knob Creek Rye Double,LIQUOR,COMPLETE,$15.75,$0.17,1.07%
+Jack Daniel's Double,LIQUOR,COMPLETE,$11.75,$2.79,23.78%
+Jefferson's Reserve Double,LIQUOR,COMPLETE,$13.00,$0.00,
+Bulleit Double,LIQUOR,COMPLETE,$14.50,$3.09,21.31%
+Jack Honey Double,LIQUOR,COMPLETE,$11.00,$2.79,25.4%
+Jameson Orange Double,LIQUOR,COMPLETE,$12.50,$2.68,21.46%
+Tullamore Dew Double,LIQUOR,COMPLETE,$11.00,$1.55,14.11%
+Bulleit Rye Double,LIQUOR,COMPLETE,$14.50,$3.09,21.31%
+Buffalo Trace Double,LIQUOR,COMPLETE,$15.75,$2.28,14.49%
+Old Forester Statesman Double,LIQUOR,COMPLETE,$15.75,$3.09,19.63%
+Southern Comfort Double,LIQUOR,COMPLETE,$11.00,$1.65,14.97%
+Templeton Rye Double,LIQUOR,COMPLETE,$14.50,$0.00,
+Jack Rye Double,LIQUOR,COMPLETE,$11.75,$0.00,
+Seagrams VO Double,LIQUOR,COMPLETE,$11.00,$0.00,
+Angel's Envy Double,LIQUOR,COMPLETE,$19.00,$3.89,20.47%
+Basil Hayden's Double,LIQUOR,COMPLETE,$15.75,$3.10,19.72%
+Seagrams 7 Double,LIQUOR,COMPLETE,$11.00,$1.69,15.36%
+Crown Royal Double,LIQUOR,COMPLETE,$11.75,$2.75,23.38%
+Skrewball Peanut Butter Double,LIQUOR,COMPLETE,$11.75,$5.18,44.04%
+Crown Royal Apple Double,LIQUOR,COMPLETE,$11.75,$2.75,23.38%
+Jameson,LIQUOR,COMPLETE,$10.75,$1.46,13.62%
+Old Forester Statesman Neat,LIQUOR,COMPLETE,$13.00,$19.84,152.66%
+Knob Creek Rye Neat,LIQUOR,COMPLETE,$14.25,$0.14,0.95%
+Jameson Orange Neat,LIQUOR,COMPLETE,$10.75,$2.15,19.97%
+Old Forester Neat,LIQUOR,COMPLETE,$10.75,$2.47,23.01%
+Bulleit Rye Neat,LIQUOR,COMPLETE,$13.00,$2.47,19.01%
+Knob Creek Neat,LIQUOR,COMPLETE,$13.00,$2.25,17.29%
+Crown Royal Neat,LIQUOR,COMPLETE,$10.75,$2.20,20.44%
+Maker's Mark Neat,LIQUOR,COMPLETE,$12.00,$0.20,1.65%
+Seagrams 7 Neat,LIQUOR,COMPLETE,$10.00,$1.35,13.52%
+Bulleit Neat,LIQUOR,COMPLETE,$13.00,$2.47,19.01%
+Templeton Rye Neat,LIQUOR,COMPLETE,$13.00,$0.00,
+Jim Beam Neat,LIQUOR,COMPLETE,$9.75,$1.36,13.9%
+Seagrams VO Neat,LIQUOR,COMPLETE,$10.00,$0.00,
+Jack Daniel's Neat,LIQUOR,COMPLETE,$10.75,$2.24,20.79%
+Jefferson's Reserve Neat,LIQUOR,COMPLETE,$12.00,$0.00,
+Well Whiskey Neat,LIQUOR,COMPLETE,$9.50,$0.48,5.04%
+Buffalo Trace Neat,LIQUOR,COMPLETE,$14.25,$1.82,12.81%
+Angel's Envy Neat,LIQUOR,COMPLETE,$17.25,$3.11,18.04%
+Fireball Neat,LIQUOR,COMPLETE,$9.00,$1.26,13.99%
+Skrewball Peanut Butter Neat,LIQUOR,COMPLETE,$10.75,$4.14,38.51%
+Crown Royal Apple Neat,LIQUOR,COMPLETE,$10.75,$2.20,20.44%
+Basil Hayden's Neat,LIQUOR,COMPLETE,$14.25,$2.48,17.43%
+Elijah Craig Neat,LIQUOR,COMPLETE,$12.50,$20.58,164.66%
+Southern Comfort Neat,LIQUOR,COMPLETE,$10.00,$1.32,13.18%
+Jack Fire Neat,LIQUOR,COMPLETE,$10.00,$2.10,21.04%
+Jack Honey Neat,LIQUOR,COMPLETE,$10.00,$2.24,22.35%
+Basil Hayden's,LIQUOR,COMPLETE,$12.00,$1.86,15.53%
+Old Forester,LIQUOR,COMPLETE,$9.00,$1.86,20.62%
+Old Forester Statesman,LIQUOR,COMPLETE,$11.00,$14.88,135.31%
+Jefferson's Reserve,LIQUOR,COMPLETE,$10.00,$0.00,
+Crown Royal,LIQUOR,COMPLETE,$9.00,$1.65,18.32%
+Angel's Envy,LIQUOR,COMPLETE,$14.50,$2.33,16.09%
+400 Conejos Mezcal Martini,LIQUOR,COMPLETE,$13.50,$2.93,21.69%
+Milagro Silver Martini,LIQUOR,COMPLETE,$13.25,$0.00,
+Milagro Reposado Double,LIQUOR,COMPLETE,$11.75,$0.00,
+Herradura Double,LIQUOR,COMPLETE,$14.25,$0.00,
+Casamigos Reposado Double,LIQUOR,COMPLETE,$17.00,$23.77,139.82%
+Milagro Anejo Double,LIQUOR,COMPLETE,$14.25,$0.00,
+400 Conejos Mezcal Double,LIQUOR,COMPLETE,$11.75,$2.44,20.76%
+Patron Reposado Double,LIQUOR,COMPLETE,$17.00,$0.02,0.11%
+Patron Silver Double,LIQUOR,COMPLETE,$14.25,$3.80,26.67%
+Casamigos Blanco Double,LIQUOR,COMPLETE,$15.75,$3.73,23.68%
+Well Tequila Double,LIQUOR,COMPLETE,$10.50,$1.68,16.02%
+Milagro Silver Double,LIQUOR,COMPLETE,$11.75,$0.00,
+Espolon Blanco Double,LIQUOR,COMPLETE,$11.75,$12.45,105.94%
+Casamigos Reposado Neat,LIQUOR,COMPLETE,$15.50,$19.02,122.68%
+Espolon Blanco Neat,LIQUOR,COMPLETE,$10.75,$9.96,92.63%
+Ilegal Mezcal Joven Neat,LIQUOR,COMPLETE,$12.00,$2.40,19.98%
+Espolon Reposado Neat,LIQUOR,COMPLETE,$12.00,$2.55,21.22%
+Casamigos Blanco Neat,LIQUOR,COMPLETE,$14.25,$2.98,20.94%
+Milagro Silver Neat,LIQUOR,COMPLETE,$10.50,$0.00,
+400 Conejos Mezcal Neat,LIQUOR,COMPLETE,$10.75,$1.95,18.16%
+Don Julio Reposado Neat,LIQUOR,COMPLETE,$16.50,$3.94,23.87%
+Herradura Neat,LIQUOR,COMPLETE,$13.00,$0.00,
+Don Julio Blanco Neat,LIQUOR,COMPLETE,$15.50,$3.08,19.86%
+Well Tequila Neat,LIQUOR,COMPLETE,$9.50,$1.34,14.16%
+Milagro Anejo Neat,LIQUOR,COMPLETE,$13.00,$0.00,
+Patron Reposado Neat,LIQUOR,COMPLETE,$15.50,$0.02,0.1%
+Milagro Reposado Neat,LIQUOR,COMPLETE,$10.75,$0.00,
+Patron Silver Neat,LIQUOR,COMPLETE,$13.00,$3.04,23.38%
+RumChata Martini,LIQUOR,COMPLETE,$11.75,$0.00,
+Well Rum Martini,LIQUOR,COMPLETE,$11.50,$0.96,8.32%
+Captain Morgan Double,LIQUOR,COMPLETE,$11.75,$2.09,17.79%
+Well Rum Double,LIQUOR,COMPLETE,$9.75,$0.80,8.18%
+Malibu Strawberry Double,LIQUOR,COMPLETE,$11.00,$0.00,
+Malibu Double,LIQUOR,COMPLETE,$11.00,$1.68,15.32%
+RumChata Double,LIQUOR,COMPLETE,$10.00,$0.00,
+Ron Zacapa Double,LIQUOR,COMPLETE,$14.50,$0.00,
+Bacardi Double,LIQUOR,COMPLETE,$11.75,$1.43,12.16%
+Well Rum Neat,LIQUOR,COMPLETE,$9.00,$0.64,7.09%
+Malibu Neat,LIQUOR,COMPLETE,$10.00,$1.35,13.48%
+Captain Morgan Neat,LIQUOR,COMPLETE,$10.75,$1.67,15.55%
+Ron Zacapa Neat,LIQUOR,COMPLETE,$13.00,$0.00,
+Bacardi Neat,LIQUOR,COMPLETE,$10.75,$1.14,10.64%
+RumChata Neat,LIQUOR,COMPLETE,$9.25,$0.00,
+Malibu Strawberry Neat,LIQUOR,COMPLETE,$10.00,$0.00,
+Bombay Sapphire Neat,LIQUOR,COMPLETE,$12.00,$2.08,17.3%
+Well Gin Martini,LIQUOR,COMPLETE,$11.50,$0.91,7.94%
+Bombay Sapphire,LIQUOR,COMPLETE,$10.00,$1.56,15.57%
+Bombay Sapphire Double,LIQUOR,COMPLETE,$13.00,$2.59,19.96%
+Bombay Sapphire Martini,LIQUOR,COMPLETE,$15.00,$3.11,20.75%
+Double Well Gin,LIQUOR,COMPLETE,$10.00,$0.76,7.61%
+Double Hendricks,LIQUOR,COMPLETE,$14.50,$2.66,18.36%
+Tanqueray Double,LIQUOR,COMPLETE,$12.50,$24.80,198.43%
+Hendricks Neat,LIQUOR,COMPLETE,$13.00,$2.13,16.38%
+Tanqueray Neat,LIQUOR,COMPLETE,$11.25,$19.84,176.38%
+Well Gin Neat,LIQUOR,COMPLETE,$9.25,$0.61,6.58%
+Deep Eddy Grapefruit Martini,LIQUOR,COMPLETE,$13.25,$2.08,15.71%
+Well Vodka Martini,LIQUOR,COMPLETE,$11.75,$0.52,4.46%
+Tito's Martini,LIQUOR,COMPLETE,$14.00,$1.82,12.99%
+Skyy Pineapple Martini,LIQUOR,COMPLETE,$12.50,$1.75,14.02%
+Deep Eddy Peach Martini,LIQUOR,COMPLETE,$13.25,$2.08,15.71%
+Deep Eddy Grapefruit Double,LIQUOR,COMPLETE,$11.50,$1.73,15.08%
+Three Olives Grape Double,LIQUOR,COMPLETE,$11.75,$1.11,9.46%
+Grey Goose Double,--,COMPLETE,$15.00,$15.00,100%
+Deep Eddy Peach Double,LIQUOR,COMPLETE,$11.50,$1.73,15.08%
+Three Olives Blueberry Double,LIQUOR,COMPLETE,$11.75,$1.11,9.46%
+Skyy Pineapple Double,LIQUOR,COMPLETE,$10.75,$1.46,13.58%
+Three Olives Citrus Double,LIQUOR,COMPLETE,$11.75,$0.83,7.08%
+Three Olives Cherry Double,LIQUOR,COMPLETE,$11.75,$1.11,9.46%
+Well Vodka Double,LIQUOR,COMPLETE,$10.00,$0.44,4.36%
+Belvedere Double,LIQUOR,COMPLETE,$14.50,$3.53,24.37%
+Three Olives Vanilla Double,LIQUOR,COMPLETE,$11.75,$1.11,9.46%
+Tito's Double,LIQUOR,COMPLETE,$12.00,$1.52,12.63%
+Three Olives Raspberry Double,LIQUOR,COMPLETE,$11.75,$2.18,18.54%
+Three Olives Raspberry Neat,LIQUOR,COMPLETE,$10.50,$1.74,16.59%
+Three Olives Vanilla Neat,LIQUOR,COMPLETE,$10.50,$0.89,8.47%
+Well Vodka Neat,LIQUOR,COMPLETE,$9.25,$0.35,3.77%
+Three Olives Blueberry Neat,LIQUOR,COMPLETE,$10.50,$0.89,8.47%
+Skyy Pineapple Neat,LIQUOR,COMPLETE,$9.75,$1.17,11.98%
+Ketel One Oranje Neat,LIQUOR,COMPLETE,$12.00,$0.17,1.42%
+Belvedere Neat,LIQUOR,COMPLETE,$13.00,$2.83,21.74%
+Three Olives Grape Neat,LIQUOR,COMPLETE,$10.50,$0.89,8.47%
+Three Olives Cherry Neat,LIQUOR,COMPLETE,$10.50,$0.89,8.47%
+Three Olives Citrus Neat,LIQUOR,COMPLETE,$10.50,$0.66,6.34%
+Deep Eddy Grapefruit Neat,LIQUOR,COMPLETE,$10.50,$1.39,13.22%
+Grey Goose Neat,LIQUOR,COMPLETE,$13.75,$12.00,87.27%
+Deep Eddy Peach Neat,LIQUOR,COMPLETE,$10.50,$1.39,13.22%
+Ketel One Neat,LIQUOR,COMPLETE,$12.00,$2.08,17.3%
+Big Kahuna Nachos,Food,DRAFT,$14.00,$2.13,15.2%
+Drunken Pulled Pork,Food,COMPLETE,N/A,$63.96,
+Cheese Curds,Food,COMPLETE,$11.00,$2.10,19.1%
+Cheese Curds,Food,COMPLETE,N/A,$24.26,
+Vodka Linguine With Grilled Chicken,Food,COMPLETE,--,$2.11,
+French Dip Meat,Food,COMPLETE,N/A,$138.43,
+Vodka Sauce,Food,COMPLETE,N/A,$9.39,
+Carolina Burger,Burgers,COMPLETE,--,$1.76,
+Old Irving Crushy Mango,Draft Beer,COMPLETE,--,$2.67,
+Sam Adams Winter Lager,Draft Beer,COMPLETE,--,$1.86,
+1911 Honey Crisp,Draft Beer,COMPLETE,--,$1.62,
+Blind Corner Taper,Draft Beer,DRAFT,--,$0.00,
+Golden Road Mango Cart,Draft Beer,COMPLETE,--,$0.00,
+Cream Of Chicken With Rice,Food,COMPLETE,N/A,$20.80,
+Around The Bend Strawberry Acid Test,Draft Beer,COMPLETE,--,$0.38,
+Old Irving Crushy Mango,--,COMPLETE,$7.50,$2.67,35.61%
+Cigar City Jai Alai,Draft Beer,COMPLETE,$7.50,$2.01,26.81%
+Blind Corner Split Timber,Draft Beer,COMPLETE,$7.50,$1.89,25.16%
+Blind Corner Forever Bloom,Draft Beer,COMPLETE,$7.50,$1.89,25.16%
+Bell'S Two Hearted Bottle,BOTTLED BEER,COMPLETE,$6.75,$1.50,22.19%
+Angry Orchard,BOTTLED BEER,COMPLETE,$6.50,$1.48,22.69%
+Bell's Amber Ale,BOTTLED BEER,COMPLETE,$7.00,$1.46,20.83%
+Bud Light,BOTTLED BEER,COMPLETE,$4.50,$0.94,20.79%
+Budweiser,BOTTLED BEER,COMPLETE,$4.50,$0.90,20.05%
+Dos XX Lager,BOTTLED BEER,COMPLETE,$6.25,$1.48,23.6%
+Michelob Ultra,BOTTLED BEER,COMPLETE,$4.50,$0.96,21.3%
+Miller High Life,BOTTLED BEER,COMPLETE,$4.50,$0.97,21.48%
+Miller Lite Btl,BOTTLED BEER,COMPLETE,$4.50,$1.06,23.56%
+Modelo Especial,BOTTLED BEER,COMPLETE,$6.25,$1.46,23.33%
+Weihenstephaner Hefe Weissbier,BOTTLED BEER,COMPLETE,$8.00,$2.06,25.76%
+High Noon Black Cherry,BOTTLED BEER,COMPLETE,$8.00,$1.83,22.92%
+High Noon Peach,BOTTLED BEER,COMPLETE,$8.00,$1.83,22.92%
+High Noon Pineapple,BOTTLED BEER,COMPLETE,$8.00,$1.83,22.92%
+High Noon Tequila Lime,BOTTLED BEER,COMPLETE,$9.00,$1.83,20.37%
+Lake Front New Grist Gf,BOTTLED BEER,COMPLETE,$6.50,$1.48,22.85%
+Montucky,BOTTLED BEER,COMPLETE,$5.25,$1.15,21.86%
+Mon Montucky 16Oz Can,BOTTLED BEER,COMPLETE,$4.00,$1.15,28.7%
+Coors Light Btl,BOTTLED BEER,COMPLETE,$4.50,$1.06,23.56%
+Blind Corner Forever Blossom,Draft Beer,COMPLETE,$7.50,$1.89,25.16%
+Blakes American Apple,Draft Beer,COMPLETE,--,$1.44,
+Hinterlands Cherry Wheat,Draft Beer,COMPLETE,$7.50,$1.90,25.36%
+Art History Dance Card,Draft Beer,COMPLETE,--,$1.69,
+Miskatonic West Coast Wizard,Draft Beer,COMPLETE,$7.50,$2.52,33.67%
+Noon Whistle DA Gummy,Draft Beer,COMPLETE,--,$1.73,
+Pub Chili,Food,COMPLETE,$7.00,$1.16,16.61%
+Spicy Tater Tots,Food,COMPLETE,$13.00,$2.16,16.58%
+Mac and Cheese,Food,COMPLETE,$5.00,$0.78,15.51%
+Negroni,COCKTAILS,COMPLETE,$11.00,$2.09,18.98%
+Blakes Peach Party,Draft Beer,COMPLETE,--,$2.01,
+Roasted Red Pepper Soup,Food,COMPLETE,N/A,$13.64,
+Maui Wowie Burger,Burgers,COMPLETE,--,$1.74,
+Poboy,Food,COMPLETE,--,$3.59,
+Italian Salad,Food,COMPLETE,--,$3.76,
+Firestone Walker Wookey Jack,Draft Beer,COMPLETE,--,$1.29,
+Whiskey Acres Rye Martini,LIQUOR,COMPLETE,$12.75,$0.00,
+TUES Chicken Quesadilla,Food,COMPLETE,$11.00,$1.66,15.11%
+Half Caesar Salad,Food,COMPLETE,$7.00,$1.66,23.69%
+Half Caesar Salad,Modifiers that are also I,COMPLETE,N/A,$1.66,
+Spicy Mezcal Margarita,COCKTAILS,COMPLETE,$12.00,$2.46,20.49%
+Old Forester Double,LIQUOR,COMPLETE,$13.00,$3.09,23.79%
+Lemonade,NA Bev,COMPLETE,$3.50,$0.05,1.42%
+Ilegal Mezcal Joven Martini,LIQUOR,COMPLETE,$15.00,$3.60,23.97%
+Ilegal Mezcal Joven Double,LIQUOR,COMPLETE,$13.00,$3.00,23.05%
+Ilegal Mezcal Joven,LIQUOR,COMPLETE,$10.00,$1.80,17.98%
+Herradura,LIQUOR,COMPLETE,$11.00,$0.00,
+Freddie's Root Beer,--,COMPLETE,$4.00,$0.88,21.88%
+Kids Diet Coke,NA Bev,COMPLETE,$0.00,$0.05,
+Shirley Temple,NA Bev,COMPLETE,$3.50,$0.05,1.5%
+Chips & Salsa,Food,COMPLETE,$8.00,$0.71,8.92%
+Ginger Beer,NA Bev,COMPLETE,$4.00,$0.08,2.03%
+Cherry Coke,NA Bev,COMPLETE,$3.50,$0.05,1.5%
+Caesar Salad,Food,COMPLETE,$13.00,$1.51,11.62%
+Buffalo Trace Martini,LIQUOR,COMPLETE,$18.00,$2.74,15.22%
+Sprite,NA Bev,COMPLETE,$3.50,$0.05,1.32%
+Orange Juice,NA Bev,COMPLETE,$3.50,$1.13,32.21%
+Iced Tea,NA Bev,COMPLETE,$3.50,$0.05,1.56%
+Kids Shirley Temple,NA Bev,COMPLETE,$0.00,$0.05,
+Kids Sprite,NA Bev,COMPLETE,$0.00,$0.05,
+Kids OJ,NA Bev,COMPLETE,$0.00,$1.13,
+Kids Lemonade,NA Bev,COMPLETE,$0.00,$0.05,
+Kids Iced Tea,NA Bev,COMPLETE,$0.00,$0.05,
+Kids Coke,NA Bev,COMPLETE,$0.00,$0.05,
+Pineapple Juice,NA Bev,COMPLETE,$3.50,$1.39,39.71%
+Weds Locations Sauv Blanc 1/2,Wine,COMPLETE,$5.50,$2.60,47.32%
+Jack Rye Martini,LIQUOR,COMPLETE,$13.50,$0.00,
+THURS WELL GIN,LIQUOR,COMPLETE,$4.00,$0.46,11.41%
+THURS WELL WHISKEY,LIQUOR,COMPLETE,$4.00,$0.36,8.99%
+THURS WELL RUM,LIQUOR,COMPLETE,$4.00,$0.48,11.97%
+Thurs Bud,BOTTLED BEER,COMPLETE,$3.00,$0.90,30.07%
+THURS MILLER HIGH LIFE,BOTTLED BEER,COMPLETE,$3.00,$0.97,32.22%
+THURS WELL BOURBON,LIQUOR,COMPLETE,$4.00,$0.36,8.99%
+Thurs Coors,BOTTLED BEER,COMPLETE,$3.00,$1.06,35.35%
+Thurs Michelob Ultra,BOTTLED BEER,COMPLETE,$3.00,$0.96,31.94%
+Thurs Bud Light,BOTTLED BEER,COMPLETE,$3.00,$0.94,31.18%
+THURS WELL VODKA,LIQUOR,COMPLETE,$4.00,$0.26,6.55%
+Thurs Miller Lite,BOTTLED BEER,COMPLETE,$3.00,$1.06,35.35%
+Buffalo Trace,LIQUOR,COMPLETE,$12.00,$1.37,11.41%
+Krombacher Pilsner,Draft Beer,COMPLETE,--,$1.70,
+Meatball Sub,Food,COMPLETE,--,$3.87,
+Breakfast Burger,Burgers,COMPLETE,--,$1.83,
+Mozzarella Sticks Starter,Food,COMPLETE,--,$2.30,
+Gumbo,Food,COMPLETE,N/A,$28.59,
+Fried Pickle Burger,Burgers,COMPLETE,$0.00,$1.31,
+Marinara Sauce,Food,COMPLETE,N/A,$5.54,
+Mozzarella Sticks Prep,Food,COMPLETE,N/A,$21.70,
+Meatballs For Sub,Food,COMPLETE,N/A,$12.21,
+Enchilada Soup,Food,COMPLETE,N/A,$29.81,
+Lentil Soup,Food,COMPLETE,N/A,$20.83,
+Miskatonic West Coast Wizard,Draft Beer,COMPLETE,--,$2.52,
+Goodfella,Burgers,COMPLETE,$0.00,$1.57,
+Garlic and Parmesan Sauce,Sauces - Cold,COMPLETE,N/A,$11.05,
+Margherita Flatbread,Food,COMPLETE,$13.00,$4.36,33.53%
+Nashville Hot Chicken Sandwich,Food,COMPLETE,$18.00,$74.79,415.52%
+Side House Salad,Food,COMPLETE,$5.00,$0.58,11.58%
+Half Southwest Salad,Food,COMPLETE,$7.00,$1.17,16.66%
+Half Wedge Salad,Food,COMPLETE,$7.00,$1.62,23.1%
+Half Spinach & Quinoa Salad,Food,COMPLETE,$7.00,$2.59,37.07%
+Half Pear Salad,Food,COMPLETE,$7.00,$2.21,31.58%
+Half Greek Salad,Food,COMPLETE,--,$8.35,
+Half Border Salad,Food,COMPLETE,$7.00,$1.87,26.7%
+Fried Pickles,Food,COMPLETE,$12.00,$1.17,9.73%
+Fried Pickles,Food,COMPLETE,N/A,$26.92,
+Kids Mac N Cheese,Food,COMPLETE,$7.00,$3.05,43.55%
+Arbol Chile Sauce,Sauces - Cold,COMPLETE,N/A,$3.62,
+Loco Shrimp Tacos,Food,COMPLETE,$17.00,$4.73,27.83%
+Cilantro Lime Coleslaw,Food,COMPLETE,N/A,$2.95,
+Italian Pasta Salad,Modifiers that are also I,DRAFT,N/A,$0.00,
+Balsamic Vinaigrette Dressing,Dressings,COMPLETE,N/A,$14.17,
+Thousand Island Dressing,Dressings,COMPLETE,N/A,$4.56,
+Caesar Dressing,Sauces - Cold,COMPLETE,N/A,$8.00,
+Kids Chicken Fingers,--,COMPLETE,$9.00,$1.13,12.51%
+Chicken Strips,Food,COMPLETE,N/A,$23.12,
+Chicken Strips,Food,COMPLETE,$12.00,$1.41,11.73%
+Small Pear Salad,Modifiers that are also I,COMPLETE,N/A,$2.21,
+Small Border Salad,--,COMPLETE,N/A,$1.87,
+Small Spinach & Quinoa Salad,Modifiers that are also I,COMPLETE,N/A,$2.59,
+Small Wedge Salad,Modifiers that are also I,COMPLETE,N/A,$1.62,
+Small Southwest Salad,Modifiers that are also I,COMPLETE,N/A,$1.17,
+House Salad,Food,COMPLETE,$13.00,$1.16,8.91%
+Small House Salad,Modifiers that are also I,COMPLETE,$5.00,$0.58,11.58%
+Small Greek Salad,Modifiers that are also I,COMPLETE,N/A,$8.35,
+Greek Salad,Food,COMPLETE,--,$10.02,
+Small House Salad,Food,COMPLETE,N/A,$0.58,
+Macho Burger,Burgers,COMPLETE,--,$1.91,
+Salsa Verde,Food,COMPLETE,N/A,$4.23,
+Sauerkraut,Food,COMPLETE,N/A,$12.53,
+Nashville Hot Sauce,Sauces - Cold,DRAFT,N/A,$36.00,
+Elysian Space Dust,Draft Beer,COMPLETE,--,$1.41,
+Kids Mini Quesadilla,Food,COMPLETE,$7.00,$0.97,13.8%
+Roasted Garlic Aioli,Food,DRAFT,N/A,$8.54,
+Chipotle Aioli,Sauces - Cold,COMPLETE,N/A,$13.31,
+Pesto,Sauces - Cold,COMPLETE,N/A,$12.87,
+Bbq Chicken Flatbread,Food,COMPLETE,$14.00,$2.82,20.13%
+Spicy Cajun Aioli,Sauces - Cold,COMPLETE,N/A,$7.22,
+Cajun Fries with Meal,Modifiers that are also I,COMPLETE,N/A,$0.40,
+Cajun Tots with Meal,Modifiers that are also I,COMPLETE,N/A,$1.21,
+Cajun Mix Seasoning,Food,COMPLETE,N/A,$5.59,
+Beer Cheese Prep,Food,COMPLETE,N/A,$31.98,
+Greek Dressing,Dressings,COMPLETE,N/A,$20.13,
+Black Bean and Quinoa Patty,Food,COMPLETE,N/A,$24.41,
+Don Julio Blanco,LIQUOR,COMPLETE,$13.00,$2.31,17.76%
+Don Julio Blanco Martini,LIQUOR,COMPLETE,$19.50,$4.62,23.68%
+Side Celery,Food,COMPLETE,$2.00,$0.61,30.52%
+Sunny Side,Burgers,COMPLETE,$0.00,$1.91,
+Western,Burgers,COMPLETE,$0.00,$1.00,
+Burger Patty,Food,COMPLETE,N/A,$2.05,
+Chili,Modifiers that are also I,COMPLETE,N/A,$55.80,
+Side Pita,Food,COMPLETE,$2.00,$0.59,29.57%
+Side Carrots,Food,COMPLETE,$2.00,$0.53,26.42%
+Side Beer Cheese,Sauces - Cold,COMPLETE,$1.00,$0.28,28.56%
+Side Bacon,Food,COMPLETE,$2.00,$0.34,17.29%
+Shrimp Caesar Wrap,Food,COMPLETE,$17.00,$5.17,30.4%
+Kids Mini Burgers,Food,COMPLETE,$10.00,$1.99,19.91%
+MON Classic Burger Special,Food,COMPLETE,$15.00,$0.70,4.67%
+Sauer-Brat-En,Food,COMPLETE,$16.00,$3.79,23.68%
+Pub Patty Melt,Food,COMPLETE,$0.00,$42.08,
+Premier Plus,Burgers,COMPLETE,$0.00,$1.42,
+Horseradish Cream,Sauces - Cold,COMPLETE,N/A,$12.36,
+Orange Wedges,Food,COMPLETE,$2.00,$1.43,71.49%
+Pub Slider (one),Food,COMPLETE,N/A,$1.12,
+Kids Hot Dog,Food,COMPLETE,$8.00,$1.73,21.67%
+Kids Grilled Cheese,Food,COMPLETE,$7.00,$2.20,31.43%
+Honey Mustard,Sauces - Cold,COMPLETE,N/A,$14.33,
+Honey Bleu,Burgers,COMPLETE,$0.00,$1.12,
+Hell Fire,Burgers,COMPLETE,$0.00,$0.79,
+Goat Cheese,Burgers,COMPLETE,$0.00,$1.56,
+Hacienda,Burgers,COMPLETE,$0.00,$2.55,
+Hangover,Burgers,COMPLETE,$0.00,$0.85,
+Chicken Caesar Wrap,Food,COMPLETE,$17.00,$2.91,17.14%
+Herb Aioli,Sauces - Cold,DRAFT,N/A,$5.98,
+Fried Egg,Food,COMPLETE,$2.00,$0.19,9.6%
+Drunken Pear,Burgers,COMPLETE,$0.00,$1.76,
+Poached Pears,Food,COMPLETE,N/A,$9.20,
+Diablo,Burgers,COMPLETE,$0.00,$1.10,
+California,Burgers,COMPLETE,$0.00,$1.24,
+Crispy Chicken Sandwich,Food,COMPLETE,$18.00,$1.90,10.56%
+Country Bloomin',Burgers,COMPLETE,$0.00,$1.29,
+Whiskey Steak Sauce,Sauces - Cold,COMPLETE,N/A,$26.02,
+Classic,Burgers,COMPLETE,$0.00,$0.70,
+Chicken Breast,Food,COMPLETE,$5.00,$1.52,30.31%
+Greek Chicken Wrap,Food,COMPLETE,$16.00,$4.38,27.41%
+Azteca Wrap,Food,COMPLETE,$16.00,$2.57,16.07%
+Ranch Dressing,Sauces - Cold,COMPLETE,N/A,$21.54,
+Bulleit Bourbon,Burgers,COMPLETE,$0.00,$1.12,
+Buffalo Chicken Wrap,Food,COMPLETE,$16.00,$2.24,13.99%
+Blackened Chicken Slider (one),Food,COMPLETE,N/A,$1.15,
+Pub Sliders,Food,COMPLETE,$16.00,$3.36,20.98%
+Buffalo Bleu,Burgers,COMPLETE,$0.00,$0.93,
+Chipotle Ranch,Dressings,COMPLETE,N/A,$8.58,
+Slider Bun,Burgers,COMPLETE,N/A,$0.36,
+Pretzel Bun,--,COMPLETE,N/A,$0.96,
+House Bun,Burgers,COMPLETE,N/A,$0.61,
+Gluten Free Bun,Burgers,COMPLETE,N/A,$1.85,
+Southwest Salad,Food,COMPLETE,$13.00,$2.19,16.87%
+Cajun Tots,Food,COMPLETE,$7.00,$1.21,17.32%
+Truffle Tots,Food,COMPLETE,$7.00,$3.79,54.13%
+Truffle Tots w meal,Modifiers that are also I,COMPLETE,N/A,$4.60,
+Tater Tots,Food,COMPLETE,$7.00,$0.98,13.99%
+Tater Tots with Meal,Modifiers that are also I,COMPLETE,N/A,$0.00,
+Italian Pasta Salad,Food,DRAFT,$5.00,$0.00,
+Truffle Parmesan Fries,Food,COMPLETE,$7.00,$3.79,54.13%
+Truffle Fries w Meal,Modifiers that are also I,COMPLETE,N/A,$3.79,
+Sweet Potato Fries,Food,COMPLETE,$7.00,$1.22,17.39%
+House Fries,Food,COMPLETE,$5.00,$0.17,3.41%
+Cajun Fries,Food,COMPLETE,$5.00,$0.40,8.07%
+House Fries with Meal,Modifiers that are also I,COMPLETE,N/A,$0.17,
+Sweet Potato Fries with Meal,Modifiers that are also I,COMPLETE,N/A,$1.22,
+Cucumber Salad with Meal,Modifiers that are also I,COMPLETE,N/A,$5.72,
+Cucumber Gin Spin,COCKTAILS,COMPLETE,$13.00,$2.51,19.31%
+Cucumber Salad,Food,COMPLETE,$5.00,$3.19,63.75%
+Fresco Spritz,COCKTAILS,COMPLETE,$12.00,$1.77,14.76%
+Pico De Gallo,Sauces - Cold,COMPLETE,N/A,$7.28,
+Cilantro Ranch,Sauces - Cold,COMPLETE,N/A,$6.97,
+Pineapple Jalapeno Salsa,Sauces - Cold,COMPLETE,N/A,$10.08,
+Italiano Vinaigrette,Dressings,COMPLETE,N/A,$12.10,
+Blackberry Basil Vinaigrette,Dressings,COMPLETE,N/A,$7.00,
+Honey Lime Vinaigrette,Dressings,COMPLETE,N/A,$7.43,
+Bleu Cheese Dressing,Dressings,COMPLETE,N/A,$6.86,
+Gold rush,COCKTAILS,COMPLETE,$12.00,$2.42,20.17%
+Turkey Club Sandwich,Food,COMPLETE,--,$6.62,
+Macho Burger,Burgers,COMPLETE,--,$1.72,
+Noon Whistle Gummylicious,Draft Beer,COMPLETE,--,$1.65,
+Solemn Oath Cant Handle The Youth,Draft Beer,COMPLETE,--,$1.91,
+Firestone MidHaze,Draft Beer,COMPLETE,--,$2.16,
+Zing Zang Mix,LIQUOR,COMPLETE,$4.00,$3.08,76.89%
+Bloody Mary - Special,COCKTAILS,COMPLETE,$5.00,$1.55,30.94%
+Bloody Maria - Special,COCKTAILS,COMPLETE,$5.00,$1.55,30.94%
+Bloody Mary,COCKTAILS,COMPLETE,$8.75,$1.55,17.68%
+Bloody Maria,COCKTAILS,COMPLETE,$8.75,$1.55,17.68%
+Whiskey Acres Rye Neat,LIQUOR,COMPLETE,$13.00,$0.00,
+Whiskey Acres Rye,LIQUOR,COMPLETE,--,$0.00,
+Pub Sangria White,Wine,COMPLETE,$12.00,$1.72,14.38%
+Weds Chalk Hill Chard 1/2,Wine,COMPLETE,$6.00,$2.84,47.32%
+Jack Rye,LIQUOR,COMPLETE,$9.00,$0.00,
+Weds J. Roget 1/2,Wine,COMPLETE,$4.50,$1.30,28.92%
+J. Roget Champagne,Wine,COMPLETE,$9.00,$1.30,14.46%
+Glenmorangie,LIQUOR,COMPLETE,$13.00,$0.00,
+Glenfiddich 18 YearMartini,LIQUOR,COMPLETE,$28.50,$0.00,
+Fireball,LIQUOR,COMPLETE,$7.50,$0.94,12.59%
+400 Conejos Mezcal,LIQUOR,COMPLETE,$9.00,$1.46,16.26%
+Old Irving Mikos,Draft Beer,COMPLETE,--,$2.91,
+MapleWood Goby,Draft Beer,COMPLETE,--,$1.82,
+Begyle Free bird,Draft Beer,COMPLETE,--,$4.34,
+Half Acre Slow Melt,Draft Beer,DRAFT,--,$1.58,
+Noon Whistle GummyPalooza,Draft Beer,DRAFT,--,$1.73,
+Jalapeno Popper Burger,Food,COMPLETE,--,$1.94,
+Very Gouda Pork Sandwich,Food,COMPLETE,--,$3.07,
+Smoked Gouda,--,COMPLETE,N/A,$0.60,
+Roasted Corn Dip,Food,COMPLETE,--,$29.95,
+Citrus Pulled Pork,Food,COMPLETE,N/A,$122.33,
+Bees Knees,COCKTAILS,COMPLETE,$12.00,$21.05,175.45%
+Maplewood Fat Pug,Draft Beer,COMPLETE,--,$1.51,
+Strawberry Spritz,COCKTAILS,COMPLETE,$11.00,$2.69,24.47%
+Aperol Spritz,COCKTAILS,COMPLETE,$11.00,$2.31,20.97%
+Margarita,COCKTAILS,COMPLETE,$10.00,$1.44,14.39%
+Lychee Mojito,COCKTAILS,COMPLETE,$11.00,$1.98,18.04%
+WEDS BENZIGER MERLOT $5,Wine,COMPLETE,$3.00,$2.60,86.61%
+Tullamore Dew Neat,LIQUOR,COMPLETE,$13.00,$1.24,9.55%
+Avissi Split,Wine,COMPLETE,$12.00,$3.00,25%
+Benziger Merlot,Wine,COMPLETE,--,$2.60,
+Solemn Oath Death By Vikings,--,COMPLETE,--,$1.56,
+400 Conejos Mezcal,LIQUOR,COMPLETE,--,$1.46,
+Blueberry Bourbon Smash,COCKTAILS,COMPLETE,--,$2.15,
+Espresso Martini,COCKTAILS,DRAFT,$12.00,$1.73,14.44%
+Pickle Martini,LIQUOR,COMPLETE,$12.00,$1.52,12.63%
+Mojito,COCKTAILS,COMPLETE,$10.00,$1.75,17.5%
+Avocado Margarita,COCKTAILS,COMPLETE,$12.00,$1.98,16.48%
+Captain Morgan Martini,LIQUOR,COMPLETE,$13.50,$2.51,18.58%
+Bacardi Martini,LIQUOR,COMPLETE,$13.50,$1.72,12.7%
+Malibu Strawberry Martini,LIQUOR,COMPLETE,$12.75,$0.00,
+Malibu Martini,LIQUOR,COMPLETE,$12.75,$2.02,15.86%
+Dewars Martini,LIQUOR,COMPLETE,$14.25,$2.79,19.59%
+Johnnie Walker Red Martini,LIQUOR,COMPLETE,$15.00,$3.27,21.81%
+Glenlivet 15 Year Martini,LIQUOR,COMPLETE,$21.00,$0.00,
+Glenfiddich 12 Year Martini,LIQUOR,COMPLETE,$18.00,$0.00,
+Glenlivet 15 Year Double,LIQUOR,COMPLETE,$18.20,$0.00,
+Johnnie Walker Red Double,LIQUOR,COMPLETE,$13.00,$2.72,20.97%
+Dewars Double,LIQUOR,COMPLETE,$12.35,$2.32,18.83%
+Glenfiddich 18 Year Double,LIQUOR,COMPLETE,$24.70,$0.00,
+Glenfiddich 12 Year Double,LIQUOR,COMPLETE,$15.60,$0.00,
+Glenfiddich 12 Year Neat,LIQUOR,COMPLETE,$14.16,$0.00,
+Dewars Neat,LIQUOR,COMPLETE,$11.21,$1.86,16.6%
+Glenlivet 15 Year Neat,LIQUOR,COMPLETE,$16.52,$0.00,
+Johnnie Walker Red Neat,LIQUOR,COMPLETE,$11.80,$2.18,18.48%
+Glenfiddich 18 Year Neat,LIQUOR,COMPLETE,$22.42,$0.00,
+Hendrick's Martini,COCKTAILS,COMPLETE,$16.50,$3.19,19.36%
+Tanqueray Martini,LIQUOR,COMPLETE,$14.25,$29.76,208.87%
+Patron Reposado Martini,LIQUOR,COMPLETE,$19.50,$0.02,0.12%
+Espolon Blanco Martini,LIQUOR,COMPLETE,$13.50,$14.94,110.64%
+Well Tequila Martini,LIQUOR,COMPLETE,$12.00,$2.02,16.82%
+Espolon Reposado Martini,LIQUOR,COMPLETE,$15.00,$3.82,25.46%
+Don Julio Reposado Martini,LIQUOR,COMPLETE,$21.00,$5.91,28.14%
+Don Julio Reposado Double,LIQUOR,COMPLETE,$18.20,$4.92,27.05%
+Espolon Reposado Double,LIQUOR,COMPLETE,$13.00,$3.18,24.48%
+Maker's Mark Martini,LIQUOR,COMPLETE,$15.00,$0.30,1.98%
+Seagrams 7 Martini,LIQUOR,COMPLETE,$12.75,$2.03,15.91%
+Knob Creek Rye Martini,LIQUOR,COMPLETE,$18.00,$0.20,1.13%
+Woodford Reserve Martini,LIQUOR,COMPLETE,$18.75,$0.00,
+Well Whiskey Martini,LIQUOR,COMPLETE,$12.00,$0.72,5.99%
+Southern Comfort Martini,LIQUOR,COMPLETE,$12.75,$1.98,15.5%
+Seagrams VO Martini,LIQUOR,COMPLETE,$12.75,$0.00,
+Knob Creek Martini,LIQUOR,COMPLETE,$16.50,$3.37,20.43%
+Jameson Orange Martini,LIQUOR,COMPLETE,$14.25,$3.22,22.59%
+Angel's Envy Martini,LIQUOR,COMPLETE,$21.75,$4.67,21.46%
+Elijah Craig Martini,LIQUOR,COMPLETE,$15.75,$30.87,196.03%
+Bulleit Rye Martini,LIQUOR,COMPLETE,$16.50,$3.71,22.47%
+Jack Daniel's Martini,LIQUOR,COMPLETE,$13.50,$3.35,24.84%
+Bulleit Martini,LIQUOR,COMPLETE,$16.50,$3.71,22.47%
+Jameson Martini,LIQUOR,COMPLETE,$14.25,$2.93,20.54%
+Woodford Reserve Double,LIQUOR,COMPLETE,$16.25,$0.00,
+Maker's Mark Double,LIQUOR,COMPLETE,$13.00,$0.25,1.9%
+Woodford Reserve Neat,LIQUOR,COMPLETE,$14.75,$0.00,
+Three Olives Citrus Martini,LIQUOR,COMPLETE,$13.50,$1.00,7.39%
+Ketel One Oranje Martini,LIQUOR,COMPLETE,$15.00,$0.26,1.7%
+Three Olives Vanilla Martini,LIQUOR,COMPLETE,$13.50,$1.33,9.88%
+Three Olives Grape Martini,LIQUOR,COMPLETE,$13.50,$1.33,9.88%
+Ketel One Martini,LIQUOR,COMPLETE,$15.00,$3.11,20.77%
+Grey Goose Martini,LIQUOR,COMPLETE,$17.25,$18.00,104.34%
+Three Olives Cherry Martini,LIQUOR,COMPLETE,$13.50,$1.33,9.88%
+Three Olives Raspberry Martini,LIQUOR,COMPLETE,$13.50,$2.61,19.36%
+Three Olives Blueberry Martini,LIQUOR,COMPLETE,$13.50,$1.33,9.88%
+Ketel One Oranje Double,LIQUOR,COMPLETE,$13.00,$0.21,1.63%
+Ketel One Double,LIQUOR,COMPLETE,$13.00,$2.60,19.97%
+Tito's Neat,LIQUOR,COMPLETE,$10.92,$1.21,11.1%
+Tortilla Strips,Food,COMPLETE,N/A,$1.89,
+Wedge Salad,Food,COMPLETE,$13.00,$3.23,24.88%
+Mimosa,COCKTAILS,DRAFT,--,$3.08,
+Truffle Spread,Food,DRAFT,N/A,$2.93,
+Sriracha Ketchup,Food,DRAFT,N/A,$5.10,
+Chicken Marinade,Food,COMPLETE,N/A,$8.53,
+Pineapple Marinade,Food,DRAFT,N/A,$6.26,
+Blind Corner Booter,--,DRAFT,--,$0.00,
+Northman Orchard Project,Draft Beer,COMPLETE,--,$2.80,
+Chloe Prosecco,Wine,COMPLETE,--,$2.12,
+Solemn Oath Between Two Pillows,Draft Beer,COMPLETE,$7.50,$1.91,25.48%
+Hennessy,LIQUOR,COMPLETE,$12.00,$2.25,18.73%
+Knob Creek,LIQUOR,COMPLETE,$11.00,$1.68,15.32%
+Knob Creek Rye,LIQUOR,COMPLETE,$12.00,$0.10,0.85%
+Skyy Pineapple,LIQUOR,COMPLETE,$8.25,$0.88,10.62%
+Revolution Cold Time,CannedBottle Beer,DRAFT,--,$0.00,
+Maker's Mark,LIQUOR,COMPLETE,$10.00,$0.15,1.48%
+Seagrams 7,LIQUOR,COMPLETE,$8.50,$1.01,11.93%
+Southern Comfort,LIQUOR,COMPLETE,$8.50,$0.99,11.63%
+Jameson Orange,LIQUOR,COMPLETE,$9.50,$1.61,16.94%
+Bulleit Rye,LIQUOR,COMPLETE,$11.00,$1.85,16.85%
+Tullamore Dew,LIQUOR,COMPLETE,$9.00,$0.93,10.35%
+Jameson,LIQUOR,COMPLETE,$9.50,$1.46,15.41%
+Seagrams VO,LIQUOR,COMPLETE,$8.50,$0.00,
+Elijah Craig,LIQUOR,COMPLETE,$10.50,$1.60,15.23%
+Bulleit,LIQUOR,COMPLETE,$11.00,$1.85,16.85%
+Well Whiskey,LIQUOR,COMPLETE,$8.00,$0.36,4.49%
+Jack Daniel's,LIQUOR,COMPLETE,$9.00,$1.68,18.63%
+Patron Reposado,LIQUOR,COMPLETE,$13.00,$0.01,0.09%
+Espolon Blanco,LIQUOR,COMPLETE,$9.00,$7.47,82.98%
+Don Julio Reposado,LIQUOR,COMPLETE,$14.00,$2.95,21.1%
+Well Tequila,LIQUOR,COMPLETE,$8.00,$1.01,12.61%
+Espolon Reposado,LIQUOR,COMPLETE,$10.00,$1.91,19.1%
+Tanqueray,--,COMPLETE,$9.50,$14.88,156.65%
+Glenfiddich 18 Year,LIQUOR,COMPLETE,$19.00,$0.00,
+Dewars,LIQUOR,COMPLETE,$9.50,$1.40,14.69%
+Hendrick's,LIQUOR,COMPLETE,$11.00,$1.60,14.52%
+Glenfiddich 12 Year,LIQUOR,COMPLETE,$12.00,$0.00,
+Johnnie Walker Red,LIQUOR,COMPLETE,$10.00,$1.64,16.36%
+Glenlivet 15 Year,LIQUOR,COMPLETE,$14.00,$0.00,
+J&B,LIQUOR,COMPLETE,$9.00,$0.00,
+Johnnie Walker Black,LIQUOR,COMPLETE,$11.00,$2.12,19.25%
+Glenlivet 12 Year,LIQUOR,COMPLETE,$11.00,$2.71,24.62%
+Bacardi,LIQUOR,COMPLETE,$9.00,$0.86,9.53%
+Malibu Strawberry,LIQUOR,COMPLETE,$8.50,$0.00,
+RumChata,--,COMPLETE,$7.75,$0.00,
+Malibu,LIQUOR,COMPLETE,$8.50,$1.01,11.89%
+Captain Morgan,LIQUOR,COMPLETE,$9.00,$1.25,13.93%
+Deep Eddy Grapefruit,LIQUOR,COMPLETE,$8.75,$1.04,11.89%
+Deep Eddy Peach,LIQUOR,COMPLETE,$8.75,$1.04,11.89%
+Three Olives Grape,LIQUOR,COMPLETE,$9.00,$0.67,7.41%
+Three Olives Raspberry,LIQUOR,COMPLETE,$9.00,$1.31,14.52%
+Tito's,LIQUOR,COMPLETE,$9.00,$0.91,10.1%
+Ketel One,--,COMPLETE,$10.00,$1.56,15.57%
+Three Olives Cherry,LIQUOR,COMPLETE,$9.00,$0.67,7.41%
+Three Olives Vanilla,LIQUOR,COMPLETE,$9.00,$0.67,7.41%
+Ketel One Oranje,LIQUOR,COMPLETE,$10.00,$0.13,1.28%
+Three Olives Blueberry,LIQUOR,COMPLETE,$9.00,$0.67,7.41%
+Three Olives Citrus,LIQUOR,COMPLETE,$9.00,$0.50,5.54%
+Grey Goose,--,COMPLETE,$11.50,$9.00,78.26%
+Revolution X Hero,--,COMPLETE,--,$1.02,
+93 Octane Hugger Twist,Draft Beer,COMPLETE,--,$1.32,
+Spinach and Quinoa Salad,Food,COMPLETE,$13.00,$5.19,39.92%
+Border Salad,Food,COMPLETE,$13.00,$3.68,28.3%
+Pear Salad,Food,COMPLETE,$13.00,$4.42,34.01%
+Beer Cheese Pretzel Sticks,Food,COMPLETE,$13.00,$3.42,26.32%
+Bacon Wrapped Dates,Food,COMPLETE,$13.00,$0.11,0.84%
+Bacon Wrapped Dates Prep,Food,COMPLETE,N/A,$1.31,
+Spinach Artichoke Dip Prep,Food,COMPLETE,N/A,$18.99,
+Stone Buenaveza Salt And Lime Lager,Draft Beer,COMPLETE,--,$1.74,
+Allagash White,--,COMPLETE,$0.00,$1.67,
+Stella Artois,--,COMPLETE,$7.50,$1.75,23.36%
+Hazy Neon Bear Hug,Draft Beer,COMPLETE,--,$0.45,
+Twisted Hippo The Treasure Of Crocodile Bog,--,COMPLETE,--,$1.89,
+Fire Stone Walker Cali Squeeze,Draft Beer,COMPLETE,--,$2.16,
+93 Octane Clown Car Snickerdoodle,--,COMPLETE,--,$2.31,
+Art History Lincoln Highway,Draft Beer,COMPLETE,--,$1.69,
+Noon Whistle Gummylicious,Draft Beer,COMPLETE,$7.50,$1.65,22.04%
+Apple Pucker,LIQUOR,COMPLETE,$7.50,$0.00,
+Apple Pucker Double,LIQUOR,COMPLETE,$9.75,$0.00,
+Apple Pucker Martini,LIQUOR,COMPLETE,$11.25,$0.00,
+Gummy Bear,SHOTS,COMPLETE,$7.50,$0.45,5.98%
+Apple Martini,COCKTAILS,COMPLETE,$12.00,$0.36,3.05%
+Apple Pie,SHOTS,COMPLETE,$8.00,$0.31,3.94%
+Redbull Yellow,NA Bev,COMPLETE,$4.00,$0.00,
+The KO,COCKTAILS,COMPLETE,$13.00,$1.82,13.99%
+Old Fashioned,COCKTAILS,COMPLETE,$13.00,$3.61,27.74%
+Johnnie Walker Black Double,LIQUOR,COMPLETE,$13.00,$3.53,27.15%
+Johnnie Walker Black Martini,LIQUOR,COMPLETE,$15.00,$4.24,28.24%
+Simple Syrup,Mixer,COMPLETE,N/A,$1.11,
+Red Wine Vinaigrette,Food,COMPLETE,N/A,$11.71,
+Guacamole,Food,COMPLETE,N/A,$8.41,
+Lemon-Artichoke Aioli,Food,DRAFT,N/A,$3.91,
+Shrimp Ceviche,Food,COMPLETE,$16.00,$8.18,51.16%
+Shrimp Ceviche Prep,Food,COMPLETE,N/A,$30.46,
+Roasted Jalapeno Vinaigrette,Food,COMPLETE,N/A,$16.00,
+Roasted Corn Jalapeno Bacon Cheese Dip,Food,DRAFT,$14.00,$3.50,25.03%
+Roasted Corn Jalapeno Bacon Cheese Dip PREP,Food,COMPLETE,N/A,$26.57,
+Bourbon Bacon Jam,Food,COMPLETE,N/A,$17.97,
+Italian Wedding Soup,Food,COMPLETE,N/A,$46.87,
+Jalapeno Poppers,Food,COMPLETE,$12.00,$2.78,23.14%
+Jalapeno Poppers Prep,Food,COMPLETE,N/A,$25.09,
+Meatballs: Italian Wedding,Food,COMPLETE,N/A,$27.69,
+Arnold Peachy Palmer,COCKTAILS,COMPLETE,$9.00,$1.67,18.52%
+Saurkraut,Food,COMPLETE,N/A,$10.18,
+Provolone White Cheese Sauce,Food,COMPLETE,N/A,$13.18,
+Victory Golden Monkey,BOTTLED BEER,COMPLETE,$8.00,$1.66,20.73%
+Strawberry Bourbon Smash,COCKTAILS,COMPLETE,$13.00,$3.67,28.21%
+Espresso,Mixer,DRAFT,N/A,$0.00,
+Lemon Juice,Mixer,COMPLETE,N/A,$3.69,
+Honey Syrup,Mixer,COMPLETE,N/A,$5.10,
+Club Soda,--,NOT STARTED,N/A,$0.00,
+The Crossings Sauv Blanc,Wine,COMPLETE,--,$1.89,
+Raspberry Tangerine Vinaigrette,--,DRAFT,N/A,$0.00,
+Cream Cheese Stuffing,Food,COMPLETE,N/A,$5.68,
+Bells Christmas Ale,Draft Beer,DRAFT,--,$0.00,
+Cosmopolitan Martini,COCKTAILS,COMPLETE,$12.00,$1.11,9.22%
+Fake prep,--,COMPLETE,N/A,$1.91,
+Irish Car Bomb,SHOTS,COMPLETE,--,$1.99,
+Three Floyds Pineapple Mango,BOTTLED BEER,COMPLETE,$8.50,$2.10,24.69%
+Lagunitas Little Sumpin,BOTTLED BEER,COMPLETE,$7.25,$1.60,22.04%
+Johnnie Walker Red,LIQUOR,COMPLETE,--,$1.64,
+High Noon Lime,BOTTLED BEER,COMPLETE,$8.00,$1.83,22.92%
+Surfside Tea,COCKTAILS,COMPLETE,$7.50,$1.75,23.33%
+White Russian,COCKTAILS,COMPLETE,$10.00,$0.49,4.93%
+Very Berry Long Island,COCKTAILS,COMPLETE,$14.00,$2.41,17.24%
+Surfside Tea,BOTTLED BEER,COMPLETE,$7.50,$1.75,23.33%
+Surfside 2.0,BOTTLED BEER,COMPLETE,$12.00,$2.66,22.16%
+Summer Dream,COCKTAILS,COMPLETE,$12.00,$0.49,4.09%
+Spiked Strawberry Lemonade,COCKTAILS,COMPLETE,$10.00,$1.03,10.32%
+Sandia Margarita,COCKTAILS,COMPLETE,$12.00,$2.44,20.29%
+Rummy Blues,COCKTAILS,COMPLETE,$12.00,$1.82,15.15%
+Raspberry Mule,COCKTAILS,COMPLETE,$12.00,$2.84,23.71%
+Pineapple Upside Down Martini,COCKTAILS,COMPLETE,$12.00,$0.18,1.5%
+Mimosa,COCKTAILS,COMPLETE,$10.00,$1.17,11.68%
+Mai Tai,COCKTAILS,COMPLETE,$11.00,$2.90,26.37%
+Long Island Top Shelf,COCKTAILS,COMPLETE,$14.00,$2.68,19.15%
+Long Island,COCKTAILS,COMPLETE,$12.00,$0.94,7.83%
+Jackson Mule,COCKTAILS,COMPLETE,$12.00,$3.07,25.58%
+Irish Mule,COCKTAILS,COMPLETE,$13.00,$2.86,21.98%
+French Martini,COCKTAILS,COMPLETE,$14.00,$1.70,12.12%
+Blue M-Fer,COCKTAILS,COMPLETE,$12.00,$1.00,8.33%
+April Showers,COCKTAILS,COMPLETE,$13.00,$2.40,18.49%
+Jack Honey,LIQUOR,COMPLETE,$8.50,$1.68,19.72%
+High Noon Black Cherry,BOTTLED BEER,COMPLETE,$8.00,$1.83,22.92%
+High Noon Peach,BOTTLED BEER,COMPLETE,$8.00,$1.83,22.92%
+High Noon Pineapple,BOTTLED BEER,COMPLETE,$8.00,$1.83,22.92%
+Herradura Martini,LIQUOR,COMPLETE,$16.50,$0.00,
+Herradura,LIQUOR,COMPLETE,--,$0.00,
+Casamigos Blanco Martini,LIQUOR,COMPLETE,$18.00,$4.48,24.87%
+Casamigos Blanco,LIQUOR,COMPLETE,$12.00,$2.24,18.65%
+Tuesday Surfside,LIQUOR,COMPLETE,$6.00,$1.75,29.17%
+PBR,BOTTLED BEER,COMPLETE,$5.00,$1.01,20.17%
+Stella Cidre,BOTTLED BEER,COMPLETE,$6.25,$1.42,22.73%
+Krombacher N/A,BOTTLED BEER,COMPLETE,$7.00,$1.63,23.23%
+Go Brewing Suspended I A Sunbeam,BOTTLED BEER,COMPLETE,$7.50,$1.69,22.5%
+Corona,BOTTLED BEER,COMPLETE,$6.00,$1.46,24.3%
+Banana Bread,BOTTLED BEER,COMPLETE,$7.00,$0.00,
+Jack Fire,SHOTS,COMPLETE,$8.50,$1.58,18.57%
+Redbull Sugar Free,NA Bev,COMPLETE,$4.00,$1.61,40.36%
+Toppling Goliath Pseudo Sue,BOTTLED BEER,COMPLETE,$9.00,$2.38,26.39%
+Weds Chloe Prosecco,Wine,COMPLETE,--,$2.12,
+WEDS THE CROSSINGS SAUV BLANC,Wine,COMPLETE,--,$1.89,
+Irish Car Bomb,SHOTS,COMPLETE,$10.00,$2.59,25.93%
+Josh Pinot Noir,Wine,COMPLETE,--,$89.78,
+Pink Starburst,SHOTS,COMPLETE,$8.00,$0.57,7.14%
+Lemon Drop Shot,SHOTS,COMPLETE,$7.50,$0.47,6.24%
+The JK,LIQUOR,COMPLETE,--,$22.92,
+Crown Apple Bomb,SHOTS,COMPLETE,$9.00,$1.01,11.2%
+Vegas Bomb,SHOTS,COMPLETE,$9.00,$0.72,8%
+3 Wisemen,SHOTS,COMPLETE,$9.00,$1.60,17.82%
+Redbull,LIQUOR,COMPLETE,$4.00,$1.61,40.36%
+Moscow Mule,COCKTAILS,COMPLETE,$8.75,$1.10,12.52%
+Dark 'N Stormy,COCKTAILS,COMPLETE,$11.25,$0.74,6.6%
+Scooby Snack Shot,SHOTS,COMPLETE,$7.50,$0.80,10.62%
+Silk and Spice Red Blend,Wine,COMPLETE,--,$49.50,
+Three Olives Grape Double,LIQUOR,COMPLETE,--,$1.11,
+Fireball Shot,SHOTS,COMPLETE,--,$0.94,
+Drop Needle Berry Rose Sparkler,BOTTLED BEER,DRAFT,--,$29.00,
+Yuengling Traditional Lager,Draft Beer,COMPLETE,--,$1.04,
+Cinnamon Toast Crunch,SHOTS,COMPLETE,$7.50,$0.47,6.3%
+Fireball,LIQUOR,COMPLETE,--,$0.94,
+Fireball - Special,LIQUOR,COMPLETE,$5.00,$0.94,18.89%
+Fireball Double,LIQUOR,COMPLETE,$9.75,$1.57,16.14%
+Fireball Martini,LIQUOR,COMPLETE,$11.25,$1.89,16.79%
+WEDS S&S BLEND $5,Wine,COMPLETE,--,$49.50,
+WEDS RUFFINO PINOT GRIGIO,Wine,COMPLETE,--,$36.00,
+Weds Chardonnay,Wine,COMPLETE,--,$45.00,
+WEDS JOSH PINOT NOIR,Wine,COMPLETE,--,$90.00,
+Weds Chateau Riesling,Wine,COMPLETE,--,$0.00,
+Whiskey Sour,COCKTAILS,COMPLETE,$7.75,$0.96,12.34%
+Tom Collins,COCKTAILS,COMPLETE,$7.75,$20.98,270.71%
+Tequila Sunrise,COCKTAILS,COMPLETE,$7.75,$1.44,18.56%
+Lemon Drop Martini,COCKTAILS,COMPLETE,$12.00,$1.10,9.18%
+Gimlet - Gin,COCKTAILS,COMPLETE,$7.75,$0.76,9.75%
+Amaretto Stone Sour,COCKTAILS,COMPLETE,$10.00,$0.57,5.7%
+White Tea,SHOTS,COMPLETE,$8.00,$0.80,10%
+Jolly Rancher Shot,SHOTS,COMPLETE,$7.50,$1.03,13.75%
+Green Tea,SHOTS,COMPLETE,$8.00,$1.17,14.62%
+Gimlet - Vodka,COCKTAILS,COMPLETE,$7.75,$0.56,7.24%
+Kamakazi,SHOTS,COMPLETE,$7.50,$0.32,4.32%
+Fresh Lime Juice,NA Bev,COMPLETE,N/A,$12.37,
+Old Irving Cinnamon Prost,Draft Beer,COMPLETE,--,$1.34,
+Screwdriver,COCKTAILS,COMPLETE,$7.75,$0.76,9.74%
+Ron Zacapa Martini,LIQUOR,COMPLETE,$16.50,$0.00,
+Ron Zacapa,LIQUOR,COMPLETE,$11.00,$0.00,
+Peach Schnapps Martini,LIQUOR,COMPLETE,$11.25,$0.44,3.95%
+Peach Schnapps Double,LIQUOR,COMPLETE,$9.75,$0.37,3.8%
+Miller Draft - Special,Draft Beer,COMPLETE,$3.00,$1.00,33.33%
+John Daly,COCKTAILS,COMPLETE,$7.75,$1.51,19.54%
+Goldschlager,LIQUOR,COMPLETE,$8.50,$0.00,
+Greyhound,COCKTAILS,COMPLETE,$7.75,$1.89,24.38%
+Fuzzy Navel,COCKTAILS,COMPLETE,$7.50,$0.87,11.56%
+Elf Whiskey,LIQUOR,COMPLETE,$6.00,$0.00,
+Elf Whiskey,LIQUOR,COMPLETE,$6.00,$0.00,
+Disaronno Martini,LIQUOR,COMPLETE,$14.25,$0.00,
+Disaronno,--,COMPLETE,$9.50,$0.00,
+Diet Coke,--,COMPLETE,$3.50,$3.70,105.8%
+Cranberry Juice,NA Bev,COMPLETE,$3.50,$1.72,49.24%
+Coke Zero,NA Bev,COMPLETE,$3.50,$3.70,105.8%
+Coke,NA Bev,COMPLETE,$3.50,$3.70,105.8%
+BTL Josh Cellars Rose,Wine,COMPLETE,--,$0.00,
+Great Lakes Christmas Ale,Draft Beer,DRAFT,--,$0.00,
+Fresh Lemon Juice,Mixer,COMPLETE,N/A,$9.24,
+Sour Mix,NA Bev,COMPLETE,N/A,$8.07,
+White Gummy Bear Shot,SHOTS,COMPLETE,$7.50,$0.19,2.58%
+Black Russian,COCKTAILS,COMPLETE,$13.00,$0.35,2.68%
+Belvedere,LIQUOR,COMPLETE,$11.00,$2.12,19.27%
+Arnold Palmer,NA Bev,COMPLETE,$3.50,$4.17,119.28%
+Baybreeze,COCKTAILS,COMPLETE,$7.75,$0.61,7.86%
+Watermelon Pucker Martini,LIQUOR,COMPLETE,$11.25,$0.00,
+Watermelon Pucker Double,LIQUOR,COMPLETE,$9.75,$0.00,
+Watermelon Pucker,LIQUOR,COMPLETE,$7.50,$0.00,
+Triple Sec Martini,LIQUOR,COMPLETE,$11.25,$0.70,6.21%
+Triple Sec Double,LIQUOR,COMPLETE,$9.75,$0.58,5.97%
+Sour Apple Martini,LIQUOR,COMPLETE,$11.25,$0.00,
+Sour Apple Double,LIQUOR,COMPLETE,$9.75,$0.00,
+Sour Apple,LIQUOR,COMPLETE,$7.50,$0.00,
+Razzmatazz Martini,--,COMPLETE,$11.25,$0.00,
+Peach Schnapps,LIQUOR,COMPLETE,$7.50,$0.00,
+Midori Martini,LIQUOR,COMPLETE,$11.25,$2.49,22.18%
+Midori Double,LIQUOR,COMPLETE,$9.75,$2.08,21.32%
+Midori,LIQUOR,COMPLETE,$7.50,$1.25,16.63%
+Malort Martini,LIQUOR,COMPLETE,$10.50,$0.00,
+Kahula Martini,LIQUOR,COMPLETE,$11.25,$0.00,
+Kahula Double,LIQUOR,COMPLETE,$9.75,$0.00,
+Kahula,LIQUOR,COMPLETE,$7.50,$0.00,
+Jagermeister Neat,LIQUOR,COMPLETE,$9.50,$1.84,19.38%
+Red Headed Slut,SHOTS,COMPLETE,$7.50,$0.80,10.68%
+Jager Bomb,SHOTS,COMPLETE,$9.00,$1.76,19.61%
+Jagermeister,LIQUOR,COMPLETE,$7.50,$1.38,18.41%
+Jagermeister,LIQUOR,COMPLETE,$7.50,$0.00,
+Grand Marnier Martini,LIQUOR,COMPLETE,$12.75,$0.27,2.12%
+Grand Marnier,LIQUOR,COMPLETE,$8.50,$0.14,1.59%
+Frangelico Martini,LIQUOR,COMPLETE,$11.25,$3.60,32.03%
+Frangelico Double,LIQUOR,COMPLETE,$9.75,$3.00,30.79%
+Frangelico,LIQUOR,COMPLETE,$7.50,$1.80,24.02%
+Chocolate Cake Shot,SHOTS,COMPLETE,$7.50,$0.86,11.42%
+Creme de Menthe Martini,LIQUOR,COMPLETE,$11.25,$0.00,
+Creme de Menthe Double,LIQUOR,COMPLETE,$9.75,$0.00,
+Creme de Menthe,LIQUOR,COMPLETE,$7.50,$0.00,
+Creme de Cacao Martini,LIQUOR,COMPLETE,$11.25,$0.00,
+Creme de Cacao Double,LIQUOR,COMPLETE,$9.75,$0.00,
+Creme de Cacao,LIQUOR,COMPLETE,$7.50,$0.00,
+Creme de Banana Martini,LIQUOR,COMPLETE,$11.25,$0.00,
+Creme de Banana Double,LIQUOR,COMPLETE,$9.75,$0.00,
+Creme de Banana,LIQUOR,COMPLETE,$7.50,$0.00,
+Cointreau Martini,LIQUOR,COMPLETE,$12.75,$4.44,34.79%
+Cointreau,LIQUOR,COMPLETE,$8.50,$2.22,26.09%
+Chambord Martini,LIQUOR,COMPLETE,$12.75,$3.25,25.51%
+Chambord,LIQUOR,COMPLETE,$8.50,$1.63,19.14%
+Butterscotch Schnapps Martini,LIQUOR,COMPLETE,$11.25,$1.20,10.68%
+Butterscotch Schnapps Double,LIQUOR,COMPLETE,$9.75,$1.00,10.27%
+Butterscotch Schnapps,LIQUOR,COMPLETE,$7.50,$0.60,8.01%
+Blue Curacao Martini,LIQUOR,COMPLETE,$11.25,$1.33,11.86%
+Blue Curacao Double,LIQUOR,COMPLETE,$9.75,$1.11,11.4%
+Blue Curacao,LIQUOR,COMPLETE,$7.50,$0.67,8.9%
+Aperol Martini,LIQUOR,COMPLETE,$12.00,$2.48,20.7%
+Aperol,LIQUOR,COMPLETE,$8.00,$1.24,15.53%
+Amaretto Martini,LIQUOR,COMPLETE,$11.25,$1.40,12.45%
+Amaretto Double,LIQUOR,COMPLETE,$9.75,$1.17,11.97%
+Amaretto,LIQUOR,COMPLETE,$7.50,$0.70,9.34%
+Bells Hopslam,Draft Beer,COMPLETE,$6.50,$0.00,
+Coco Loco,COCKTAILS,COMPLETE,--,$2.71,
+2 Towns Cider House Super Bad Apple,Draft Beer,COMPLETE,--,$1.30,
+2 Towns Super Bad Apple,Draft Beer,DRAFT,--,$1.30,
+Casamigos Repo,LIQUOR,COMPLETE,$13.00,$14.26,109.71%
+Casamigos Reposado Martini,LIQUOR,COMPLETE,$19.50,$28.52,146.28%
+Belvedere Martini,LIQUOR,COMPLETE,$16.50,$4.24,25.7%
+Belvedere,LIQUOR,COMPLETE,--,$2.12,
+Patron Silver,LIQUOR,COMPLETE,$11.00,$2.28,20.73%
+Patron Silver Martini,LIQUOR,COMPLETE,$16.50,$4.56,27.64%
+Well Gin,LIQUOR,COMPLETE,$7.75,$0.46,5.89%
+Well Rum,LIQUOR,COMPLETE,$7.75,$0.48,6.18%
+Water,NA Bev,COMPLETE,N/A,$0.00,
+Well Vodka,LIQUOR,COMPLETE,$7.75,$0.26,3.38%
+Solemn Oath Small Wave City Club,Draft Beer,COMPLETE,--,$1.81,
+Noon Whistle Leisel Weapon,Draft Beer,COMPLETE,$7.50,$1.50,20%
+Miller Lite Draft,Draft Beer,COMPLETE,$4.50,$1.00,22.22%
+Maplewood Goby,Draft Beer,DRAFT,$7.00,$0.00,
+Maine Lunch,Draft Beer,COMPLETE,--,$2.56,
+Hidden Hand Werewolves Don't Believe In You Either,Draft Beer,DRAFT,$7.50,$0.00,
+Hidden Hand Neverbright,Draft Beer,DRAFT,$6.50,$0.00,
+Goose Island Breezy Beer Hug,Draft Beer,DRAFT,$7.50,$0.00,
+Dogfish Head 60 Minute,Draft Beer,COMPLETE,--,$2.09,
+Art History Erebus,Draft Beer,DRAFT,$7.00,$0.00,
+Alter Rally Point,Draft Beer,COMPLETE,--,$2.14,
+Allagash White,Draft Beer,COMPLETE,$7.00,$1.67,23.85%
+Abita Amber,Draft Beer,COMPLETE,--,$1.34,
+Angry Orchard Cranberry Craze,Draft Beer,COMPLETE,$6.00,$0.62,10.35%
+Five Cities Bikini Bottom,Draft Beer,COMPLETE,--,$0.00,
+Begyle Christmas Ale,Draft Beer,COMPLETE,$5.00,$1.38,27.67%
+Triple Sec,LIQUOR,COMPLETE,$7.50,$0.35,4.65%
+Rumple Minze Martini,LIQUOR,COMPLETE,$12.75,$3.06,24.04%
+Rumple Minze,LIQUOR,COMPLETE,$8.50,$1.53,18.03%
+Sambuca Martini,LIQUOR,COMPLETE,$12.75,$0.00,
+Sambuca,LIQUOR,COMPLETE,$8.50,$0.00,
+MON MILLER LITE DRAFT,LIQUOR,COMPLETE,$3.00,$0.75,25%
+Malort,LIQUOR,COMPLETE,$7.00,$0.00,
+Razzmatazz Double,--,COMPLETE,$9.75,$0.00,
+Razzmatazz,--,COMPLETE,$7.50,$0.00,
+Redbull Blueberry,NA Bev,COMPLETE,--,$1.61,
+Redbull Blue,NA Bev,COMPLETE,$4.00,$1.61,40.36%
+Chateau Riesling,Wine,COMPLETE,--,$0.00,
+Bailey's Martini,LIQUOR,COMPLETE,$12.75,$3.49,27.35%
+Bailey's,LIQUOR,COMPLETE,$8.50,$1.74,20.52%
+Talisker 10 Year Martini,LIQUOR,COMPLETE,$19.50,$0.00,
+Talisker 10 Year,LIQUOR,COMPLETE,$13.00,$0.00,
+Monkey Shoulder Martini,LIQUOR,COMPLETE,$19.50,$4.22,21.63%
+Monkey Shoulder,LIQUOR,COMPLETE,$13.00,$2.11,16.22%
+J&B Martini,LIQUOR,COMPLETE,$12.75,$0.00,
+Hennessy Martini,LIQUOR,COMPLETE,$15.00,$0.00,
+Hennessy Double,LIQUOR,COMPLETE,$13.00,$0.00,
+Glenlivet 12 Year Martini,LIQUOR,COMPLETE,$15.00,$5.42,36.11%
+Glenlivet 12 Year Double,LIQUOR,COMPLETE,$13.00,$4.51,34.72%
+Glenfiddich 18 Year Martini,LIQUOR,COMPLETE,--,$0.00,
+Glenfiddich 15 Year Martini,LIQUOR,COMPLETE,$18.00,$0.00,
+Balvenie Double Wood 12 Year Neat,LIQUOR,COMPLETE,--,$0.00,
+Balvenie Double Wood 12 Year Martini,LIQUOR,COMPLETE,--,$0.00,
+Balvenie Double Wood 12 Year Double,LIQUOR,COMPLETE,--,$0.00,
+Balvenie Double Wood 12 Year,LIQUOR,COMPLETE,--,$0.00,
+Tullamore Dew Martini,LIQUOR,COMPLETE,$12.75,$1.86,14.61%
+Templeton Rye Martini,LIQUOR,COMPLETE,$16.50,$0.00,
+Templeton Rye,LIQUOR,COMPLETE,$11.00,$0.00,
+Skrewball Peanut Butter Martini,LIQUOR,COMPLETE,$13.50,$6.21,46%
+Skrewball Peanut Butter,LIQUOR,COMPLETE,$9.00,$3.10,34.5%
+Skrewball Peanut Butter,LIQUOR,COMPLETE,$9.00,$3.10,34.5%
+Jim Beam,LIQUOR,COMPLETE,$8.25,$1.02,12.32%
+Jack Honey Martini,LIQUOR,COMPLETE,$12.75,$3.35,26.3%
+Jack Fire Martini,LIQUOR,COMPLETE,$12.75,$3.16,24.76%
+Jack Fire,LIQUOR,COMPLETE,--,$1.58,
+Crown Royal Apple Martini,LIQUOR,COMPLETE,$13.50,$3.30,24.42%
+Crown Royal Apple,LIQUOR,COMPLETE,$9.00,$1.65,18.32%
+Milagro Silver,LIQUOR,COMPLETE,$8.75,$0.00,
+Milagro Reposado Martini,LIQUOR,COMPLETE,$13.50,$0.00,
+Milagro Reposado,LIQUOR,COMPLETE,$9.00,$0.00,
+Milagro Anejo Martini,LIQUOR,COMPLETE,$16.50,$0.00,
+Milagro Anejo,LIQUOR,COMPLETE,$11.00,$0.00,
+Teddy Graham Shot,SHOTS,COMPLETE,$7.50,$0.84,11.18%
+Sambuca,SHOTS,COMPLETE,$8.50,$0.00,
+Rumple Minze,SHOTS,COMPLETE,$8.50,$1.53,18.03%
+Malort Shot,SHOTS,COMPLETE,$7.00,$0.00,
+Buttery Nipple,SHOTS,COMPLETE,$7.50,$1.17,15.63%
+Grape Bomb,SHOTS,COMPLETE,$9.00,$0.83,9.21%
+Tootsie Pop Shot,SHOTS,COMPLETE,$7.50,$0.48,6.4%
+Breakfast Shot,SHOTS,COMPLETE,$7.50,$0.76,10.12%
+Lunchbox,SHOTS,COMPLETE,$9.00,$0.39,4.34%
+Cherry Bomb,SHOTS,COMPLETE,$9.00,$0.38,4.27%

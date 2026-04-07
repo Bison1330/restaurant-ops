@@ -594,12 +594,40 @@ def employees():
 def recipes():
     r = _get_selected_restaurant()
     if not r:
-        return render_template("recipes.html", food_recipes=[], beverage_recipes=[], inventory_items=[])
+        return render_template("recipes.html", all_recipes=[], subcategory_groups=[], food_recipes=[], beverage_recipes=[], inventory_items=[])
     all_recipes = Recipe.query.filter_by(restaurant_id=r.id, status='active').all()
     food_recipes = [rec for rec in all_recipes if rec.category == "food"]
     beverage_recipes = [rec for rec in all_recipes if rec.category == "beverage"]
+
+    # Group recipes by subcategory (sorted alphabetically, with Uncategorized last)
+    groups = {}
+    for rec in all_recipes:
+        key = rec.subcategory or "Uncategorized"
+        groups.setdefault(key, []).append(rec)
+    def _sort_key(name):
+        return (1 if name == "Uncategorized" else 0, name.lower())
+    subcategory_groups = [
+        {"name": name, "slug": "sub-" + "".join(c if c.isalnum() else "-" for c in name).lower(), "recipes": recs, "count": len(recs)}
+        for name, recs in sorted(groups.items(), key=lambda kv: _sort_key(kv[0]))
+    ]
+
     inventory_items = InventoryItem.query.filter_by(restaurant_id=r.id).all()
-    return render_template("recipes.html", food_recipes=food_recipes, beverage_recipes=beverage_recipes, inventory_items=inventory_items)
+    return render_template(
+        "recipes.html",
+        all_recipes=all_recipes,
+        subcategory_groups=subcategory_groups,
+        food_recipes=food_recipes,
+        beverage_recipes=beverage_recipes,
+        inventory_items=inventory_items,
+    )
+
+
+@app.route('/recipes/<int:recipe_id>')
+def recipe_detail(recipe_id):
+    restaurants = Restaurant.query.filter_by(active=True).all()
+    recipe = Recipe.query.get_or_404(recipe_id)
+    ingredients = RecipeIngredient.query.filter_by(recipe_id=recipe_id).all()
+    return render_template('recipe_detail.html', recipe=recipe, ingredients=ingredients, restaurants=restaurants)
 
 
 @app.route("/recipes/create", methods=["POST"])
