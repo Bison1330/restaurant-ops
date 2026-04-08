@@ -44,8 +44,8 @@
             <div class="stat-icon green"><i class="bi bi-cash-stack"></i></div>
             <div class="stat-value" id="card-sales">—</div>
             <div class="stat-date text-muted" id="card-sales-date" style="font-size:0.72rem;">&nbsp;</div>
-            <div class="stat-label">Net Sales</div>
-            <div class="stat-desc text-muted" style="font-size:0.7rem;">Total revenue for period</div>
+            <div class="stat-label">Total Sales</div>
+            <div class="stat-desc text-muted" style="font-size:0.7rem;">Incl. tax &amp; tips</div>
         </div>
     </div>
     <div class="col-md-2 metric-col" id="card-delta-col" style="display:none;">
@@ -250,7 +250,7 @@
     function laborColorClass(pct) {
         if (pct == null) return 'orange';
         if (pct < 25) return 'green';
-        if (pct <= 30) return 'orange';
+        if (pct <= 35) return 'orange';
         return 'red';
     }
     function foodColorClass(pct) {
