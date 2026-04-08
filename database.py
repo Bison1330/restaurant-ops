@@ -571,3 +571,114 @@ class PTORequest(db.Model):
         if self.start_date == self.end_date:
             return self.start_date.strftime('%b %-d, %Y')
         return f"{self.start_date.strftime('%b %-d')} – {self.end_date.strftime('%b %-d, %Y')}"
+
+
+class ScheduleWeek(db.Model):
+    """Tracks draft/published state for a schedule week."""
+    __tablename__ = 'schedule_weeks'
+    id = db.Column(db.Integer, primary_key=True)
+    restaurant_id = db.Column(db.Integer, db.ForeignKey('restaurants.id'), index=True)
+    week_start = db.Column(db.Date, nullable=False, index=True)  # always Monday
+    status = db.Column(db.String(20), default='draft')  # draft | published
+    published_at = db.Column(db.DateTime, nullable=True)
+    published_by_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    restaurant = db.relationship('Restaurant', backref='schedule_weeks')
+    published_by = db.relationship('User', backref='published_schedules')
+
+    __table_args__ = (
+        db.UniqueConstraint('restaurant_id', 'week_start', name='uq_schedule_week'),
+    )
+
+
+class ShiftTemplate(db.Model):
+    """A named collection of shifts that can be loaded onto any week."""
+    __tablename__ = 'shift_templates'
+    id = db.Column(db.Integer, primary_key=True)
+    restaurant_id = db.Column(db.Integer, db.ForeignKey('restaurants.id'), index=True)
+    name = db.Column(db.String(100), nullable=False)
+    description = db.Column(db.String(200))
+    created_by_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    restaurant = db.relationship('Restaurant', backref='shift_templates')
+    created_by = db.relationship('User', backref='shift_templates')
+
+
+class ShiftTemplateEntry(db.Model):
+    """One shift within a template. day_of_week: 0=Mon, 6=Sun."""
+    __tablename__ = 'shift_template_entries'
+    id = db.Column(db.Integer, primary_key=True)
+    template_id = db.Column(db.Integer, db.ForeignKey('shift_templates.id'), index=True)
+    day_of_week = db.Column(db.Integer, nullable=False)  # 0=Mon, 6=Sun
+    start_time = db.Column(db.String(5), nullable=False)
+    end_time = db.Column(db.String(5), nullable=False)
+    role = db.Column(db.String(50))
+    notes = db.Column(db.String(200))
+    # Optional: pin to a specific employee, or leave null for unassigned
+    employee_id = db.Column(db.Integer, db.ForeignKey('employees.id'), nullable=True)
+    template = db.relationship('ShiftTemplate', backref='entries')
+    employee = db.relationship('Employee', backref='template_entries')
+
+
+class OpenShift(db.Model):
+    """An unassigned shift any eligible employee can claim."""
+    __tablename__ = 'open_shifts'
+    id = db.Column(db.Integer, primary_key=True)
+    restaurant_id = db.Column(db.Integer, db.ForeignKey('restaurants.id'), index=True)
+    shift_date = db.Column(db.Date, nullable=False, index=True)
+    start_time = db.Column(db.String(5), nullable=False)
+    end_time = db.Column(db.String(5), nullable=False)
+    role = db.Column(db.String(50))
+    notes = db.Column(db.String(200))
+    status = db.Column(db.String(20), default='open')  # open | claimed | cancelled
+    claimed_by_id = db.Column(db.Integer, db.ForeignKey('employees.id'), nullable=True)
+    claimed_at = db.Column(db.DateTime, nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    restaurant = db.relationship('Restaurant', backref='open_shifts')
+    claimed_by = db.relationship('Employee', backref='claimed_shifts')
+
+    @property
+    def hours(self):
+        try:
+            sh, sm = map(int, self.start_time.split(':'))
+            eh, em = map(int, self.end_time.split(':'))
+            start_mins = sh * 60 + sm
+            end_mins = eh * 60 + em
+            if end_mins <= start_mins:
+                end_mins += 1440
+            return (end_mins - start_mins) / 60
+        except Exception:
+            return 0
+
+
+class ProjectedSales(db.Model):
+    """Manager-entered projected sales for a specific date."""
+    __tablename__ = 'projected_sales'
+    id = db.Column(db.Integer, primary_key=True)
+    restaurant_id = db.Column(db.Integer, db.ForeignKey('restaurants.id'), index=True)
+    sale_date = db.Column(db.Date, nullable=False, index=True)
+    projected_amount = db.Column(db.Float, default=0.0)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow)
+    restaurant = db.relationship('Restaurant', backref='projected_sales')
+
+    __table_args__ = (
+        db.UniqueConstraint('restaurant_id', 'sale_date', name='uq_projected_sales'),
+    )
+
+
+class EmployeeAvailability(db.Model):
+    """Recurring weekly unavailability set by employee."""
+    __tablename__ = 'employee_availability'
+    id = db.Column(db.Integer, primary_key=True)
+    employee_id = db.Column(db.Integer, db.ForeignKey('employees.id'), index=True)
+    restaurant_id = db.Column(db.Integer, db.ForeignKey('restaurants.id'), index=True)
+    day_of_week = db.Column(db.Integer, nullable=False)  # 0=Mon, 6=Sun
+    all_day = db.Column(db.Boolean, default=True)
+    start_time = db.Column(db.String(5), nullable=True)
+    end_time = db.Column(db.String(5), nullable=True)
+    reason = db.Column(db.String(200))
+    status = db.Column(db.String(20), default='approved')  # pending | approved | denied
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    employee = db.relationship('Employee', backref='availability')
+    restaurant = db.relationship('Restaurant', backref='employee_availability')

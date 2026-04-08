@@ -19,7 +19,8 @@ from database import (
     ItemAlias, PriceHistory, UnmatchedItem,
     StorageZone, InventoryItemZone, CountSession, CountEntry,
     Alert, MenuItemSale, Shift, User, Position, RestaurantSettings, ManagerPreference,
-    PTOPolicy, PTOBalance, PTORequest,
+    PTOPolicy, PTOBalance, PTORequest, ScheduleWeek, ShiftTemplate, ShiftTemplateEntry,
+    OpenShift, ProjectedSales, EmployeeAvailability,
 )
 from mock_data import seed_mock_data
 from connectors.gfs_sftp import fetch_gfs_invoices
@@ -3313,6 +3314,387 @@ def api_pto_balance(employee_id):
         "available": round(b.total_available, 2),
         "remaining_cap": round(b.hours_remaining_this_year, 2),
     })
+
+# ─────────────────────────────────────────────────────────────
+# SCHEDULE — DRAFT/PUBLISH, TEMPLATES, OPEN SHIFTS
+# ─────────────────────────────────────────────────────────────
+
+def _get_or_create_schedule_week(restaurant_id, monday):
+    sw = ScheduleWeek.query.filter_by(
+        restaurant_id=restaurant_id,
+        week_start=monday
+    ).first()
+    if not sw:
+        sw = ScheduleWeek(
+            restaurant_id=restaurant_id,
+            week_start=monday,
+            status='draft',
+        )
+        db.session.add(sw)
+        db.session.commit()
+    return sw
+
+
+@app.route("/schedule/publish", methods=["POST"])
+def schedule_publish():
+    from datetime import date
+    restaurant = _get_selected_restaurant()
+    week_str = request.form.get("week")
+    monday, sunday = _week_bounds(week_str)
+    sw = _get_or_create_schedule_week(restaurant.id, monday)
+    sw.status = 'published'
+    sw.published_at = datetime.now(CENTRAL_TZ)
+    if current_user.is_authenticated:
+        sw.published_by_id = current_user.id
+    db.session.commit()
+    # Notification to employees skipped during testing
+    flash(f"Schedule published for week of {monday.strftime('%b %-d')}.", "success")
+    return redirect(url_for("schedule", week=week_str))
+
+
+@app.route("/schedule/unpublish", methods=["POST"])
+def schedule_unpublish():
+    restaurant = _get_selected_restaurant()
+    week_str = request.form.get("week")
+    monday, sunday = _week_bounds(week_str)
+    sw = _get_or_create_schedule_week(restaurant.id, monday)
+    sw.status = 'draft'
+    sw.published_at = None
+    db.session.commit()
+    flash("Schedule moved back to draft.", "info")
+    return redirect(url_for("schedule", week=week_str))
+
+
+@app.route("/api/schedule/autosave", methods=["POST"])
+def schedule_autosave():
+    """Called automatically when any shift is added/edited to mark week as draft."""
+    restaurant = _get_selected_restaurant()
+    data = request.get_json()
+    week_str = data.get("week")
+    if not week_str:
+        return jsonify({"ok": False})
+    monday, sunday = _week_bounds(week_str)
+    sw = _get_or_create_schedule_week(restaurant.id, monday)
+    # If published, move back to draft on any change
+    if sw.status == 'published':
+        sw.status = 'draft'
+    sw.updated_at = datetime.utcnow()
+    db.session.commit()
+    return jsonify({"ok": True, "status": sw.status})
+
+
+# ── SHIFT COPY/PASTE ──
+@app.route("/api/schedule/shift/copy", methods=["POST"])
+def schedule_copy_shift():
+    """Return shift data for client-side clipboard."""
+    shift_id = request.get_json().get("shift_id")
+    shift = Shift.query.get_or_404(shift_id)
+    return jsonify({
+        "start_time": shift.start_time,
+        "end_time": shift.end_time,
+        "role": shift.role or "",
+        "notes": shift.notes or "",
+        "hours": round(shift.hours, 1),
+    })
+
+
+@app.route("/api/schedule/shift/paste", methods=["POST"])
+def schedule_paste_shift():
+    """Create a new shift from clipboard data."""
+    restaurant = _get_selected_restaurant()
+    data = request.get_json()
+    try:
+        shift_date = datetime.strptime(data["shift_date"], "%Y-%m-%d").date()
+        shift = Shift(
+            restaurant_id=restaurant.id,
+            employee_id=int(data["employee_id"]),
+            shift_date=shift_date,
+            start_time=data["start_time"],
+            end_time=data["end_time"],
+            role=data.get("role", ""),
+            status="scheduled",
+            notes=data.get("notes", ""),
+        )
+        db.session.add(shift)
+        db.session.commit()
+        # Autosave
+        monday, _ = _week_bounds(data.get("week"))
+        sw = _get_or_create_schedule_week(restaurant.id, monday)
+        if sw.status == 'published':
+            sw.status = 'draft'
+        db.session.commit()
+        return jsonify({"ok": True, "shift_id": shift.id})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"ok": False, "error": str(e)})
+
+
+@app.route("/api/schedule/shift/move", methods=["POST"])
+def schedule_move_shift():
+    """Drag shift to new employee and/or date."""
+    data = request.get_json()
+    shift = Shift.query.get_or_404(data["shift_id"])
+    try:
+        if data.get("employee_id"):
+            shift.employee_id = int(data["employee_id"])
+        if data.get("shift_date"):
+            shift.shift_date = datetime.strptime(data["shift_date"], "%Y-%m-%d").date()
+        db.session.commit()
+        restaurant = _get_selected_restaurant()
+        monday, _ = _week_bounds(data.get("week"))
+        sw = _get_or_create_schedule_week(restaurant.id, monday)
+        if sw.status == 'published':
+            sw.status = 'draft'
+        db.session.commit()
+        return jsonify({"ok": True})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"ok": False, "error": str(e)})
+
+
+# ── TEMPLATES ──
+@app.route("/schedule/templates")
+def schedule_templates():
+    restaurant = _get_selected_restaurant()
+    templates = ShiftTemplate.query.filter_by(restaurant_id=restaurant.id).all()
+    restaurants = Restaurant.query.all()
+    return render_template("schedule_templates.html",
+        restaurant=restaurant,
+        restaurants=restaurants,
+        selected_restaurant=restaurant,
+        templates=templates,
+    )
+
+
+@app.route("/schedule/templates/save", methods=["POST"])
+def schedule_save_template():
+    """Save current week's shifts as a named template."""
+    restaurant = _get_selected_restaurant()
+    week_str = request.form.get("week")
+    name = request.form.get("name", "").strip()
+    description = request.form.get("description", "").strip()
+    if not name:
+        flash("Template name is required.", "danger")
+        return redirect(url_for("schedule", week=week_str))
+
+    monday, sunday = _week_bounds(week_str)
+    shifts = Shift.query.filter_by(restaurant_id=restaurant.id).filter(
+        Shift.shift_date >= monday,
+        Shift.shift_date <= sunday,
+        Shift.status.notin_(['pto', 'called_out', 'no_show']),
+    ).all()
+
+    if not shifts:
+        flash("No shifts this week to save as template.", "warning")
+        return redirect(url_for("schedule", week=week_str))
+
+    template = ShiftTemplate(
+        restaurant_id=restaurant.id,
+        name=name,
+        description=description,
+        created_by_id=current_user.id if current_user.is_authenticated else None,
+    )
+    db.session.add(template)
+    db.session.flush()
+
+    for s in shifts:
+        entry = ShiftTemplateEntry(
+            template_id=template.id,
+            day_of_week=s.shift_date.weekday(),
+            start_time=s.start_time,
+            end_time=s.end_time,
+            role=s.role,
+            notes=s.notes,
+            employee_id=s.employee_id,
+        )
+        db.session.add(entry)
+
+    db.session.commit()
+    flash(f"Template '{name}' saved with {len(shifts)} shifts.", "success")
+    return redirect(url_for("schedule", week=week_str))
+
+
+@app.route("/schedule/templates/<int:template_id>/load", methods=["POST"])
+def schedule_load_template(template_id):
+    """Load a template onto the current week."""
+    from datetime import timedelta
+    restaurant = _get_selected_restaurant()
+    week_str = request.form.get("week")
+    monday, sunday = _week_bounds(week_str)
+    template = ShiftTemplate.query.get_or_404(template_id)
+    overwrite = request.form.get("overwrite") == "1"
+
+    if overwrite:
+        Shift.query.filter_by(restaurant_id=restaurant.id).filter(
+            Shift.shift_date >= monday,
+            Shift.shift_date <= sunday,
+        ).delete()
+        db.session.flush()
+
+    loaded = 0
+    for entry in template.entries:
+        shift_date = monday + timedelta(days=entry.day_of_week)
+        if not overwrite:
+            exists = Shift.query.filter_by(
+                restaurant_id=restaurant.id,
+                employee_id=entry.employee_id,
+                shift_date=shift_date,
+                start_time=entry.start_time,
+                end_time=entry.end_time,
+            ).first()
+            if exists:
+                continue
+        db.session.add(Shift(
+            restaurant_id=restaurant.id,
+            employee_id=entry.employee_id,
+            shift_date=shift_date,
+            start_time=entry.start_time,
+            end_time=entry.end_time,
+            role=entry.role,
+            status='scheduled',
+            notes=entry.notes,
+        ))
+        loaded += 1
+
+    sw = _get_or_create_schedule_week(restaurant.id, monday)
+    sw.status = 'draft'
+    db.session.commit()
+    flash(f"Loaded {loaded} shifts from template '{template.name}'.", "success")
+    return redirect(url_for("schedule", week=week_str))
+
+
+@app.route("/schedule/templates/<int:template_id>/delete", methods=["POST"])
+def schedule_delete_template(template_id):
+    template = ShiftTemplate.query.get_or_404(template_id)
+    week_str = request.form.get("week")
+    ShiftTemplateEntry.query.filter_by(template_id=template_id).delete()
+    db.session.delete(template)
+    db.session.commit()
+    flash("Template deleted.", "success")
+    return redirect(url_for("schedule", week=week_str))
+
+
+# ── OPEN SHIFTS ──
+@app.route("/schedule/open-shift/add", methods=["POST"])
+def schedule_add_open_shift():
+    restaurant = _get_selected_restaurant()
+    data = request.form
+    try:
+        shift_date = datetime.strptime(data["shift_date"], "%Y-%m-%d").date()
+        db.session.add(OpenShift(
+            restaurant_id=restaurant.id,
+            shift_date=shift_date,
+            start_time=data["start_time"],
+            end_time=data["end_time"],
+            role=data.get("role", ""),
+            notes=data.get("notes", ""),
+            status='open',
+        ))
+        db.session.commit()
+        flash("Open shift posted.", "success")
+    except Exception as e:
+        db.session.rollback()
+        flash(f"Error: {e}", "danger")
+    return redirect(url_for("schedule", week=data.get("week")))
+
+
+@app.route("/schedule/open-shift/<int:shift_id>/claim", methods=["POST"])
+def schedule_claim_open_shift(shift_id):
+    shift = OpenShift.query.get_or_404(shift_id)
+    emp_id = request.form.get("employee_id")
+    week_str = request.form.get("week")
+    if emp_id:
+        shift.claimed_by_id = int(emp_id)
+        shift.claimed_at = datetime.utcnow()
+        shift.status = 'claimed'
+        restaurant = _get_selected_restaurant()
+        db.session.add(Shift(
+            restaurant_id=restaurant.id,
+            employee_id=int(emp_id),
+            shift_date=shift.shift_date,
+            start_time=shift.start_time,
+            end_time=shift.end_time,
+            role=shift.role,
+            status='scheduled',
+            notes=shift.notes,
+        ))
+        db.session.commit()
+        flash("Open shift claimed and added to schedule.", "success")
+    return redirect(url_for("schedule", week=week_str))
+
+
+@app.route("/schedule/open-shift/<int:shift_id>/delete", methods=["POST"])
+def schedule_delete_open_shift(shift_id):
+    shift = OpenShift.query.get_or_404(shift_id)
+    week_str = request.form.get("week")
+    db.session.delete(shift)
+    db.session.commit()
+    flash("Open shift removed.", "success")
+    return redirect(url_for("schedule", week=week_str))
+
+
+# ── PROJECTED SALES ──
+@app.route("/api/schedule/projected-sales", methods=["POST"])
+def schedule_save_projected_sales():
+    """Save projected sales for a single day. Called via AJAX."""
+    restaurant = _get_selected_restaurant()
+    data = request.get_json()
+    try:
+        sale_date = datetime.strptime(data["date"], "%Y-%m-%d").date()
+        ps = ProjectedSales.query.filter_by(
+            restaurant_id=restaurant.id,
+            sale_date=sale_date,
+        ).first()
+        if ps:
+            ps.projected_amount = float(data["amount"])
+            ps.updated_at = datetime.utcnow()
+        else:
+            ps = ProjectedSales(
+                restaurant_id=restaurant.id,
+                sale_date=sale_date,
+                projected_amount=float(data["amount"]),
+            )
+            db.session.add(ps)
+        db.session.commit()
+        return jsonify({"ok": True})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"ok": False, "error": str(e)})
+
+
+# ── EMPLOYEE AVAILABILITY ──
+@app.route("/schedule/availability/add", methods=["POST"])
+def schedule_add_availability():
+    restaurant = _get_selected_restaurant()
+    data = request.form
+    try:
+        avail = EmployeeAvailability(
+            employee_id=int(data["employee_id"]),
+            restaurant_id=restaurant.id,
+            day_of_week=int(data["day_of_week"]),
+            all_day=data.get("all_day") == "1",
+            start_time=data.get("start_time") or None,
+            end_time=data.get("end_time") or None,
+            reason=data.get("reason", ""),
+            status='approved',
+        )
+        db.session.add(avail)
+        db.session.commit()
+        flash("Availability block added.", "success")
+    except Exception as e:
+        db.session.rollback()
+        flash(f"Error: {e}", "danger")
+    return redirect(url_for("schedule", tab="unavailability", week=data.get("week")))
+
+
+@app.route("/schedule/availability/<int:avail_id>/delete", methods=["POST"])
+def schedule_delete_availability(avail_id):
+    avail = EmployeeAvailability.query.get_or_404(avail_id)
+    week_str = request.form.get("week")
+    db.session.delete(avail)
+    db.session.commit()
+    flash("Availability block removed.", "success")
+    return redirect(url_for("schedule", tab="unavailability", week=week_str))
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8082, debug=False)
