@@ -28,6 +28,9 @@
         <a href="{{ url_for('settings', tab='positions') }}" class="settings-tab {% if tab=='positions' %}active{% endif %}">
             <i class="bi bi-tags"></i> Positions
         </a>
+        <a href="{{ url_for('settings', tab='presets') }}" class="settings-tab {% if tab=='presets' %}active{% endif %}">
+            <i class="bi bi-grid-3x3-gap"></i> Shift Presets
+        </a>
     </div>
 
     <div class="settings-body">
@@ -399,6 +402,95 @@
         new bootstrap.Modal(document.getElementById('editPositionModal')).show();
     }
     </script>
+
+    {# ── SHIFT PRESETS ── #}
+    {% elif tab == 'presets' %}
+    <div class="settings-section">
+        <div class="d-flex align-items-center justify-content-between mb-3">
+            <div class="settings-section-title mb-0">Shift Presets — {{ restaurant.name }}</div>
+            <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#addPresetModal">
+                <i class="bi bi-plus-lg me-1"></i>Add Preset
+            </button>
+        </div>
+        <p style="font-size:0.82rem;color:var(--text-muted);">
+            Presets are color-coded time blocks that appear in the Add Shift modal.
+            Click a preset to instantly fill start time, end time, and position.
+        </p>
+        {% if presets %}
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;margin-bottom:16px;">
+            {% for preset in presets %}
+            <div style="background:{{ preset.color_hex }};border-radius:8px;padding:10px 12px;color:#fff;position:relative;">
+                <div style="font-size:0.85rem;font-weight:600;">{{ preset.name }}</div>
+                <div style="font-size:0.75rem;opacity:0.85;margin-top:3px;">
+                    {{ preset.start_time }}–{{ preset.end_time }} · {{ "%.0f"|format(preset.hours) }}h
+                </div>
+                {% if preset.position_name %}
+                <div style="font-size:0.72rem;opacity:0.75;margin-top:2px;">{{ preset.position_name }}</div>
+                {% endif %}
+                <form method="POST" action="{{ url_for('settings_delete_preset', preset_id=preset.id) }}"
+                      style="position:absolute;top:6px;right:6px;"
+                      onsubmit="return confirm('Remove {{ preset.name }}?')">
+                    <button type="submit" style="background:rgba(0,0,0,0.25);border:none;color:#fff;border-radius:50%;width:20px;height:20px;font-size:0.7rem;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;">
+                        <i class="bi bi-x"></i>
+                    </button>
+                </form>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="text-center text-muted py-4">
+            No presets yet. Click Add Preset to create your first one.
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Add Preset Modal -->
+    <div class="modal fade" id="addPresetModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Add Shift Preset</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <form method="POST" action="{{ url_for('settings_add_preset') }}">
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Preset name</label>
+                            <input type="text" name="name" class="form-control" required
+                                placeholder="e.g. Bartender PM, Cook AM">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Position</label>
+                            <select name="position_name" class="form-select">
+                                <option value="">— any —</option>
+                                {% for pos in positions %}
+                                <option value="{{ pos.name }}">{{ pos.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="row g-2 mb-3">
+                            <div class="col">
+                                <label class="form-label fw-semibold">Start</label>
+                                <input type="time" name="start_time" class="form-control" value="09:00" required>
+                            </div>
+                            <div class="col">
+                                <label class="form-label fw-semibold">End</label>
+                                <input type="time" name="end_time" class="form-control" value="17:00" required>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Color</label>
+                            <input type="color" name="color_hex" class="form-control form-control-color" value="#3b82f6">
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary">Add Preset</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
     {% endif %}
 
     </div>
