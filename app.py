@@ -368,6 +368,16 @@ def _build_sales_summary(r, range_name, custom_start=None, custom_end=None, comp
             if 0 < rate < 100:
                 emp_wage[e.toast_employee_id] = rate
         labor_cost = sum((t.get("hours") or 0) * emp_wage.get(t.get("employee_guid"), 0) for t in ts)
+        # Hourly-only wage table (excludes salaried) for the second labor card
+        emp_wage_hourly = {
+            e.toast_employee_id: (e.manual_pay_rate if e.manual_pay_rate is not None else e.pay_rate)
+            for e in Employee.query.filter_by(restaurant_id=r.id, pay_type='hourly').all()
+            if 0 < (e.manual_pay_rate if e.manual_pay_rate is not None else (e.pay_rate or 0)) < 100
+        }
+        hourly_labor_cost = sum(
+            (t.get("hours") or 0) * emp_wage_hourly.get(t.get("employee_guid"), 0)
+            for t in ts
+        )
         # Denominator: prefer net_sales (post-discount, pre-tax, pre-tip).
         # Falls back to sales_total if for some reason net_sales is 0 — mostly
         # a defense against old cached payloads or non-Toast data sources.
@@ -376,9 +386,12 @@ def _build_sales_summary(r, range_name, custom_start=None, custom_end=None, comp
             raw_pct = (labor_cost / denom) * 100
             payload["labor_pct"] = round(raw_pct, 1)
             payload["labor_pct_suspicious"] = raw_pct > 80
+            payload["hourly_labor_pct"] = round((hourly_labor_cost / denom) * 100, 1)
         else:
             payload["labor_pct"] = None  # No sales yet — show — instead of 100%
             payload["labor_pct_suspicious"] = False
+            payload["hourly_labor_pct"] = None
+        payload["hourly_labor_cost"] = round(hourly_labor_cost, 2)
     except Exception as e:
         print(f"[sales] timesheets failed for {r.name}: {e}")
 
@@ -479,14 +492,26 @@ def _toast_sales_summary(r):
             if 0 < rate < 100:
                 emp_wage[e.toast_employee_id] = rate
         labor_cost = sum((t.get("hours") or 0) * emp_wage.get(t.get("employee_guid"), 0) for t in ts)
+        emp_wage_hourly = {
+            e.toast_employee_id: (e.manual_pay_rate if e.manual_pay_rate is not None else e.pay_rate)
+            for e in Employee.query.filter_by(restaurant_id=r.id, pay_type='hourly').all()
+            if 0 < (e.manual_pay_rate if e.manual_pay_rate is not None else (e.pay_rate or 0)) < 100
+        }
+        hourly_labor_cost = sum(
+            (t.get("hours") or 0) * emp_wage_hourly.get(t.get("employee_guid"), 0)
+            for t in ts
+        )
         denom = week_net if week_net > 0 else week_total
         if denom > 0:
             raw_pct = (labor_cost / denom) * 100
             summary["labor_pct"] = round(raw_pct, 1)
             summary["labor_pct_suspicious"] = raw_pct > 80
+            summary["hourly_labor_pct"] = round((hourly_labor_cost / denom) * 100, 1)
         else:
             summary["labor_pct"] = None
             summary["labor_pct_suspicious"] = False
+            summary["hourly_labor_pct"] = None
+        summary["hourly_labor_cost"] = round(hourly_labor_cost, 2)
     except Exception as e:
         print(f"[dashboard] toast sales fetch failed for {r.name}: {e}")
 

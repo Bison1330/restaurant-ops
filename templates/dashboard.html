@@ -62,7 +62,15 @@
         <div id="card-labor" style="font-size:1.5rem; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">—</div>
         <div id="card-labor-date" class="text-muted" style="font-size:0.7rem;">&nbsp;</div>
         <div style="font-weight:700;">Labor %</div>
-        <div class="text-muted" style="font-size:0.7rem;">Labor cost as % of sales</div>
+        <div class="text-muted" style="font-size:0.7rem;">Fully loaded (hourly + salaried)</div>
+    </div>
+
+    <div style="flex:1; min-width:0; padding:14px; background:#111; border:1px solid #2a2a2a; border-radius:10px;">
+        <div class="stat-icon orange" id="card-hourly-labor-icon"><i class="bi bi-clock-history"></i></div>
+        <div id="card-hourly-labor" style="font-size:1.5rem; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">—</div>
+        <div id="card-hourly-labor-date" class="text-muted" style="font-size:0.7rem;">&nbsp;</div>
+        <div style="font-weight:700;">Labor %</div>
+        <div class="text-muted" style="font-size:0.7rem;">Hourly only (matches Toast)</div>
     </div>
 
     <div style="flex:1; min-width:0; padding:14px; background:#111; border:1px solid #2a2a2a; border-radius:10px;">
@@ -335,6 +343,16 @@
                     laborEl.textContent = '—';
                 }
 
+                // Hourly-only labor card (matches Toast)
+                const hourlyEl = document.getElementById('card-hourly-labor');
+                const hourlyIcon = document.getElementById('card-hourly-labor-icon');
+                if (d.hourly_labor_pct != null) {
+                    hourlyEl.textContent = d.hourly_labor_pct + '%';
+                    hourlyIcon.className = 'stat-icon ' + laborColorClass(d.hourly_labor_pct);
+                } else {
+                    hourlyEl.textContent = '—';
+                }
+
                 // Food cost card — value is server-rendered but we still update
                 // it on refresh in case recipe costs changed mid-session, and
                 // we always recolor the icon via foodColorClass.
@@ -407,5 +425,7 @@
     })();
 
     document.addEventListener('DOMContentLoaded', loadSales);
+    // Auto-refresh sales/labor every 2 minutes (preserves scroll/state vs full reload)
+    setInterval(loadSales, 120000);
 </script>
 {% endblock %}
