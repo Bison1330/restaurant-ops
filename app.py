@@ -975,6 +975,12 @@ MUTATING_TOOLS = {"approve_invoice", "adjust_inventory", "create_draft_recipe"}
 
 def _assistant_gather_context(restaurant):
     """Pull live numbers used in the system prompt."""
+    cache_key = f"assistant_ctx_{restaurant.id if restaurant else 'none'}"
+    import time as _time
+    _now = _time.time()
+    if cache_key in _cache and (_now - _cache_times.get(cache_key, 0)) < 120:
+        return _cache[cache_key]
+
     rid = restaurant.id if restaurant else None
     now_central = datetime.now(CENTRAL_TZ)
     date_str = now_central.strftime("%A, %B %d, %Y %I:%M %p %Z")
@@ -1027,7 +1033,7 @@ def _assistant_gather_context(restaurant):
         except Exception as e:
             print(f"[assistant] top sellers lookup failed: {e}")
 
-    return {
+    result = {
         "restaurant_name": restaurant.name if restaurant else "(no restaurant selected)",
         "date": date_str,
         "sales_today": f"{sales_today:,.0f}",
@@ -1038,6 +1044,9 @@ def _assistant_gather_context(restaurant):
         "pending_invoices": pending_invoices,
         "top_sellers": top_sellers,
     }
+    _cache[cache_key] = result
+    _cache_times[cache_key] = _time.time()
+    return result
 
 
 # ---- Tool implementations -------------------------------------------------
