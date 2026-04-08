@@ -1,0 +1,383 @@
+{% extends "base.html" %}
+{% block title %}PTO — Bison Stockyard{% endblock %}
+{% block topbar %}<h1>Paid Time Off</h1>{% endblock %}
+
+{% block topbar_actions %}
+<div class="d-flex align-items-center gap-2">
+    <select id="year-select" class="form-select form-select-sm" style="width:100px;"
+        onchange="window.location='?year='+this.value">
+        {% for y in range(2024, 2028) %}
+        <option value="{{ y }}" {% if y == year %}selected{% endif %}>{{ y }}</option>
+        {% endfor %}
+    </select>
+    <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#addPTOModal">
+        <i class="bi bi-plus-lg me-1"></i>Add Request
+    </button>
+</div>
+{% endblock %}
+
+{% block content %}
+{% with messages = get_flashed_messages(with_categories=true) %}
+{% for cat, msg in messages %}
+<div class="alert alert-{{ cat }} alert-dismissible fade show">
+    {{ msg }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+</div>
+{% endfor %}
+{% endwith %}
+
+{# Illinois law banner #}
+<div class="alert mb-3 py-2" style="background:rgba(61,220,132,0.08);border:1px solid rgba(61,220,132,0.2);font-size:0.82rem;">
+    <i class="bi bi-shield-check me-1" style="color:var(--accent);"></i>
+    <strong>Illinois Paid Leave for All Workers Act (PLAWA)</strong> —
+    Employees earn 1 hour of PTO per 40 hours worked, starting day 1.
+    Usage capped at <strong>{{ policy.usage_cap|int }} hours per calendar year</strong>.
+    Accrued balance <strong>never expires</strong>.
+    Employees may use leave for <strong>any reason</strong> — you cannot require documentation.
+</div>
+
+{# Pending requests #}
+{% if pending %}
+<div class="content-card mb-3">
+    <div class="card-header-row">
+        <h5><i class="bi bi-clock-history me-2" style="color:#f59e0b;"></i>Pending Requests ({{ pending|length }})</h5>
+    </div>
+    {% for req in pending %}
+    {% set bal = balance_map.get(req.employee_id) %}
+    <div class="pto-request-card pending-card">
+        <div class="pto-req-left">
+            <div class="pto-emp-name">{{ req.employee.first_name }} {{ req.employee.last_name }}</div>
+            <div class="pto-emp-role text-muted">{{ req.employee.role or '—' }}</div>
+        </div>
+        <div class="pto-req-mid">
+            <div class="pto-dates">
+                <i class="bi bi-calendar3 me-1"></i>{{ req.date_range_display }}
+            </div>
+            <div class="pto-hours">{{ req.hours_requested|int }} hours requested</div>
+            {% if req.notes %}
+            <div class="pto-notes text-muted">{{ req.notes }}</div>
+            {% endif %}
+            {% if bal %}
+            <div class="pto-balance-hint">
+                Balance: {{ "%.1f"|format(bal.total_available) }}h available ·
+                {{ "%.1f"|format(bal.hours_remaining_this_year) }}h remaining this year
+            </div>
+            {% endif %}
+            {# Coverage warning #}
+            {% if date_conflicts %}
+            {% set conflict_found = [] %}
+            {% for d, names in date_conflicts.items() %}
+            {% if d >= req.start_date and d <= req.end_date and names|length > 1 %}
+            {% if conflict_found.append(1) %}{% endif %}
+            {% endif %}
+            {% endfor %}
+            {% if conflict_found %}
+            <div class="pto-warning">
+                <i class="bi bi-exclamation-triangle-fill me-1"></i>
+                Multiple employees off during this period — check coverage
+            </div>
+            {% endif %}
+            {% endif %}
+        </div>
+        <div class="pto-req-actions">
+            <form method="POST" action="{{ url_for('pto_approve', req_id=req.id) }}" class="d-inline">
+                <button type="submit" class="btn btn-sm btn-success">
+                    <i class="bi bi-check-lg me-1"></i>Approve
+                </button>
+            </form>
+            <button class="btn btn-sm btn-outline-danger ms-1"
+                onclick="openDenyModal({{ req.id }})">
+                <i class="bi bi-x-lg me-1"></i>Deny
+            </button>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+{# Balance table #}
+<div class="content-card mb-3">
+    <div class="card-header-row">
+        <h5>PTO Balances — {{ restaurant.name }} — {{ year }}</h5>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-clean">
+            <thead>
+                <tr>
+                    <th>Employee</th>
+                    <th>Role</th>
+                    <th class="text-center">Accrued</th>
+                    <th class="text-center">Carried Over</th>
+                    <th class="text-center">Used</th>
+                    <th class="text-center">Available</th>
+                    <th class="text-center">Cap Remaining</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for emp in employees %}
+                {% set bal = balance_map.get(emp.id) %}
+                <tr>
+                    <td class="fw-semibold">{{ emp.first_name }} {{ emp.last_name }}</td>
+                    <td class="text-muted" style="font-size:0.82rem;">{{ emp.role or '—' }}</td>
+                    {% if bal %}
+                    <td class="text-center">{{ "%.1f"|format(bal.hours_accrued) }}h</td>
+                    <td class="text-center">{{ "%.1f"|format(bal.hours_carried) }}h</td>
+                    <td class="text-center">{{ "%.1f"|format(bal.hours_used) }}h</td>
+                    <td class="text-center fw-semibold" style="color:{% if bal.total_available > 0 %}var(--accent){% else %}#ef4444{% endif %};">
+                        {{ "%.1f"|format(bal.total_available) }}h
+                    </td>
+                    <td class="text-center">
+                        <span style="color:{% if bal.hours_remaining_this_year < 8 %}#f59e0b{% else %}var(--text-muted){% endif %};">
+                            {{ "%.1f"|format(bal.hours_remaining_this_year) }}h
+                        </span>
+                    </td>
+                    {% else %}
+                    <td class="text-center text-muted">0.0h</td>
+                    <td class="text-center text-muted">0.0h</td>
+                    <td class="text-center text-muted">0.0h</td>
+                    <td class="text-center text-muted">0.0h</td>
+                    <td class="text-center text-muted">{{ policy.usage_cap|int }}h</td>
+                    {% endif %}
+                    <td class="text-end">
+                        <button class="btn btn-xs btn-outline-secondary"
+                            onclick="openAdjustModal({{ emp.id }}, '{{ emp.first_name }} {{ emp.last_name }}')">
+                            Adjust
+                        </button>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{# Recent history #}
+{% if recent %}
+<div class="content-card">
+    <div class="card-header-row">
+        <h5>Recent Decisions</h5>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-clean">
+            <thead>
+                <tr>
+                    <th>Employee</th>
+                    <th>Dates</th>
+                    <th>Hours</th>
+                    <th>Status</th>
+                    <th>Reviewed</th>
+                    <th>Reason</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for req in recent %}
+                <tr>
+                    <td class="fw-semibold">{{ req.employee.first_name }} {{ req.employee.last_name }}</td>
+                    <td>{{ req.date_range_display }}</td>
+                    <td>{{ req.hours_requested|int }}h</td>
+                    <td>
+                        {% if req.status == 'approved' %}
+                        <span class="badge" style="background:rgba(34,197,94,0.15);color:#22c55e;">Approved</span>
+                        {% else %}
+                        <span class="badge" style="background:rgba(239,68,68,0.15);color:#ef4444;">Denied</span>
+                        {% endif %}
+                    </td>
+                    <td class="text-muted" style="font-size:0.78rem;">
+                        {% if req.reviewed_at %}{{ req.reviewed_at.strftime('%b %-d') }}{% endif %}
+                        {% if req.reviewed_by %}· {{ req.reviewed_by.first_name }}{% endif %}
+                    </td>
+                    <td class="text-muted" style="font-size:0.78rem;">{{ req.denial_reason or '—' }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+
+{# ADD REQUEST MODAL #}
+<div class="modal fade" id="addPTOModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-calendar-plus me-2"></i>Add PTO Request</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="{{ url_for('pto_add_request') }}">
+                <div class="modal-body">
+                    <div class="alert py-2 mb-3" style="background:rgba(61,220,132,0.06);border:1px solid rgba(61,220,132,0.15);font-size:0.78rem;">
+                        <i class="bi bi-info-circle me-1"></i>
+                        Under Illinois PLAWA, employees may take PTO for <strong>any reason</strong>.
+                        The Notes field is optional and cannot be required.
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Employee</label>
+                        <select name="employee_id" id="pto-emp-select" class="form-select" required
+                            onchange="fetchBalance(this.value)">
+                            <option value="">— select —</option>
+                            {% for emp in employees %}
+                            <option value="{{ emp.id }}">{{ emp.first_name }} {{ emp.last_name }} ({{ emp.role or '—' }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div id="pto-balance-preview" class="alert py-2 mb-3" style="font-size:0.8rem;display:none;"></div>
+                    <div class="row g-2 mb-3">
+                        <div class="col">
+                            <label class="form-label fw-semibold">Start date</label>
+                            <input type="date" name="start_date" id="pto-start" class="form-control" required
+                                onchange="calcHours()">
+                        </div>
+                        <div class="col">
+                            <label class="form-label fw-semibold">End date</label>
+                            <input type="date" name="end_date" id="pto-end" class="form-control" required
+                                onchange="calcHours()">
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Hours requested</label>
+                        <input type="number" name="hours_requested" id="pto-hours" class="form-control"
+                            value="8" min="1" max="400" step="0.5" required>
+                        <div class="form-text">8h per day is the default. Adjust if needed.</div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Notes <span class="text-muted">(optional — cannot be required by law)</span></label>
+                        <input type="text" name="notes" class="form-control" placeholder="Optional">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Submit Request</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{# DENY MODAL #}
+<div class="modal fade" id="denyModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-x-circle me-2"></i>Deny PTO Request</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" id="denyForm" action="">
+                <div class="modal-body">
+                    <div class="alert py-2 mb-3" style="background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.2);font-size:0.78rem;">
+                        <i class="bi bi-exclamation-triangle me-1"></i>
+                        Under Illinois PLAWA you may deny based on <strong>operational need only</strong>,
+                        not the reason for the request.
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Reason for denial</label>
+                        <select name="denial_reason" class="form-select" required>
+                            <option value="">— select —</option>
+                            <option value="Insufficient coverage for this date">Insufficient coverage for this date</option>
+                            <option value="Overlaps with another approved request">Overlaps with another approved request</option>
+                            <option value="High-volume period">High-volume period (holiday/event)</option>
+                            <option value="Insufficient notice">Insufficient notice</option>
+                            <option value="Other">Other (notes required)</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Additional notes <span class="text-muted">(optional)</span></label>
+                        <textarea name="denial_notes" class="form-control" rows="2" placeholder="Optional context for your records"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-danger">Deny Request</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{# ADJUST BALANCE MODAL #}
+<div class="modal fade" id="adjustModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Adjust PTO Balance</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" id="adjustForm" action="">
+                <input type="hidden" name="year" value="{{ year }}">
+                <div class="modal-body">
+                    <div id="adjust-emp-name" class="fw-semibold mb-3"></div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Adjustment type</label>
+                        <select name="adj_type" class="form-select">
+                            <option value="add">Add hours to accrued balance</option>
+                            <option value="subtract">Mark hours as used</option>
+                            <option value="set_accrued">Set total accrued hours</option>
+                            <option value="set_carried">Set carryover hours</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Hours</label>
+                        <input type="number" name="hours" class="form-control" min="0" max="200" step="0.5" value="8" required>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Adjustment</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<style>
+.pto-request-card { display:flex; align-items:center; gap:16px; padding:16px; border-bottom:1px solid var(--border); flex-wrap:wrap; }
+.pto-request-card:last-child { border-bottom:none; }
+.pending-card { background:rgba(245,158,11,0.04); }
+.pto-req-left { min-width:140px; }
+.pto-emp-name { font-size:0.88rem; font-weight:600; }
+.pto-emp-role { font-size:0.75rem; }
+.pto-req-mid { flex:1; }
+.pto-dates { font-size:0.85rem; font-weight:500; color:var(--text); }
+.pto-hours { font-size:0.78rem; color:var(--text-muted); margin-top:2px; }
+.pto-notes { font-size:0.75rem; margin-top:2px; }
+.pto-balance-hint { font-size:0.72rem; color:var(--text-muted); margin-top:4px; }
+.pto-warning { font-size:0.72rem; color:#f59e0b; margin-top:4px; }
+.pto-req-actions { display:flex; align-items:center; gap:4px; }
+.btn-xs { padding:2px 8px; font-size:0.72rem; }
+</style>
+
+<script>
+function openDenyModal(reqId) {
+    document.getElementById('denyForm').action = `/pto/request/${reqId}/deny`;
+    new bootstrap.Modal(document.getElementById('denyModal')).show();
+}
+
+function openAdjustModal(empId, empName) {
+    document.getElementById('adjustForm').action = `/pto/balance/${empId}/adjust`;
+    document.getElementById('adjust-emp-name').textContent = empName;
+    new bootstrap.Modal(document.getElementById('adjustModal')).show();
+}
+
+function fetchBalance(empId) {
+    const preview = document.getElementById('pto-balance-preview');
+    if (!empId) { preview.style.display = 'none'; return; }
+    fetch(`/api/pto/balance/${empId}`)
+        .then(r => r.json())
+        .then(b => {
+            preview.style.display = 'block';
+            preview.innerHTML = `<i class="bi bi-piggy-bank me-1"></i>
+                <strong>${b.available.toFixed(1)}h available</strong> &nbsp;·&nbsp;
+                ${b.accrued.toFixed(1)}h accrued &nbsp;·&nbsp;
+                ${b.used.toFixed(1)}h used &nbsp;·&nbsp;
+                <strong>${b.remaining_cap.toFixed(1)}h remaining this year</strong>`;
+        });
+}
+
+function calcHours() {
+    const start = document.getElementById('pto-start').value;
+    const end = document.getElementById('pto-end').value;
+    if (!start || !end) return;
+    const days = Math.max(1, Math.round((new Date(end) - new Date(start)) / 86400000) + 1);
+    document.getElementById('pto-hours').value = days * 8;
+}
+</script>
+{% endblock %}

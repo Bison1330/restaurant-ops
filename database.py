@@ -491,3 +491,83 @@ class ManagerPreference(db.Model):
     email_override = db.Column(db.String(100))
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     user = db.relationship('User', backref='preferences')
+
+
+class PTOPolicy(db.Model):
+    """PTO accrual policy per restaurant."""
+    __tablename__ = 'pto_policies'
+    id = db.Column(db.Integer, primary_key=True)
+    restaurant_id = db.Column(db.Integer, db.ForeignKey('restaurants.id'), unique=True, index=True)
+    accrual_rate = db.Column(db.Float, default=0.025)       # hrs earned per hr worked (1/40)
+    usage_cap = db.Column(db.Float, default=40.0)           # max hrs usable per calendar year
+    balance_expires = db.Column(db.Boolean, default=False)  # IL law: never expires
+    requires_approval = db.Column(db.Boolean, default=True)
+    enabled = db.Column(db.Boolean, default=True)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow)
+    restaurant = db.relationship('Restaurant', backref='pto_policy')
+
+
+class PTOBalance(db.Model):
+    """Running PTO balance per employee per calendar year."""
+    __tablename__ = 'pto_balances'
+    id = db.Column(db.Integer, primary_key=True)
+    employee_id = db.Column(db.Integer, db.ForeignKey('employees.id'), index=True)
+    restaurant_id = db.Column(db.Integer, db.ForeignKey('restaurants.id'), index=True)
+    year = db.Column(db.Integer, nullable=False)
+    hours_accrued = db.Column(db.Float, default=0.0)   # total earned this year
+    hours_used = db.Column(db.Float, default=0.0)      # total used this year
+    hours_carried = db.Column(db.Float, default=0.0)   # carried over from last year
+    last_accrual_date = db.Column(db.Date, nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    employee = db.relationship('Employee', backref='pto_balances')
+    restaurant = db.relationship('Restaurant', backref='pto_balances')
+
+    @property
+    def total_available(self):
+        """Total hours available to use (accrued + carried, never negative)."""
+        return max(0.0, self.hours_accrued + self.hours_carried - self.hours_used)
+
+    @property
+    def hours_remaining_this_year(self):
+        """Remaining usage this year against the annual cap."""
+        from sqlalchemy.orm import object_session
+        policy = PTOPolicy.query.filter_by(restaurant_id=self.restaurant_id).first()
+        cap = policy.usage_cap if policy else 40.0
+        return max(0.0, cap - self.hours_used)
+
+
+class PTORequest(db.Model):
+    """A single PTO request from an employee."""
+    __tablename__ = 'pto_requests'
+    id = db.Column(db.Integer, primary_key=True)
+    employee_id = db.Column(db.Integer, db.ForeignKey('employees.id'), index=True)
+    restaurant_id = db.Column(db.Integer, db.ForeignKey('restaurants.id'), index=True)
+    start_date = db.Column(db.Date, nullable=False)
+    end_date = db.Column(db.Date, nullable=False)
+    hours_requested = db.Column(db.Float, nullable=False)
+    notes = db.Column(db.String(300))                   # optional — IL law, cannot require reason
+    status = db.Column(db.String(20), default='pending') # pending|approved|denied
+    denial_reason = db.Column(db.String(50))             # dropdown choice
+    denial_notes = db.Column(db.String(300))             # manager notes on denial
+    reviewed_by_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    reviewed_at = db.Column(db.DateTime, nullable=True)
+    payroll_run_id = db.Column(db.Integer, db.ForeignKey('payroll_runs.id'), nullable=True)
+    requested_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    employee = db.relationship('Employee', backref='pto_requests')
+    restaurant = db.relationship('Restaurant', backref='pto_requests')
+    reviewed_by = db.relationship('User', backref='pto_reviews')
+
+    @property
+    def days_requested(self):
+        if self.start_date and self.end_date:
+            return (self.end_date - self.start_date).days + 1
+        return 0
+
+    @property
+    def date_range_display(self):
+        if self.start_date == self.end_date:
+            return self.start_date.strftime('%b %-d, %Y')
+        return f"{self.start_date.strftime('%b %-d')} – {self.end_date.strftime('%b %-d, %Y')}"

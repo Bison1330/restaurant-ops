@@ -19,6 +19,7 @@ from database import (
     ItemAlias, PriceHistory, UnmatchedItem,
     StorageZone, InventoryItemZone, CountSession, CountEntry,
     Alert, MenuItemSale, Shift, User, Position, RestaurantSettings, ManagerPreference,
+    PTOPolicy, PTOBalance, PTORequest,
 )
 from mock_data import seed_mock_data
 from connectors.gfs_sftp import fetch_gfs_invoices
@@ -2978,6 +2979,306 @@ def settings_delete_position(pos_id):
     db.session.commit()
     flash("Position removed.", "success")
     return redirect(url_for("settings", tab="positions"))
+
+# ─────────────────────────────────────────────────────────────
+# PTO SYSTEM
+# ─────────────────────────────────────────────────────────────
+
+def _get_or_create_pto_balance(employee_id, restaurant_id, year):
+    b = PTOBalance.query.filter_by(
+        employee_id=employee_id,
+        restaurant_id=restaurant_id,
+        year=year
+    ).first()
+    if not b:
+        b = PTOBalance(
+            employee_id=employee_id,
+            restaurant_id=restaurant_id,
+            year=year,
+            hours_accrued=0.0,
+            hours_used=0.0,
+            hours_carried=0.0,
+        )
+        db.session.add(b)
+        db.session.flush()
+    return b
+
+
+def _accrue_pto_from_timesheets(restaurant_id):
+    """
+    Run after every Toast timesheet sync.
+    Reads actual punched hours from the last 90 days and updates PTOBalance.
+    1 hr PTO per 40 hrs worked. Balance never expires. Usage capped at 40hrs/year.
+    """
+    from datetime import date, timedelta
+    from sqlalchemy import func
+
+    policy = PTOPolicy.query.filter_by(restaurant_id=restaurant_id).first()
+    if not policy or not policy.enabled:
+        return
+
+    rate = policy.accrual_rate  # default 0.025
+
+    # Get all timesheets for this restaurant from Toast DB
+    # We use the PayrollRun / timesheet data already in DB
+    # For now we approximate from Shift actuals with status != called_out/no_show
+    today = datetime.now(CENTRAL_TZ).date()
+    year = today.year
+    cutoff = today - timedelta(days=90)
+
+    employees = Employee.query.filter_by(
+        restaurant_id=restaurant_id, active=True
+    ).all()
+
+    for emp in employees:
+        # Sum actual hours from shifts in the last 90 days
+        shifts = Shift.query.filter_by(
+            employee_id=emp.id,
+            restaurant_id=restaurant_id,
+        ).filter(
+            Shift.shift_date >= cutoff,
+            Shift.shift_date <= today,
+            Shift.status.notin_(['called_out', 'no_show']),
+        ).all()
+
+        hours_worked = sum(s.hours for s in shifts)
+        new_accrual = round(hours_worked * rate, 2)
+
+        balance = _get_or_create_pto_balance(emp.id, restaurant_id, year)
+
+        # Only update if accrual has changed since last run
+        if balance.last_accrual_date != today:
+            balance.hours_accrued = new_accrual
+            balance.last_accrual_date = today
+            balance.updated_at = datetime.utcnow()
+
+    db.session.commit()
+
+
+@app.route("/pto")
+def pto():
+    from datetime import date
+    restaurant = _get_selected_restaurant()
+    restaurants = Restaurant.query.all()
+    year = int(request.args.get("year", datetime.now(CENTRAL_TZ).year))
+
+    employees = Employee.query.filter_by(
+        restaurant_id=restaurant.id, active=True
+    ).order_by(Employee.last_name).all()
+
+    # Build balance map
+    balances = PTOBalance.query.filter_by(
+        restaurant_id=restaurant.id, year=year
+    ).all()
+    balance_map = {b.employee_id: b for b in balances}
+
+    # Ensure every employee has a balance row
+    for emp in employees:
+        if emp.id not in balance_map:
+            b = _get_or_create_pto_balance(emp.id, restaurant.id, year)
+            balance_map[emp.id] = b
+    db.session.commit()
+
+    # Pending requests
+    pending = PTORequest.query.filter_by(
+        restaurant_id=restaurant.id,
+        status='pending'
+    ).order_by(PTORequest.requested_at).all()
+
+    # Recent approved/denied
+    recent = PTORequest.query.filter_by(
+        restaurant_id=restaurant.id
+    ).filter(
+        PTORequest.status.in_(['approved', 'denied'])
+    ).order_by(PTORequest.reviewed_at.desc()).limit(20).all()
+
+    policy = PTOPolicy.query.filter_by(restaurant_id=restaurant.id).first()
+    if not policy:
+        policy = PTOPolicy(restaurant_id=restaurant.id)
+        db.session.add(policy)
+        db.session.commit()
+
+    # Coverage warning: count pending requests per date
+    from collections import defaultdict
+    date_conflicts = defaultdict(list)
+    all_pending = PTORequest.query.filter_by(
+        restaurant_id=restaurant.id, status='pending'
+    ).all()
+    for req in all_pending:
+        if req.start_date and req.end_date:
+            d = req.start_date
+            from datetime import timedelta
+            while d <= req.end_date:
+                date_conflicts[d].append(req.employee.first_name + ' ' + req.employee.last_name)
+                d += timedelta(days=1)
+
+    return render_template("pto.html",
+        restaurant=restaurant,
+        restaurants=restaurants,
+        selected_restaurant=restaurant,
+        employees=employees,
+        balance_map=balance_map,
+        pending=pending,
+        recent=recent,
+        policy=policy,
+        year=year,
+        date_conflicts=date_conflicts,
+    )
+
+
+@app.route("/pto/request/add", methods=["POST"])
+def pto_add_request():
+    """Manager submits PTO on behalf of employee (pre-auth). Employee self-service after auth."""
+    from datetime import date
+    restaurant = _get_selected_restaurant()
+    f = request.form
+    try:
+        start = datetime.strptime(f["start_date"], "%Y-%m-%d").date()
+        end = datetime.strptime(f["end_date"], "%Y-%m-%d").date()
+        if end < start:
+            flash("End date cannot be before start date.", "danger")
+            return redirect(url_for("pto"))
+        hours = float(f.get("hours_requested", 8))
+        req = PTORequest(
+            employee_id=int(f["employee_id"]),
+            restaurant_id=restaurant.id,
+            start_date=start,
+            end_date=end,
+            hours_requested=hours,
+            notes=f.get("notes", ""),
+            status='pending',
+        )
+        db.session.add(req)
+        db.session.commit()
+
+        # Create in-app alert
+        emp = Employee.query.get(int(f["employee_id"]))
+        db.session.add(Alert(
+            restaurant_id=restaurant.id,
+            alert_type='pto_request',
+            message=f"PTO request: {emp.first_name} {emp.last_name} — {start.strftime('%b %-d')} to {end.strftime('%b %-d')} ({hours}h)",
+            severity='info',
+        ))
+        db.session.commit()
+        flash("PTO request submitted.", "success")
+    except Exception as e:
+        db.session.rollback()
+        flash(f"Error: {e}", "danger")
+    return redirect(url_for("pto"))
+
+
+@app.route("/pto/request/<int:req_id>/approve", methods=["POST"])
+def pto_approve(req_id):
+    from datetime import date
+    req = PTORequest.query.get_or_404(req_id)
+    year = req.start_date.year
+    balance = _get_or_create_pto_balance(req.employee_id, req.restaurant_id, year)
+
+    # Check if enough hours available
+    if req.hours_requested > balance.total_available:
+        flash(f"Warning: Employee only has {balance.total_available:.1f}h available but {req.hours_requested:.1f}h requested. Approving anyway.", "warning")
+
+    # Check annual usage cap
+    policy = PTOPolicy.query.filter_by(restaurant_id=req.restaurant_id).first()
+    cap = policy.usage_cap if policy else 40.0
+    if balance.hours_used + req.hours_requested > cap:
+        flash(f"Warning: This approval would exceed the {cap:.0f}h annual cap. Approving anyway.", "warning")
+
+    req.status = 'approved'
+    req.reviewed_at = datetime.utcnow()
+    if current_user.is_authenticated:
+        req.reviewed_by_id = current_user.id
+
+    # Deduct from balance
+    balance.hours_used += req.hours_requested
+    balance.updated_at = datetime.utcnow()
+
+    # Add PTO shift to schedule
+    from datetime import timedelta
+    d = req.start_date
+    while d <= req.end_date:
+        existing = Shift.query.filter_by(
+            employee_id=req.employee_id,
+            restaurant_id=req.restaurant_id,
+            shift_date=d,
+            status='pto',
+        ).first()
+        if not existing:
+            db.session.add(Shift(
+                employee_id=req.employee_id,
+                restaurant_id=req.restaurant_id,
+                shift_date=d,
+                start_time='09:00',
+                end_time='17:00',
+                role='PTO',
+                status='pto',
+                notes=f"Approved PTO — {req.hours_requested}h",
+            ))
+        d += timedelta(days=1)
+
+    db.session.commit()
+    flash(f"PTO approved. {req.hours_requested:.1f}h deducted from balance.", "success")
+    return redirect(url_for("pto"))
+
+
+@app.route("/pto/request/<int:req_id>/deny", methods=["POST"])
+def pto_deny(req_id):
+    req = PTORequest.query.get_or_404(req_id)
+    req.status = 'denied'
+    req.reviewed_at = datetime.utcnow()
+    req.denial_reason = request.form.get("denial_reason", "")
+    req.denial_notes = request.form.get("denial_notes", "")
+    if current_user.is_authenticated:
+        req.reviewed_by_id = current_user.id
+    db.session.commit()
+    flash("PTO request denied.", "info")
+    return redirect(url_for("pto"))
+
+
+@app.route("/pto/balance/<int:employee_id>/adjust", methods=["POST"])
+def pto_adjust_balance(employee_id):
+    """Manual balance adjustment by manager."""
+    restaurant = _get_selected_restaurant()
+    year = int(request.form.get("year", datetime.now(CENTRAL_TZ).year))
+    balance = _get_or_create_pto_balance(employee_id, restaurant.id, year)
+    try:
+        adj_type = request.form.get("adj_type", "add")
+        hours = float(request.form.get("hours", 0))
+        if adj_type == "add":
+            balance.hours_accrued += hours
+        elif adj_type == "subtract":
+            balance.hours_used += hours
+        elif adj_type == "set_accrued":
+            balance.hours_accrued = hours
+        elif adj_type == "set_carried":
+            balance.hours_carried = hours
+        balance.updated_at = datetime.utcnow()
+        db.session.commit()
+        flash(f"Balance adjusted.", "success")
+    except Exception as e:
+        db.session.rollback()
+        flash(f"Error: {e}", "danger")
+    return redirect(url_for("pto"))
+
+
+@app.route("/api/pto/balance/<int:employee_id>")
+def api_pto_balance(employee_id):
+    year = int(request.args.get("year", datetime.now(CENTRAL_TZ).year))
+    restaurant = _get_selected_restaurant()
+    b = PTOBalance.query.filter_by(
+        employee_id=employee_id,
+        restaurant_id=restaurant.id,
+        year=year
+    ).first()
+    if not b:
+        return jsonify({"accrued": 0, "used": 0, "carried": 0, "available": 0, "remaining_cap": 40})
+    return jsonify({
+        "accrued": round(b.hours_accrued, 2),
+        "used": round(b.hours_used, 2),
+        "carried": round(b.hours_carried, 2),
+        "available": round(b.total_available, 2),
+        "remaining_cap": round(b.hours_remaining_this_year, 2),
+    })
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8082, debug=False)
