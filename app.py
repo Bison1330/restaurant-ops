@@ -556,29 +556,139 @@ def api_sales_summary():
 
 
 # ---------------------------------------------------------------------------
-# Bison AI Assistant — chat endpoint backed by Anthropic Claude
+# Bison AI Assistant — chat + proactive co-pilot backed by Anthropic Claude
 # ---------------------------------------------------------------------------
 
+import json as _json
+
 ASSISTANT_SYSTEM_TEMPLATE = (
-    "You are an AI assistant for Bison Stockyard restaurant operations platform. "
-    "You help restaurant managers and employees with inventory, recipes, invoices, "
-    "and platform guidance. Current context: {restaurant_name}, {date}, "
-    "{alert_count} open alerts, {low_stock_count} low stock items, "
-    "{pending_invoices} pending invoices. Be concise, practical, and action-oriented. "
-    "When an employee describes adding an item or recipe, extract the structured data "
-    "and confirm before saving. When asked about costs or inventory, query the database."
+    "You are the Bison Stockyard AI guardian. You are watchful, direct, and helpful. "
+    "You speak like a trusted manager who knows the operation inside out. You catch "
+    "mistakes before they become problems.\n\n"
+    "Current context — Restaurant: {restaurant_name}. Time: {date}. "
+    "Sales today: ${sales_today}. Labor: {labor_pct}%. Food cost: {food_cost_pct}%. "
+    "Open alerts: {alert_count}. Low stock items: {low_stock_count}. "
+    "Pending invoices: {pending_invoices}.\n\n"
+    "Common UOM rules: spirits measured in oz, beer in each/case, proteins in oz or lb, "
+    "produce in lb or each, dairy in oz or lb. Flag anything that doesn't match expected "
+    "UOM for its category.\n\n"
+    "When reviewing user input, check for: unrealistic quantities (>32oz spirits in one "
+    "drink), wrong UOM for category, prices that are 10x higher or lower than similar "
+    "items, duplicate item names.\n\n"
+    "You have tools to look up recipes, items, sales, and alerts, and to take actions "
+    "like approving invoices, adjusting inventory, or creating draft recipes. Use the "
+    "lookup tools whenever a question depends on live data — don't guess. For any "
+    "action that mutates data, the platform will surface a confirmation card to the "
+    "user before executing. Be concise and action-oriented."
 )
 
+# Tool catalog. Read-only tools execute server-side and feed results back into
+# the conversation. Mutating tools short-circuit and return a pending_action so
+# the frontend can render a confirmation card.
+ASSISTANT_TOOLS = [
+    {
+        "name": "look_up_recipe",
+        "description": "Look up a recipe by name and return its costs, menu price, and ingredients.",
+        "input_schema": {
+            "type": "object",
+            "properties": {"name": {"type": "string"}},
+            "required": ["name"],
+        },
+    },
+    {
+        "name": "look_up_item",
+        "description": "Look up an inventory item by name and return its stock, par, and last cost.",
+        "input_schema": {
+            "type": "object",
+            "properties": {"name": {"type": "string"}},
+            "required": ["name"],
+        },
+    },
+    {
+        "name": "look_up_sales",
+        "description": "Get a sales summary for a date range.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "date_range": {
+                    "type": "string",
+                    "enum": ["today", "yesterday", "week", "last_week", "month"],
+                }
+            },
+            "required": ["date_range"],
+        },
+    },
+    {
+        "name": "get_alerts",
+        "description": "Return all currently unresolved alerts for the restaurant.",
+        "input_schema": {"type": "object", "properties": {}},
+    },
+    {
+        "name": "approve_invoice",
+        "description": "Approve a pending invoice. Mutates state — requires confirmation.",
+        "input_schema": {
+            "type": "object",
+            "properties": {"invoice_id": {"type": "integer"}},
+            "required": ["invoice_id"],
+        },
+    },
+    {
+        "name": "adjust_inventory",
+        "description": "Set or adjust an inventory item's current stock. Mutates state.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "item_id": {"type": "integer"},
+                "quantity": {"type": "number"},
+                "reason": {"type": "string"},
+            },
+            "required": ["item_id", "quantity"],
+        },
+    },
+    {
+        "name": "create_draft_recipe",
+        "description": "Create a draft recipe with the given name, ingredients, and menu price. Mutates state.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "name": {"type": "string"},
+                "menu_price": {"type": "number"},
+                "ingredients": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "name": {"type": "string"},
+                            "quantity": {"type": "number"},
+                            "unit": {"type": "string"},
+                            "unit_cost": {"type": "number"},
+                        },
+                        "required": ["name"],
+                    },
+                },
+            },
+            "required": ["name"],
+        },
+    },
+]
 
-def _assistant_gather_context(restaurant, message):
-    """Pull lightweight DB facts the model can ground its answer in."""
+MUTATING_TOOLS = {"approve_invoice", "adjust_inventory", "create_draft_recipe"}
+
+
+def _assistant_gather_context(restaurant):
+    """Pull live numbers used in the system prompt."""
     rid = restaurant.id if restaurant else None
-    today = datetime.now(CENTRAL_TZ).strftime("%A, %B %d, %Y")
+    now_central = datetime.now(CENTRAL_TZ)
+    date_str = now_central.strftime("%A, %B %d, %Y %I:%M %p %Z")
 
     alert_count = 0
     low_stock_count = 0
     pending_invoices = 0
-    if rid:
+    sales_today = 0.0
+    labor_pct = "—"
+    food_cost_pct = "—"
+
+    if restaurant:
         alert_count = Alert.query.filter_by(restaurant_id=rid, resolved=False).count()
         low_stock_count = InventoryItem.query.filter(
             InventoryItem.restaurant_id == rid,
@@ -588,73 +698,380 @@ def _assistant_gather_context(restaurant, message):
         pending_invoices = Invoice.query.filter_by(
             restaurant_id=rid, status="pending"
         ).count()
-
-    facts = []
-    msg_lower = (message or "").lower()
-
-    # Recipe lookup — match any recipe whose name appears in the message
-    if rid:
-        recipes = Recipe.query.filter_by(restaurant_id=rid, status="active").all()
-        for r in recipes:
-            if r.name and len(r.name) >= 3 and r.name.lower() in msg_lower:
-                facts.append(
-                    f"Recipe '{r.name}': menu price ${r.menu_price or 0:.2f}, "
-                    f"food cost ${r.total_cost:.2f} ({r.cost_percent:.1f}%), "
-                    f"category {r.category or '—'}"
-                )
-                if len(facts) >= 5:
-                    break
-
-    # Inventory item lookup
-    if rid and len(facts) < 8:
-        items = InventoryItem.query.filter_by(restaurant_id=rid).all()
-        for it in items:
-            if it.name and len(it.name) >= 3 and it.name.lower() in msg_lower:
-                facts.append(
-                    f"Item '{it.name}': on hand {it.current_stock or 0:g} {it.unit or ''}, "
-                    f"par {it.par_level or 0:g}, last cost ${it.last_cost or 0:.2f}"
-                )
-                if len(facts) >= 8:
-                    break
-
-    # Vendor + recent invoices lookup
-    vendors = Vendor.query.filter_by(active=True).all()
-    for v in vendors:
-        if v.name and len(v.name) >= 3 and v.name.lower() in msg_lower:
-            recent = (
-                Invoice.query.filter_by(vendor_id=v.id, restaurant_id=rid)
-                .order_by(Invoice.invoice_date.desc())
-                .limit(3)
-                .all()
-                if rid
-                else []
-            )
-            recent_str = ", ".join(
-                f"#{inv.invoice_number or inv.id} ${inv.total_amount:.2f} ({inv.status})"
-                for inv in recent
-            ) or "no recent invoices"
-            facts.append(f"Vendor '{v.name}': {recent_str}")
-            if len(facts) >= 10:
-                break
+        try:
+            summary = _build_sales_summary(restaurant, "today", compare=False)
+            sales_today = summary.get("sales") or 0
+            if summary.get("labor_pct") is not None:
+                labor_pct = summary["labor_pct"]
+            if summary.get("food_cost_pct") is not None:
+                food_cost_pct = summary["food_cost_pct"]
+        except Exception as e:
+            print(f"[assistant] sales summary failed: {e}")
 
     return {
         "restaurant_name": restaurant.name if restaurant else "(no restaurant selected)",
-        "date": today,
+        "date": date_str,
+        "sales_today": f"{sales_today:,.0f}",
+        "labor_pct": labor_pct,
+        "food_cost_pct": food_cost_pct,
         "alert_count": alert_count,
         "low_stock_count": low_stock_count,
         "pending_invoices": pending_invoices,
-        "facts": facts,
     }
+
+
+# ---- Tool implementations -------------------------------------------------
+
+def _tool_look_up_recipe(restaurant, args):
+    name = (args.get("name") or "").strip()
+    if not restaurant or not name:
+        return {"error": "no restaurant or name"}
+    q = Recipe.query.filter_by(restaurant_id=restaurant.id)
+    hit = q.filter(Recipe.name.ilike(f"%{name}%")).first()
+    if not hit:
+        return {"found": False, "name": name}
+    return {
+        "found": True,
+        "id": hit.id,
+        "name": hit.name,
+        "category": hit.category,
+        "menu_price": hit.menu_price or 0,
+        "food_cost": round(hit.total_cost, 2),
+        "cost_percent": round(hit.cost_percent, 1),
+        "margin": round(hit.margin, 2),
+        "ingredients": [
+            {
+                "name": ing.name or (ing.inventory_item.name if ing.inventory_item else "?"),
+                "quantity": ing.quantity,
+                "unit": ing.unit,
+                "unit_cost": round(ing.effective_unit_cost, 4),
+                "line_cost": round(ing.cost, 2),
+            }
+            for ing in hit.ingredients
+        ],
+    }
+
+
+def _tool_look_up_item(restaurant, args):
+    name = (args.get("name") or "").strip()
+    if not restaurant or not name:
+        return {"error": "no restaurant or name"}
+    hit = (
+        InventoryItem.query.filter_by(restaurant_id=restaurant.id)
+        .filter(InventoryItem.name.ilike(f"%{name}%"))
+        .first()
+    )
+    if not hit:
+        return {"found": False, "name": name}
+    return {
+        "found": True,
+        "id": hit.id,
+        "name": hit.name,
+        "category": hit.category,
+        "unit": hit.unit,
+        "current_stock": hit.current_stock or 0,
+        "par_level": hit.par_level or 0,
+        "below_par": (hit.par_level or 0) > 0
+        and (hit.current_stock or 0) < (hit.par_level or 0),
+        "last_cost": hit.last_cost or 0,
+        "vendor": hit.vendor.name if hit.vendor else None,
+    }
+
+
+def _tool_look_up_sales(restaurant, args):
+    if not restaurant:
+        return {"error": "no restaurant"}
+    range_name = args.get("date_range") or "today"
+    try:
+        return _build_sales_summary(restaurant, range_name)
+    except Exception as e:
+        return {"error": str(e)}
+
+
+def _tool_get_alerts(restaurant, args):
+    if not restaurant:
+        return {"alerts": []}
+    rows = (
+        Alert.query.filter_by(restaurant_id=restaurant.id, resolved=False)
+        .order_by(Alert.created_at.desc())
+        .limit(20)
+        .all()
+    )
+    return {
+        "alerts": [
+            {
+                "id": a.id,
+                "type": a.alert_type,
+                "severity": a.severity,
+                "message": a.message,
+                "created_at": a.created_at.isoformat() if a.created_at else None,
+            }
+            for a in rows
+        ]
+    }
+
+
+READ_TOOL_HANDLERS = {
+    "look_up_recipe": _tool_look_up_recipe,
+    "look_up_item": _tool_look_up_item,
+    "look_up_sales": _tool_look_up_sales,
+    "get_alerts": _tool_get_alerts,
+}
+
+
+def _describe_pending_action(tool_name, tool_input, restaurant):
+    """Human-readable description for the confirmation card."""
+    if tool_name == "approve_invoice":
+        inv_id = tool_input.get("invoice_id")
+        inv = db.session.get(Invoice, inv_id) if inv_id else None
+        if inv:
+            vendor = inv.vendor.name if inv.vendor else "vendor"
+            return (
+                f"Approve invoice #{inv.invoice_number or inv.id} from {vendor} "
+                f"for ${inv.total_amount:,.2f}?"
+            )
+        return f"Approve invoice {inv_id}?"
+    if tool_name == "adjust_inventory":
+        item = db.session.get(InventoryItem, tool_input.get("item_id"))
+        qty = tool_input.get("quantity")
+        reason = tool_input.get("reason") or "manual adjust"
+        if item:
+            return (
+                f"Set {item.name} stock to {qty} {item.unit or ''} ({reason})?"
+            )
+        return f"Adjust item {tool_input.get('item_id')} to {qty}?"
+    if tool_name == "create_draft_recipe":
+        name = tool_input.get("name")
+        price = tool_input.get("menu_price") or 0
+        n_ing = len(tool_input.get("ingredients") or [])
+        return f"Create draft recipe '{name}' (${price}) with {n_ing} ingredients?"
+    return f"Run {tool_name}?"
+
+
+def _execute_mutating_tool(tool_name, tool_input, restaurant):
+    """Actually run a mutating tool after the user confirms."""
+    if tool_name == "approve_invoice":
+        inv = db.session.get(Invoice, tool_input.get("invoice_id"))
+        if not inv:
+            return {"ok": False, "message": "Invoice not found."}
+        inv.status = "approved"
+        inv.approved_at = datetime.utcnow()
+        db.session.commit()
+        return {"ok": True, "message": f"Invoice #{inv.invoice_number or inv.id} approved."}
+
+    if tool_name == "adjust_inventory":
+        item = db.session.get(InventoryItem, tool_input.get("item_id"))
+        if not item:
+            return {"ok": False, "message": "Item not found."}
+        item.current_stock = float(tool_input.get("quantity") or 0)
+        db.session.commit()
+        return {
+            "ok": True,
+            "message": f"{item.name} stock set to {item.current_stock} {item.unit or ''}.",
+        }
+
+    if tool_name == "create_draft_recipe":
+        if not restaurant:
+            return {"ok": False, "message": "No restaurant selected."}
+        recipe = Recipe(
+            restaurant_id=restaurant.id,
+            name=tool_input.get("name") or "Untitled",
+            menu_price=float(tool_input.get("menu_price") or 0),
+            status="draft",
+        )
+        db.session.add(recipe)
+        db.session.flush()
+        for ing in tool_input.get("ingredients") or []:
+            db.session.add(
+                RecipeIngredient(
+                    recipe_id=recipe.id,
+                    name=ing.get("name"),
+                    quantity=float(ing.get("quantity") or 0),
+                    unit=ing.get("unit"),
+                    unit_cost=float(ing.get("unit_cost") or 0),
+                )
+            )
+        db.session.commit()
+        return {"ok": True, "message": f"Draft recipe '{recipe.name}' created (id {recipe.id})."}
+
+    return {"ok": False, "message": f"Unknown tool {tool_name}."}
+
+
+def _resolve_restaurant_from_payload(payload):
+    rid = payload.get("restaurant_id")
+    restaurant = None
+    if rid:
+        try:
+            restaurant = db.session.get(Restaurant, int(rid))
+        except (TypeError, ValueError):
+            restaurant = None
+    return restaurant or _get_selected_restaurant()
+
+
+def _normalize_history(payload):
+    """Accept either {messages:[...]} or {message:'...'} for back-compat."""
+    if isinstance(payload.get("messages"), list) and payload["messages"]:
+        # Strip to {role, content} text-only entries
+        out = []
+        for m in payload["messages"]:
+            role = m.get("role")
+            content = m.get("content")
+            if role in ("user", "assistant") and isinstance(content, str) and content.strip():
+                out.append({"role": role, "content": content})
+        return out
+    msg = (payload.get("message") or "").strip()
+    if msg:
+        return [{"role": "user", "content": msg}]
+    return []
 
 
 @app.route("/api/assistant", methods=["POST"])
 def api_assistant():
     payload = request.get_json(silent=True) or {}
-    message = (payload.get("message") or "").strip()
-    rid = payload.get("restaurant_id")
-    if not message:
+    history = _normalize_history(payload)
+    if not history:
         return jsonify({"error": "message required"}), 400
 
+    restaurant = _resolve_restaurant_from_payload(payload)
+    ctx = _assistant_gather_context(restaurant)
+    system_prompt = ASSISTANT_SYSTEM_TEMPLATE.format(**ctx)
+
+    api_key = os.environ.get("ANTHROPIC_API_KEY")
+    if not api_key:
+        return jsonify({
+            "response": (
+                "The AI assistant isn't configured yet — set ANTHROPIC_API_KEY "
+                "on the server to enable it."
+            )
+        })
+
+    try:
+        from anthropic import Anthropic
+        client = Anthropic(api_key=api_key)
+
+        # Working messages list — starts with the chat history (text only),
+        # then we may append assistant tool_use turns and user tool_result turns
+        # as we loop through any read-only tool calls.
+        messages = [dict(m) for m in history]
+
+        for _iter in range(6):
+            resp = client.messages.create(
+                model="claude-sonnet-4-5",
+                max_tokens=1024,
+                system=system_prompt,
+                tools=ASSISTANT_TOOLS,
+                messages=messages,
+            )
+
+            if resp.stop_reason == "tool_use":
+                # Collect tool_use blocks and any leading text from this turn
+                tool_uses = [b for b in resp.content if getattr(b, "type", None) == "tool_use"]
+                leading_text = "".join(
+                    b.text for b in resp.content if getattr(b, "type", None) == "text"
+                ).strip()
+
+                # If any mutating tool was called, short-circuit and return a
+                # pending_action — frontend will render a confirmation card.
+                mutating = next((tu for tu in tool_uses if tu.name in MUTATING_TOOLS), None)
+                if mutating:
+                    description = _describe_pending_action(
+                        mutating.name, dict(mutating.input or {}), restaurant
+                    )
+                    return jsonify({
+                        "response": leading_text or description,
+                        "pending_action": {
+                            "tool": mutating.name,
+                            "input": dict(mutating.input or {}),
+                            "description": description,
+                        },
+                    })
+
+                # All read-only — execute, feed results back, loop
+                assistant_blocks = []
+                for b in resp.content:
+                    btype = getattr(b, "type", None)
+                    if btype == "text":
+                        assistant_blocks.append({"type": "text", "text": b.text})
+                    elif btype == "tool_use":
+                        assistant_blocks.append({
+                            "type": "tool_use",
+                            "id": b.id,
+                            "name": b.name,
+                            "input": dict(b.input or {}),
+                        })
+                messages.append({"role": "assistant", "content": assistant_blocks})
+
+                tool_results = []
+                for tu in tool_uses:
+                    handler = READ_TOOL_HANDLERS.get(tu.name)
+                    if handler:
+                        try:
+                            result = handler(restaurant, dict(tu.input or {}))
+                        except Exception as e:
+                            result = {"error": str(e)}
+                    else:
+                        result = {"error": f"unknown tool {tu.name}"}
+                    tool_results.append({
+                        "type": "tool_result",
+                        "tool_use_id": tu.id,
+                        "content": _json.dumps(result, default=str),
+                    })
+                messages.append({"role": "user", "content": tool_results})
+                continue
+
+            # Final text answer
+            text = "".join(
+                b.text for b in resp.content if getattr(b, "type", None) == "text"
+            ).strip() or "(no response)"
+            return jsonify({"response": text})
+
+        return jsonify({"response": "(stopped after too many tool iterations)"})
+    except Exception as e:
+        print(f"[assistant] error: {e}")
+        return jsonify({"response": f"Sorry — the assistant hit an error: {e}"}), 200
+
+
+@app.route("/api/assistant/execute", methods=["POST"])
+def api_assistant_execute():
+    """Run a mutating tool after the user confirmed in the chat panel."""
+    payload = request.get_json(silent=True) or {}
+    tool = payload.get("tool")
+    tool_input = payload.get("input") or {}
+    if tool not in MUTATING_TOOLS:
+        return jsonify({"ok": False, "message": "unknown or non-mutating tool"}), 400
+    restaurant = _resolve_restaurant_from_payload(payload)
+    try:
+        result = _execute_mutating_tool(tool, tool_input, restaurant)
+        return jsonify(result)
+    except Exception as e:
+        db.session.rollback()
+        print(f"[assistant.execute] error: {e}")
+        return jsonify({"ok": False, "message": f"Error: {e}"}), 200
+
+
+# ---- Proactive co-pilot check --------------------------------------------
+
+# In-memory throttle: (restaurant_id, alert_type) -> last shown datetime.
+# Resets on process restart, which is fine — better to over-notify after a
+# restart than to silently swallow an alert.
+_assistant_check_throttle = {}
+_THROTTLE_WINDOW = timedelta(hours=1)
+
+
+def _check_should_throttle(rid, alert_type):
+    key = (rid, alert_type)
+    last = _assistant_check_throttle.get(key)
+    if last and datetime.utcnow() - last < _THROTTLE_WINDOW:
+        return True
+    _assistant_check_throttle[key] = datetime.utcnow()
+    return False
+
+
+@app.route("/api/assistant/check", methods=["GET", "POST"])
+def api_assistant_check():
+    rid = request.args.get("restaurant_id") or (
+        (request.get_json(silent=True) or {}).get("restaurant_id")
+    )
     restaurant = None
     if rid:
         try:
@@ -663,41 +1080,114 @@ def api_assistant():
             restaurant = None
     if restaurant is None:
         restaurant = _get_selected_restaurant()
+    if restaurant is None:
+        return jsonify({"has_alert": False})
 
-    ctx = _assistant_gather_context(restaurant, message)
+    rid = restaurant.id
 
-    system_prompt = ASSISTANT_SYSTEM_TEMPLATE.format(**ctx)
-    if ctx["facts"]:
-        system_prompt += "\n\nRelevant database facts:\n- " + "\n- ".join(ctx["facts"])
+    # Check candidates in priority order (highest first). The first eligible
+    # one (not throttled) is returned.
+    candidates = []
 
-    api_key = os.environ.get("ANTHROPIC_API_KEY")
-    if not api_key:
-        return jsonify({
-            "response": (
-                "The AI assistant isn't configured yet — set the ANTHROPIC_API_KEY "
-                "environment variable on the server to enable it."
-            )
+    # 1. Critical unresolved alerts
+    crit = (
+        Alert.query.filter_by(restaurant_id=rid, resolved=False, severity="critical")
+        .order_by(Alert.created_at.desc())
+        .first()
+    )
+    if crit:
+        candidates.append({
+            "type": "critical_alert",
+            "severity": "critical",
+            "message": f"Critical alert: {crit.message}",
+            "action": "view_alerts",
         })
 
+    # 2. Toast sync stale (>24h)
+    if restaurant.last_toast_sync:
+        age = datetime.utcnow() - restaurant.last_toast_sync
+        if age > timedelta(hours=24):
+            hours = int(age.total_seconds() // 3600)
+            candidates.append({
+                "type": "toast_sync_stale",
+                "severity": "warning",
+                "message": f"Toast hasn't synced in {hours} hours — sales numbers may be stale.",
+                "action": "sync_toast",
+            })
+
+    # 3. Labor % over 35
     try:
-        from anthropic import Anthropic
-        client = Anthropic(api_key=api_key)
-        resp = client.messages.create(
-            model="claude-sonnet-4-5",
-            max_tokens=1024,
-            system=system_prompt,
-            messages=[{"role": "user", "content": message}],
-        )
-        # Concatenate any text blocks from the response
-        text_parts = [
-            block.text for block in resp.content
-            if getattr(block, "type", None) == "text"
-        ]
-        reply = "".join(text_parts).strip() or "(no response)"
-        return jsonify({"response": reply})
-    except Exception as e:
-        print(f"[assistant] error: {e}")
-        return jsonify({"response": f"Sorry — the assistant hit an error: {e}"}), 200
+        summary = _build_sales_summary(restaurant, "today")
+        lp = summary.get("labor_pct")
+        if lp is not None and lp > 35:
+            candidates.append({
+                "type": "labor_high",
+                "severity": "warning",
+                "message": f"Labor is running at {lp}% today — that's over the 35% threshold.",
+                "action": "view_labor",
+            })
+    except Exception:
+        pass
+
+    # 4. Price increases > 10% (look at most recent price history)
+    big_jump = (
+        db.session.query(PriceHistory, InventoryItem)
+        .join(InventoryItem, PriceHistory.inventory_item_id == InventoryItem.id)
+        .filter(InventoryItem.restaurant_id == rid)
+        .filter(PriceHistory.change_percent != None)
+        .filter(PriceHistory.change_percent > 10)
+        .order_by(PriceHistory.recorded_at.desc())
+        .first()
+    )
+    if big_jump:
+        ph, item = big_jump
+        candidates.append({
+            "type": "price_jump",
+            "severity": "warning",
+            "message": (
+                f"{item.name} jumped {ph.change_percent:+.1f}% to ${ph.new_cost:.2f} "
+                f"on the latest invoice."
+            ),
+            "action": "view_price_tracker",
+        })
+
+    # 5. New pending invoices
+    pending = Invoice.query.filter_by(restaurant_id=rid, status="pending").count()
+    if pending > 0:
+        candidates.append({
+            "type": "pending_invoices",
+            "severity": "info",
+            "message": (
+                f"{pending} invoice{'s' if pending != 1 else ''} waiting for approval."
+            ),
+            "action": "view_invoices",
+        })
+
+    # 6. Items below par
+    low = InventoryItem.query.filter(
+        InventoryItem.restaurant_id == rid,
+        InventoryItem.par_level > 0,
+        InventoryItem.current_stock < InventoryItem.par_level,
+    ).count()
+    if low > 0:
+        candidates.append({
+            "type": "low_stock",
+            "severity": "info",
+            "message": f"{low} item{'s' if low != 1 else ''} below par — time to reorder.",
+            "action": "view_inventory",
+        })
+
+    for cand in candidates:
+        if not _check_should_throttle(rid, cand["type"]):
+            return jsonify({
+                "has_alert": True,
+                "message": cand["message"],
+                "severity": cand["severity"],
+                "action": cand["action"],
+                "type": cand["type"],
+            })
+
+    return jsonify({"has_alert": False})
 
 
 @app.route("/invoices")
