@@ -409,3 +409,16 @@ class User(UserMixin, db.Model):
     @property
     def full_name(self):
         return f"{self.first_name or ''} {self.last_name or ''}".strip() or self.username
+
+    @property
+    def is_owner(self):
+        return self.role == 'owner'
+
+    @property
+    def is_manager(self):
+        return self.role in ('owner', 'manager')
+
+    def can_access_restaurant(self, restaurant_id):
+        if self.role == 'owner':
+            return True
+        return self.restaurant_id == restaurant_id
