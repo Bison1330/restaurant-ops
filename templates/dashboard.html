@@ -69,7 +69,7 @@
     <div class="col-md-2 metric-col">
         <div class="stat-card">
             <div class="stat-icon" id="card-food-icon"><i class="bi bi-pie-chart"></i></div>
-            <div class="stat-value">
+            <div class="stat-value" id="card-food">
                 {% if stats.food_cost_pct is not none %}{{ stats.food_cost_pct }}%{% else %}—{% endif %}
             </div>
             <div class="stat-date text-muted" style="font-size:0.72rem;">All active recipes</div>
@@ -255,7 +255,7 @@
     }
     function foodColorClass(pct) {
         if (pct == null) return 'orange';
-        if (pct < 30) return 'green';
+        if (pct < 28) return 'green';
         if (pct <= 35) return 'orange';
         return 'red';
     }
@@ -333,6 +333,16 @@
                     laborIcon.className = 'stat-icon ' + laborColorClass(d.labor_pct);
                 } else {
                     laborEl.textContent = '—';
+                }
+
+                // Food cost card — value is server-rendered but we still update
+                // it on refresh in case recipe costs changed mid-session, and
+                // we always recolor the icon via foodColorClass.
+                const foodEl = document.getElementById('card-food');
+                const foodIcon = document.getElementById('card-food-icon');
+                if (d.food_cost_pct != null) {
+                    foodEl.textContent = d.food_cost_pct + '%';
+                    foodIcon.className = 'stat-icon ' + foodColorClass(d.food_cost_pct);
                 }
 
                 // Render trend chart
