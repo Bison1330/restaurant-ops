@@ -936,31 +936,24 @@
         }
 
         // ---- Context-aware chips --------------------------------------------
-        function bisonGetChips() {
-            const path = window.location.pathname;
+        function getBisonChips() {
             const hour = new Date().getHours();
-            let chips = [];
-            if (path === '/' || path.startsWith('/dashboard')) {
-                if (hour >= 5 && hour < 11) {
-                    chips = ["Morning briefing", "Yesterday's recap", "Today's schedule"];
-                } else if ((hour >= 11 && hour < 14) || (hour >= 17 && hour < 21)) {
-                    chips = ["Current labor %", "Sales vs target", "Active alerts"];
-                } else {
-                    chips = ["Check my alerts", "Today's sales summary", "Low stock items"];
-                }
-            } else if (path.startsWith('/recipes')) {
-                chips = ["Recipe costs", "Low margin items", "Add new recipe"];
-            } else if (path.startsWith('/invoices')) {
-                chips = ["Pending approvals", "Price changes", "Sync invoices"];
-            } else if (path.startsWith('/inventory')) {
-                chips = ["Low stock items", "Last count summary", "Top usage items"];
-            } else if (path.startsWith('/alerts')) {
-                chips = ["Critical alerts", "Resolve all warnings", "Why did this fire?"];
-            } else {
-                chips = ["Check my alerts", "Today's sales summary", "Low stock items", "Approve pending invoices"];
-            }
-            chips.push("Ask something else...");
-            return chips;
+            const path = window.location.pathname;
+
+            // Page-specific chips
+            if (path.includes('/recipes'))   return ["Highest Margin Items", "Lowest Margin Items", "Missing Ingredients", "Add New Recipe", "Ask something else..."];
+            if (path.includes('/invoices'))  return ["Approve All Pending", "Price Increases This Week", "Overdue Invoices", "Sync GFS Now", "Ask something else..."];
+            if (path.includes('/inventory')) return ["What Needs Ordering?", "Run Count Session", "Price Changes", "Waste This Week", "Ask something else..."];
+            if (path.includes('/employees')) return ["Who's Clocked In?", "Labor Cost Today", "Overtime Risk?", "Top Earners This Week", "Ask something else..."];
+            if (path.includes('/pmix'))      return ["Top Seller Today", "Lowest Margin Item", "Compare to Last Week", "Best Category", "Ask something else..."];
+            if (path.includes('/alerts'))    return ["Critical Alerts", "Resolve All Warnings", "What Caused This?", "Ask something else..."];
+
+            // Time-based dashboard chips
+            if (hour >= 5  && hour < 12) return ["Morning Briefing", "Yesterday's Recap", "Staff on Today", "Any Price Changes?", "Ask something else..."];
+            if (hour >= 12 && hour < 14) return ["Current Labor %", "Sales vs Last Tuesday", "Active Alerts", "What's Selling?", "Ask something else..."];
+            if (hour >= 14 && hour < 17) return ["Mid-Day Summary", "Inventory Check", "Pending Invoices", "Food Cost Today", "Ask something else..."];
+            if (hour >= 17 && hour < 21) return ["Sales Running Hot?", "Current Labor %", "Low Stock Alert?", "Compare to Last Week", "Ask something else..."];
+            return ["End of Day Summary", "Close Out Report", "Tomorrow's Prep", "Weekly Recap", "Ask something else..."];
         }
 
         // ---- Click & chips card ---------------------------------------------
@@ -973,7 +966,7 @@
         function bisonShowChips() {
             const card = document.getElementById('bisonChips');
             card.innerHTML = '';
-            const chips = bisonGetChips();
+            const chips = getBisonChips();
             chips.forEach(txt => {
                 const btn = document.createElement('button');
                 btn.className = 'bison-chip' + (txt.startsWith('Ask something') ? ' ask-other' : '');

@@ -1161,6 +1161,45 @@ def api_assistant():
     ctx = _assistant_gather_context(restaurant)
     system_prompt = ASSISTANT_SYSTEM_TEMPLATE.format(**ctx)
 
+    # Chip-specific guidance: if the latest user turn matches a known suggestion
+    # chip, append a focused instruction so the response is tailored to it.
+    last_user = next(
+        (m.get("content", "") for m in reversed(history) if m.get("role") == "user"),
+        "",
+    )
+    if isinstance(last_user, str):
+        chip_key = last_user.strip().lower().rstrip("?.!")
+        chip_instructions = {
+            "morning briefing": (
+                "The user clicked the 'Morning Briefing' chip. Produce a concise "
+                "morning briefing covering: yesterday's total sales and how it "
+                "compared to the prior week, who is on the schedule today, any "
+                "active alerts that need attention, and weather if it's relevant "
+                "to the operation. Keep it under ~80 words and lead with the "
+                "single most important number."
+            ),
+            "end of day summary": (
+                "The user clicked the 'End of Day Summary' chip. Summarize: "
+                "total sales for today, labor as a % of sales, the top 3 selling "
+                "items, and any issues to flag for tomorrow's open. Be terse — "
+                "bullet style, under ~80 words."
+            ),
+            "who's clocked in": (
+                "The user clicked the \"Who's Clocked In?\" chip. List every "
+                "employee currently on the clock, their role, and the hours "
+                "they've worked so far today. If nobody is clocked in, say so "
+                "plainly."
+            ),
+            "what's selling": (
+                "The user clicked the \"What's Selling?\" chip. Show the top 5 "
+                "items by quantity sold in the last 2 hours. Format as a short "
+                "ranked list with item name and quantity."
+            ),
+        }
+        extra = chip_instructions.get(chip_key)
+        if extra:
+            system_prompt = system_prompt + "\n\n" + extra
+
     api_key = os.environ.get("ANTHROPIC_API_KEY")
     if not api_key:
         return jsonify({
