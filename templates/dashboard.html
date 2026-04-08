@@ -115,7 +115,7 @@
             <h5>Open Alerts</h5>
             <a href="{{ url_for('alerts') }}" class="btn btn-outline-brand btn-sm">View All</a>
         </div>
-        <div style="max-height:250px; overflow-y:auto;">
+        <div style="max-height:220px; overflow-y:scroll;">
             {% if top_alerts %}
             <table class="table table-clean">
                 <tbody>
@@ -158,7 +158,7 @@
                 </tr>
             </thead>
         </table>
-        <div style="max-height:250px; overflow-y:auto;">
+        <div style="max-height:220px; overflow-y:scroll;">
             <table class="table table-clean">
                 <tbody>
                     {% for inv in pending_invoices %}
@@ -188,7 +188,7 @@
         <h5>Price Tracker — Biggest Recent Moves</h5>
         <span class="text-muted" style="font-size: 0.78rem;">From invoice line history</span>
     </div>
-    <div style="max-height:150px; overflow-y:auto;">
+    <div style="max-height:130px; overflow-y:scroll;">
         {% if price_changes %}
         <table class="table table-clean">
             <thead>
@@ -230,7 +230,9 @@
         <h5>Sales Trend — Last 14 Days</h5>
         <span class="text-muted" style="font-size: 0.78rem;">This week vs last week</span>
     </div>
-    <canvas id="salesTrendChart" height="120"></canvas>
+    <div style="position:relative; height:150px; overflow:hidden;">
+        <canvas id="salesTrendChart" height="120" style="max-height:150px;"></canvas>
+    </div>
 </div>
 {% endblock %}
 
@@ -276,6 +278,7 @@
     }
 
     function loadSales() {
+        try {
         if (!RESTAURANT_ID) return;
         document.getElementById('refreshBtn').classList.add('disabled');
 
@@ -287,6 +290,7 @@
         fetch(url)
             .then(r => r.json())
             .then(d => {
+              try {
                 document.getElementById('card-sales').textContent = fmtMoney(d.sales);
                 document.getElementById('card-checks').textContent = d.check_count != null ? d.check_count.toLocaleString() : '—';
                 document.getElementById('card-avg-check').textContent = fmtMoney(d.avg_check);
@@ -343,9 +347,13 @@
 
                 // Render trend chart
                 renderTrendChart(d.daily || []);
+              } catch(e) { console.error('Sales load error (then):', e); }
             })
             .catch(e => console.error('sales-summary failed', e))
             .finally(() => document.getElementById('refreshBtn').classList.remove('disabled'));
+        } catch(e) {
+            console.error('Sales load error:', e);
+        }
     }
 
     let trendChart = null;
