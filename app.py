@@ -61,10 +61,8 @@ def load_user(user_id):
 
 @app.before_request
 def require_login():
-    public_endpoints = {'login', 'logout', 'static', 'auth_status'}
-    if request.endpoint and request.endpoint not in public_endpoints:
-        if not current_user.is_authenticated:
-            return redirect(url_for('login', next=request.url))
+    # Auth disabled during development — re-enable before manager rollout
+    pass
 
 with app.app_context():
     db.create_all()
