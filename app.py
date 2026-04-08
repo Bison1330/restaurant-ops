@@ -4371,6 +4371,9 @@ def create_owner_accounts():
 
 @app.route("/employees/<int:emp_id>/set-pay-type", methods=["POST"])
 def employees_set_pay_type(emp_id):
+    if not current_user.is_authenticated or not current_user.is_manager:
+        flash("Manager access required.", "danger")
+        return redirect(url_for("employees"))
     emp = Employee.query.get_or_404(emp_id)
     pay_type = request.form.get("pay_type", "hourly")
     if pay_type in ("hourly", "salary"):
