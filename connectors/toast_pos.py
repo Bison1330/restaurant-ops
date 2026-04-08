@@ -97,7 +97,19 @@ def fetch_employees(restaurant):
         if e.get("deleted"):
             continue
         wage_overrides = e.get("wageOverrides") or []
-        wage = float(wage_overrides[0]["wage"]) if wage_overrides else 0.0
+        raw_wage = float(wage_overrides[0]["wage"]) if wage_overrides else 0.0
+
+        # Toast returns either an hourly rate or an annual salary in the same
+        # `wage` field. Anything > $500 is almost certainly an annual figure
+        # (max plausible hourly is ~$200 even for senior staff). Convert
+        # annuals to an hourly equivalent using a 2080-hour standard year.
+        if raw_wage > 500:
+            pay_type = "salary"
+            pay_rate = round(raw_wage / 2080.0, 2)
+        else:
+            pay_type = "hourly"
+            pay_rate = raw_wage
+
         job_refs = e.get("jobReferences") or []
         job_title = jobs.get(job_refs[0]["guid"], "") if job_refs else ""
         employees.append({
@@ -105,7 +117,9 @@ def fetch_employees(restaurant):
             "first_name": e.get("firstName") or "",
             "last_name": e.get("lastName") or "",
             "email": e.get("email") or "",
-            "wage": wage,
+            "wage": pay_rate,
+            "pay_type": pay_type,
+            "annual_salary": raw_wage if pay_type == "salary" else None,
             "job_title": job_title,
         })
     return employees

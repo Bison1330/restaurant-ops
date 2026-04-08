@@ -212,12 +212,14 @@ def _toast_sales_summary(r):
         summary["week_sales"] = round(week_total, 2)
 
         # Labor cost = sum(hours * wage) for last 7 days / week_sales.
-        # Only hourly employees with sane rates (<$100/hr) — guards against
-        # salaried staff whose annual figure landed in pay_rate.
+        # Both hourly and salary employees count — for salaried staff, fetch_employees
+        # has already converted the annual figure to an hourly equivalent (annual / 2080).
+        # The < $100/hr guard catches any remaining bad data (e.g. legacy rows where
+        # an annual was stored without conversion, like the seeded mock employee).
         ts = fetch_timesheets(r, fmt(week_start), fmt(end))
         emp_wage = {}
         for e in Employee.query.filter_by(restaurant_id=r.id).all():
-            if (e.pay_type or "").lower() == "hourly" and 0 < (e.pay_rate or 0) < 100:
+            if 0 < (e.pay_rate or 0) < 100:
                 emp_wage[e.toast_employee_id] = e.pay_rate
         labor_cost = sum((t.get("hours") or 0) * emp_wage.get(t.get("employee_guid"), 0) for t in ts)
         if week_total > 0:
