@@ -712,3 +712,75 @@ class ShiftPreset(db.Model):
             return (end_mins - start_mins) / 60
         except Exception:
             return 0
+
+
+class EmployeeJob(db.Model):
+    """One row per employee per job/position, with individual wage.
+    Synced from Toast wageOverrides + jobReferences."""
+    __tablename__ = 'employee_jobs'
+    id = db.Column(db.Integer, primary_key=True)
+    employee_id = db.Column(db.Integer, db.ForeignKey('employees.id'), index=True)
+    restaurant_id = db.Column(db.Integer, db.ForeignKey('restaurants.id'), index=True)
+    toast_job_guid = db.Column(db.String(100))
+    job_name = db.Column(db.String(50), nullable=False)
+    wage = db.Column(db.Float, default=0.0)
+    is_primary = db.Column(db.Boolean, default=False)
+    effective_date = db.Column(db.Date, nullable=True)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow)
+    employee = db.relationship('Employee', backref='jobs')
+    restaurant = db.relationship('Restaurant', backref='employee_jobs')
+
+
+class EmployeeProfile(db.Model):
+    """Extended profile fields for an employee not stored in Toast."""
+    __tablename__ = 'employee_profiles'
+    id = db.Column(db.Integer, primary_key=True)
+    employee_id = db.Column(db.Integer, db.ForeignKey('employees.id'), unique=True, index=True)
+    preferred_name = db.Column(db.String(50))
+    email = db.Column(db.String(100))
+    phone = db.Column(db.String(20))
+    date_of_birth = db.Column(db.Date, nullable=True)
+    hire_date = db.Column(db.Date, nullable=True)
+    preferred_hours_week = db.Column(db.Float, nullable=True)
+    hide_from_schedule = db.Column(db.Boolean, default=False)
+    notes = db.Column(db.Text)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow)
+    employee = db.relationship('Employee', backref=db.backref('profile', uselist=False))
+
+
+class EmployeeDocument(db.Model):
+    """Certification and document tracking per employee."""
+    __tablename__ = 'employee_documents'
+    id = db.Column(db.Integer, primary_key=True)
+    employee_id = db.Column(db.Integer, db.ForeignKey('employees.id'), index=True)
+    restaurant_id = db.Column(db.Integer, db.ForeignKey('restaurants.id'), index=True)
+    document_type = db.Column(db.String(50), nullable=False)
+    # Types: Food Handler | BASSET | CFPM | ServSafe | Allergen | I9 | W4 | Custom
+    document_name = db.Column(db.String(200))
+    file_path = db.Column(db.String(500), nullable=True)
+    issued_date = db.Column(db.Date, nullable=True)
+    expiration_date = db.Column(db.Date, nullable=True)
+    notes = db.Column(db.String(300))
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow)
+    employee = db.relationship('Employee', backref='documents')
+    restaurant = db.relationship('Restaurant', backref='employee_documents')
+
+    @property
+    def status(self):
+        if not self.expiration_date:
+            return 'valid'
+        from datetime import date, timedelta
+        today = date.today()
+        if self.expiration_date < today:
+            return 'expired'
+        elif self.expiration_date <= today + timedelta(days=30):
+            return 'expiring_soon'
+        return 'valid'
+
+    @property
+    def days_until_expiration(self):
+        if not self.expiration_date:
+            return None
+        from datetime import date
+        return (self.expiration_date - date.today()).days

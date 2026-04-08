@@ -1,0 +1,636 @@
+{% extends "base.html" %}
+{% block title %}{{ emp.first_name }} {{ emp.last_name }} — Bison Stockyard{% endblock %}
+
+{% block topbar %}
+<div class="d-flex align-items-center gap-2">
+    <a href="{{ url_for('employees') }}" class="btn btn-sm btn-outline-secondary">
+        <i class="bi bi-arrow-left"></i>
+    </a>
+    <h1>{{ emp.first_name }} {{ emp.last_name }}</h1>
+    {% if emp.role %}
+    <span class="badge ms-1" style="background:rgba(61,220,132,0.15);color:var(--accent);font-size:0.75rem;">
+        {{ emp.role }}
+    </span>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block topbar_actions %}
+<div class="d-flex gap-2">
+    {% if emp.active %}
+    <span class="badge" style="background:rgba(34,197,94,0.15);color:#22c55e;">Active</span>
+    {% else %}
+    <span class="badge" style="background:rgba(239,68,68,0.15);color:#ef4444;">Inactive</span>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block content %}
+{% with messages = get_flashed_messages(with_categories=true) %}
+{% for cat, msg in messages %}
+<div class="alert alert-{{ cat }} alert-dismissible fade show">
+    {{ msg }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+</div>
+{% endfor %}
+{% endwith %}
+
+<div class="emp-detail-layout">
+    <div class="emp-detail-tabs">
+        <a href="{{ url_for('employee_detail', emp_id=emp.id, tab='personal') }}"
+           class="emp-tab {% if tab=='personal' %}active{% endif %}">
+            <i class="bi bi-person"></i> Personal
+        </a>
+        <a href="{{ url_for('employee_detail', emp_id=emp.id, tab='work') }}"
+           class="emp-tab {% if tab=='work' %}active{% endif %}">
+            <i class="bi bi-briefcase"></i> Work
+        </a>
+        <a href="{{ url_for('employee_detail', emp_id=emp.id, tab='wages') }}"
+           class="emp-tab {% if tab=='wages' %}active{% endif %}">
+            <i class="bi bi-currency-dollar"></i> Wages
+        </a>
+        <a href="{{ url_for('employee_detail', emp_id=emp.id, tab='unavailability') }}"
+           class="emp-tab {% if tab=='unavailability' %}active{% endif %}">
+            <i class="bi bi-slash-circle"></i> Unavailability
+        </a>
+        <a href="{{ url_for('employee_detail', emp_id=emp.id, tab='timeoff') }}"
+           class="emp-tab {% if tab=='timeoff' %}active{% endif %}">
+            <i class="bi bi-calendar-heart"></i> Time Off
+        </a>
+        <a href="{{ url_for('employee_detail', emp_id=emp.id, tab='documents') }}"
+           class="emp-tab {% if tab=='documents' %}active{% endif %}">
+            <i class="bi bi-file-earmark-text"></i> Documents
+            {% set expired_docs = documents|selectattr('status', 'eq', 'expired')|list %}
+            {% set expiring_docs = documents|selectattr('status', 'eq', 'expiring_soon')|list %}
+            {% if expired_docs %}
+            <span class="tab-badge danger">{{ expired_docs|length }}</span>
+            {% elif expiring_docs %}
+            <span class="tab-badge warning">{{ expiring_docs|length }}</span>
+            {% endif %}
+        </a>
+    </div>
+
+    <div class="emp-detail-body">
+
+    {# ── PERSONAL ── #}
+    {% if tab == 'personal' %}
+    <form method="POST" action="{{ url_for('employee_save_profile', emp_id=emp.id) }}">
+        <div class="emp-section-title">Personal Information</div>
+        <div class="row g-3 mb-4">
+            <div class="col-md-3">
+                <label class="form-label fw-semibold">First Name</label>
+                <input type="text" class="form-control" value="{{ emp.first_name }}" disabled>
+                <div class="form-text">Synced from Toast</div>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label fw-semibold">Last Name</label>
+                <input type="text" class="form-control" value="{{ emp.last_name }}" disabled>
+                <div class="form-text">Synced from Toast</div>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label fw-semibold">Preferred Name</label>
+                <input type="text" name="preferred_name" class="form-control"
+                    value="{{ profile.preferred_name or '' }}" placeholder="Nickname">
+            </div>
+            <div class="col-md-3">
+                <label class="form-label fw-semibold">Date of Birth</label>
+                <input type="date" name="date_of_birth" class="form-control"
+                    value="{{ profile.date_of_birth.isoformat() if profile.date_of_birth else '' }}">
+            </div>
+        </div>
+        <div class="emp-section-title">Contact</div>
+        <div class="row g-3 mb-4">
+            <div class="col-md-4">
+                <label class="form-label fw-semibold">Email</label>
+                <input type="email" name="email" class="form-control"
+                    value="{{ profile.email or '' }}" placeholder="employee@email.com">
+            </div>
+            <div class="col-md-4">
+                <label class="form-label fw-semibold">Phone</label>
+                <input type="tel" name="phone" class="form-control"
+                    value="{{ profile.phone or '' }}" placeholder="+1 630 555 0100">
+            </div>
+        </div>
+        <div class="emp-section-title">Notes</div>
+        <div class="mb-4">
+            <textarea name="notes" class="form-control" rows="3"
+                placeholder="Internal notes about this employee">{{ profile.notes or '' }}</textarea>
+        </div>
+        <button type="submit" class="btn btn-primary">Save Personal Info</button>
+    </form>
+
+    {# ── WORK ── #}
+    {% elif tab == 'work' %}
+    <form method="POST" action="{{ url_for('employee_save_profile', emp_id=emp.id) }}">
+        <div class="emp-section-title">Employment Details</div>
+        <div class="row g-3 mb-4">
+            <div class="col-md-3">
+                <label class="form-label fw-semibold">Employee ID</label>
+                <input type="text" class="form-control" value="{{ emp.toast_employee_id or '—' }}" disabled>
+                <div class="form-text">Toast ID</div>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label fw-semibold">Hire Date</label>
+                <input type="date" name="hire_date" class="form-control"
+                    value="{{ profile.hire_date.isoformat() if profile.hire_date else '' }}">
+                <div class="form-text">Used for PTO accrual</div>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label fw-semibold">Preferred Hours / Week</label>
+                <input type="number" name="preferred_hours_week" class="form-control"
+                    value="{{ profile.preferred_hours_week or '' }}"
+                    placeholder="e.g. 30" min="0" max="60" step="0.5">
+            </div>
+            <div class="col-md-3">
+                <label class="form-label fw-semibold">Pay Type</label>
+                <input type="text" class="form-control"
+                    value="{{ emp.pay_type|title if emp.pay_type else '—' }}" disabled>
+            </div>
+        </div>
+        <div class="emp-section-title">Schedule</div>
+        <div class="mb-4">
+            <div class="form-check">
+                <input type="checkbox" name="hide_from_schedule" id="hide-sched"
+                    class="form-check-input" {% if profile.hide_from_schedule %}checked{% endif %}>
+                <label class="form-check-label" for="hide-sched">
+                    Hide from schedule grid
+                    <small class="text-muted">(employee still active, just not shown when building schedule)</small>
+                </label>
+            </div>
+        </div>
+        <div class="emp-section-title">Primary Position</div>
+        <div class="row g-3 mb-4">
+            <div class="col-md-4">
+                <label class="form-label fw-semibold">Role</label>
+                <input type="text" class="form-control" value="{{ emp.role or '—' }}" disabled>
+                <div class="form-text">Set via Wages tab · synced from Toast</div>
+            </div>
+        </div>
+        <button type="submit" class="btn btn-primary">Save Work Info</button>
+    </form>
+
+    {# ── WAGES ── #}
+    {% elif tab == 'wages' %}
+    <div class="d-flex align-items-center justify-content-between mb-3">
+        <div class="emp-section-title mb-0">Positions & Wages</div>
+        <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#addJobModal">
+            <i class="bi bi-plus-lg me-1"></i>Add Position
+        </button>
+    </div>
+    <div class="alert py-2 mb-3" style="font-size:0.8rem;background:rgba(61,220,132,0.06);border:1px solid rgba(61,220,132,0.15);">
+        <i class="bi bi-info-circle me-1"></i>
+        Wages sync automatically from Toast. Use the sync button on the Employees page to refresh.
+        You can also add or adjust positions manually here.
+    </div>
+    <table class="table table-clean">
+        <thead>
+            <tr>
+                <th>Position</th>
+                <th>Wage</th>
+                <th>Pay Type</th>
+                <th>Effective Date</th>
+                <th>Primary</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for job in jobs %}
+            <tr>
+                <td class="fw-semibold">
+                    {% set pos = positions|selectattr('name', 'eq', job.job_name)|first %}
+                    {% if pos %}
+                    <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:{{ pos.color_hex }};margin-right:6px;"></span>
+                    {% endif %}
+                    {{ job.job_name }}
+                </td>
+                <td>
+                    <form method="POST" action="{{ url_for('employee_edit_job', emp_id=emp.id, job_id=job.id) }}" class="d-flex align-items-center gap-1">
+                        <span class="text-muted">$</span>
+                        <input type="number" name="wage" class="form-control form-control-sm"
+                            style="width:90px;" value="{{ '%.2f'|format(job.wage) }}"
+                            min="0" max="999" step="0.01">
+                        <input type="hidden" name="job_name" value="{{ job.job_name }}">
+                        <input type="hidden" name="is_primary" value="{{ '1' if job.is_primary else '0' }}">
+                        <button type="submit" class="btn btn-xs btn-outline-primary">Save</button>
+                    </form>
+                </td>
+                <td>{{ emp.pay_type|title if emp.pay_type else 'Hourly' }}</td>
+                <td class="text-muted" style="font-size:0.82rem;">
+                    {{ job.effective_date.strftime('%b %-d, %Y') if job.effective_date else '—' }}
+                </td>
+                <td>
+                    {% if job.is_primary %}
+                    <span class="badge" style="background:rgba(61,220,132,0.15);color:var(--accent);">Primary</span>
+                    {% endif %}
+                </td>
+                <td class="text-end">
+                    <form method="POST" action="{{ url_for('employee_delete_job', emp_id=emp.id, job_id=job.id) }}"
+                          class="d-inline" onsubmit="return confirm('Remove this position?')">
+                        <button type="submit" class="btn btn-xs btn-outline-danger">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </form>
+                </td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="6" class="text-center text-muted py-4">
+                    No positions on file. Click "Add Position" or sync from Toast.
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    {# ── UNAVAILABILITY ── #}
+    {% elif tab == 'unavailability' %}
+    <div class="d-flex align-items-center justify-content-between mb-3">
+        <div class="emp-section-title mb-0">Recurring Unavailability</div>
+        <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#addAvailModal">
+            <i class="bi bi-plus-lg me-1"></i>Add Block
+        </button>
+    </div>
+    {% if availability %}
+    <table class="table table-clean">
+        <thead>
+            <tr>
+                <th>Day</th>
+                <th>Time</th>
+                <th>Reason</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for a in availability %}
+            <tr>
+                <td class="fw-semibold">{{ days[a.day_of_week] }}</td>
+                <td>{{ 'All day' if a.all_day else a.start_time + '–' + a.end_time }}</td>
+                <td class="text-muted">{{ a.reason or '—' }}</td>
+                <td class="text-end">
+                    <form method="POST" action="{{ url_for('schedule_delete_availability', avail_id=a.id) }}"
+                          onsubmit="return confirm('Remove this unavailability block?')">
+                        <button type="submit" class="btn btn-xs btn-outline-danger">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <div class="text-center text-muted py-5">
+        <i class="bi bi-calendar-x" style="font-size:2rem;"></i>
+        <div class="mt-2">No recurring unavailability on file.</div>
+    </div>
+    {% endif %}
+
+    {# ── TIME OFF ── #}
+    {% elif tab == 'timeoff' %}
+    <div class="emp-section-title">PTO Balance — {{ year }}</div>
+    {% if pto_balance %}
+    <div class="row g-3 mb-4">
+        <div class="col-6 col-md-3">
+            <div class="content-card text-center py-3">
+                <div style="font-size:1.4rem;font-weight:700;color:var(--accent);">
+                    {{ "%.1f"|format(pto_balance.hours_accrued) }}h
+                </div>
+                <div class="text-muted" style="font-size:0.75rem;">Accrued</div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="content-card text-center py-3">
+                <div style="font-size:1.4rem;font-weight:700;color:var(--text-muted);">
+                    {{ "%.1f"|format(pto_balance.hours_carried) }}h
+                </div>
+                <div class="text-muted" style="font-size:0.75rem;">Carried Over</div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="content-card text-center py-3">
+                <div style="font-size:1.4rem;font-weight:700;color:#f59e0b;">
+                    {{ "%.1f"|format(pto_balance.hours_used) }}h
+                </div>
+                <div class="text-muted" style="font-size:0.75rem;">Used</div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="content-card text-center py-3">
+                <div style="font-size:1.4rem;font-weight:700;color:{% if pto_balance.total_available > 0 %}var(--accent){% else %}#ef4444{% endif %};">
+                    {{ "%.1f"|format(pto_balance.total_available) }}h
+                </div>
+                <div class="text-muted" style="font-size:0.75rem;">Available</div>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <div class="alert py-2 mb-3" style="font-size:0.82rem;background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.2);">
+        No PTO balance on file for {{ year }}. Balance is created automatically when the first request is submitted.
+    </div>
+    {% endif %}
+
+    <div class="emp-section-title">Request History</div>
+    {% if pto_requests %}
+    <table class="table table-clean">
+        <thead>
+            <tr>
+                <th>Dates</th>
+                <th>Hours</th>
+                <th>Status</th>
+                <th>Submitted</th>
+                <th>Notes</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for req in pto_requests %}
+            <tr>
+                <td>{{ req.date_range_display }}</td>
+                <td>{{ req.hours_requested|int }}h</td>
+                <td>
+                    {% if req.status == 'approved' %}
+                    <span class="badge" style="background:rgba(34,197,94,0.15);color:#22c55e;">Approved</span>
+                    {% elif req.status == 'denied' %}
+                    <span class="badge" style="background:rgba(239,68,68,0.15);color:#ef4444;">Denied</span>
+                    {% else %}
+                    <span class="badge" style="background:rgba(245,158,11,0.15);color:#f59e0b;">Pending</span>
+                    {% endif %}
+                </td>
+                <td class="text-muted" style="font-size:0.78rem;">
+                    {{ req.requested_at.strftime('%b %-d') if req.requested_at else '—' }}
+                </td>
+                <td class="text-muted" style="font-size:0.78rem;">{{ req.notes or '—' }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <div class="text-center text-muted py-4">No PTO requests on file.</div>
+    {% endif %}
+
+    {# ── DOCUMENTS ── #}
+    {% elif tab == 'documents' %}
+    <div class="d-flex align-items-center justify-content-between mb-3">
+        <div class="emp-section-title mb-0">Certifications & Documents</div>
+        <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#addDocModal">
+            <i class="bi bi-plus-lg me-1"></i>Add Document
+        </button>
+    </div>
+
+    {% if documents %}
+    <div class="row g-3 mb-3">
+        {% for doc in documents %}
+        <div class="col-md-6">
+            <div class="doc-card {% if doc.status == 'expired' %}doc-expired{% elif doc.status == 'expiring_soon' %}doc-expiring{% endif %}">
+                <div class="d-flex align-items-start justify-content-between">
+                    <div>
+                        <div class="doc-type">
+                            {% if doc.status == 'expired' %}
+                            <i class="bi bi-x-circle-fill text-danger me-1"></i>
+                            {% elif doc.status == 'expiring_soon' %}
+                            <i class="bi bi-exclamation-triangle-fill text-warning me-1"></i>
+                            {% else %}
+                            <i class="bi bi-check-circle-fill me-1" style="color:var(--accent);"></i>
+                            {% endif %}
+                            {{ doc.document_type }}
+                        </div>
+                        <div class="doc-name text-muted">{{ doc.document_name or '—' }}</div>
+                    </div>
+                    <form method="POST" action="{{ url_for('employee_delete_document', emp_id=emp.id, doc_id=doc.id) }}"
+                          onsubmit="return confirm('Remove this document?')">
+                        <button type="submit" class="btn btn-xs btn-outline-danger">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </form>
+                </div>
+                <div class="doc-dates mt-2">
+                    {% if doc.issued_date %}
+                    <span><i class="bi bi-calendar-check me-1"></i>Issued {{ doc.issued_date.strftime('%b %-d, %Y') }}</span>
+                    {% endif %}
+                    {% if doc.expiration_date %}
+                    <span class="ms-3 {% if doc.status == 'expired' %}text-danger{% elif doc.status == 'expiring_soon' %}text-warning{% endif %}">
+                        <i class="bi bi-calendar-x me-1"></i>
+                        {% if doc.status == 'expired' %}
+                        Expired {{ doc.expiration_date.strftime('%b %-d, %Y') }}
+                        {% elif doc.status == 'expiring_soon' %}
+                        Expires {{ doc.expiration_date.strftime('%b %-d, %Y') }} ({{ doc.days_until_expiration }}d)
+                        {% else %}
+                        Expires {{ doc.expiration_date.strftime('%b %-d, %Y') }}
+                        {% endif %}
+                    </span>
+                    {% endif %}
+                </div>
+                {% if doc.file_path %}
+                <div class="mt-1">
+                    <a href="/employees/document/{{ doc.id }}/download" class="btn btn-xs btn-outline-secondary">
+                        <i class="bi bi-download me-1"></i>Download
+                    </a>
+                </div>
+                {% endif %}
+                {% if doc.notes %}
+                <div class="doc-notes text-muted mt-1">{{ doc.notes }}</div>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="text-center text-muted py-5">
+        <i class="bi bi-file-earmark-x" style="font-size:2rem;"></i>
+        <div class="mt-2">No documents on file.</div>
+        <div class="mt-1" style="font-size:0.82rem;">
+            Add Food Handler, BASSET, CFPM, and other certifications here.
+        </div>
+    </div>
+    {% endif %}
+    {% endif %}
+
+    </div>
+</div>
+
+{# ── MODALS ── #}
+
+<!-- Add Position Modal -->
+<div class="modal fade" id="addJobModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Add Position</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="{{ url_for('employee_add_job', emp_id=emp.id) }}">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Position</label>
+                        <select name="job_name" class="form-select" required>
+                            <option value="">— select —</option>
+                            {% for pos in positions %}
+                            <option value="{{ pos.name }}">{{ pos.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Wage ($/hr)</label>
+                        <input type="number" name="wage" class="form-control"
+                            min="0" max="999" step="0.01" placeholder="0.00" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Effective Date</label>
+                        <input type="date" name="effective_date" class="form-control">
+                    </div>
+                    <div class="form-check">
+                        <input type="checkbox" name="is_primary" value="1" class="form-check-input" id="is-primary-check">
+                        <label class="form-check-label" for="is-primary-check">
+                            Set as primary position
+                        </label>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Add</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Add Unavailability Modal -->
+<div class="modal fade" id="addAvailModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Add Unavailability</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="{{ url_for('schedule_add_availability') }}">
+                <input type="hidden" name="employee_id" value="{{ emp.id }}">
+                <input type="hidden" name="week" value="">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Day of week (recurring)</label>
+                        <select name="day_of_week" class="form-select" required>
+                            {% for day in days %}
+                            <option value="{{ loop.index0 }}">{{ day }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-check mb-3">
+                        <input type="checkbox" name="all_day" value="1" id="avail-all-day"
+                            class="form-check-input" checked onchange="toggleAvailTime(this)">
+                        <label class="form-check-label" for="avail-all-day">All day</label>
+                    </div>
+                    <div id="avail-time-fields" class="row g-2 mb-3" style="display:none;">
+                        <div class="col">
+                            <label class="form-label fw-semibold">From</label>
+                            <input type="time" name="start_time" class="form-control">
+                        </div>
+                        <div class="col">
+                            <label class="form-label fw-semibold">To</label>
+                            <input type="time" name="end_time" class="form-control">
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Reason (optional)</label>
+                        <input type="text" name="reason" class="form-control" placeholder="School, second job…">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Add Document Modal -->
+<div class="modal fade" id="addDocModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-file-earmark-plus me-2"></i>Add Document</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="{{ url_for('employee_add_document', emp_id=emp.id) }}"
+                  enctype="multipart/form-data">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Document Type</label>
+                        <select name="document_type" class="form-select" required>
+                            <option value="">— select —</option>
+                            <optgroup label="Illinois Required">
+                                <option value="Food Handler">Food Handler Certificate (required, expires 3yr)</option>
+                                <option value="BASSET">BASSET Certification (alcohol service, expires 3yr)</option>
+                                <option value="CFPM">CFPM / ServSafe (managers, expires 5yr)</option>
+                                <option value="Allergen">Allergen Training (managers, expires 3yr)</option>
+                            </optgroup>
+                            <optgroup label="Employment">
+                                <option value="I9">I-9 Employment Eligibility</option>
+                                <option value="W4">W-4 Tax Withholding</option>
+                            </optgroup>
+                            <optgroup label="Other">
+                                <option value="Custom">Custom / Other</option>
+                            </optgroup>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Document Name / Description</label>
+                        <input type="text" name="document_name" class="form-control"
+                            placeholder="e.g. ServSafe Manager Certification">
+                    </div>
+                    <div class="row g-2 mb-3">
+                        <div class="col">
+                            <label class="form-label fw-semibold">Issue Date</label>
+                            <input type="date" name="issued_date" class="form-control">
+                        </div>
+                        <div class="col">
+                            <label class="form-label fw-semibold">Expiration Date</label>
+                            <input type="date" name="expiration_date" class="form-control">
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Upload File <span class="text-muted">(optional)</span></label>
+                        <input type="file" name="document_file" class="form-control"
+                            accept=".pdf,.jpg,.jpeg,.png,.webp">
+                        <div class="form-text">PDF or image. Stored securely on server.</div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Notes <span class="text-muted">(optional)</span></label>
+                        <input type="text" name="notes" class="form-control">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Add Document</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<style>
+.emp-detail-layout { display:flex; gap:0; min-height:600px; }
+.emp-detail-tabs { width:170px; flex-shrink:0; border-right:1px solid var(--border); padding:8px 0; }
+.emp-tab { display:flex; align-items:center; gap:8px; padding:10px 16px; color:var(--text-muted); font-size:0.85rem; text-decoration:none; transition:all 0.15s; position:relative; }
+.emp-tab:hover { background:var(--surface); color:var(--text); }
+.emp-tab.active { color:var(--accent); background:rgba(61,220,132,0.06); border-right:2px solid var(--accent); font-weight:600; }
+.emp-tab i { font-size:0.9rem; width:16px; }
+.tab-badge { display:inline-flex; align-items:center; justify-content:center; min-width:18px; height:18px; border-radius:9px; font-size:0.65rem; font-weight:700; padding:0 4px; }
+.tab-badge.danger { background:#ef4444; color:#fff; }
+.tab-badge.warning { background:#f59e0b; color:#000; }
+.emp-detail-body { flex:1; padding:24px 28px; overflow-y:auto; }
+.emp-section-title { font-size:0.95rem; font-weight:600; color:var(--accent); margin-bottom:16px; padding-bottom:8px; border-bottom:1px solid var(--border); }
+.doc-card { background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:14px 16px; }
+.doc-card.doc-expired { border-color:rgba(239,68,68,0.4); background:rgba(239,68,68,0.04); }
+.doc-card.doc-expiring { border-color:rgba(245,158,11,0.4); background:rgba(245,158,11,0.04); }
+.doc-type { font-size:0.88rem; font-weight:600; color:var(--text); }
+.doc-name { font-size:0.78rem; }
+.doc-dates { font-size:0.78rem; color:var(--text-muted); }
+.doc-notes { font-size:0.75rem; }
+.btn-xs { padding:2px 8px; font-size:0.72rem; }
+</style>
+
+<script>
+function toggleAvailTime(checkbox) {
+    document.getElementById('avail-time-fields').style.display = checkbox.checked ? 'none' : 'flex';
+}
+</script>
+{% endblock %}

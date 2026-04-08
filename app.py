@@ -21,6 +21,7 @@ from database import (
     Alert, MenuItemSale, Shift, User, Position, RestaurantSettings, ManagerPreference,
     PTOPolicy, PTOBalance, PTORequest, ScheduleWeek, ShiftTemplate, ShiftTemplateEntry,
     OpenShift, ProjectedSales, EmployeeAvailability, ShiftPreset,
+    EmployeeJob, EmployeeProfile, EmployeeDocument,
 )
 from mock_data import seed_mock_data
 from connectors.gfs_sftp import fetch_gfs_invoices
@@ -1898,9 +1899,91 @@ def vendors():
 
 @app.route("/employees")
 def employees():
-    r = _get_selected_restaurant()
-    emp_list = Employee.query.filter_by(restaurant_id=r.id).all() if r else []
-    return render_template("employees.html", employees=emp_list)
+    restaurant = _get_selected_restaurant()
+    restaurants = Restaurant.query.all()
+    emps = Employee.query.filter_by(
+        restaurant_id=restaurant.id
+    ).order_by(Employee.last_name).all()
+
+    # Build compliance flags
+    FOOD_HANDLER_POSITIONS = {
+        'server', 'wait staff', 'bartender', 'barback', 'cook', 'line cook',
+        'prep cook', 'dishwasher', 'busser', 'busser/runner', 'runner',
+        'food runner', 'expo', 'dish/bus/run', 'run/bus/dish', 'kitchen manager',
+        'host', 'hostess',
+    }
+    BASSET_POSITIONS = {
+        'bartender', 'barback', 'server', 'wait staff', 'shift lead',
+        'manager', 'general manager', 'assistant general manager', 'owner',
+        'floor manager', 'bar manager',
+    }
+    CFPM_POSITIONS = {
+        'manager', 'general manager', 'assistant general manager', 'kitchen manager',
+        'owner', 'floor manager', 'bar manager', 'shift lead',
+    }
+
+    from datetime import date, timedelta
+    today = date.today()
+    compliance_flags = {}
+
+    for emp in emps:
+        flags = []
+        role_lower = (emp.role or '').lower()
+        jobs = EmployeeJob.query.filter_by(employee_id=emp.id).all()
+        all_roles = {j.job_name.lower() for j in jobs} | {role_lower}
+
+        needs_food_handler = bool(all_roles & FOOD_HANDLER_POSITIONS)
+        needs_basset = bool(all_roles & BASSET_POSITIONS)
+        needs_cfpm = bool(all_roles & CFPM_POSITIONS)
+
+        docs = EmployeeDocument.query.filter_by(employee_id=emp.id).all()
+        doc_types = {}
+        for d in docs:
+            dt = d.document_type.lower()
+            if dt not in doc_types or (d.expiration_date and (not doc_types[dt].expiration_date or d.expiration_date > doc_types[dt].expiration_date)):
+                doc_types[dt] = d
+
+        hire_date = emp.profile.hire_date if emp.profile else None
+        hired_over_30_days = hire_date and (today - hire_date).days > 30
+
+        if needs_food_handler:
+            fh = doc_types.get('food handler')
+            if not fh and hired_over_30_days:
+                flags.append(('danger', 'Missing Food Handler cert'))
+            elif fh:
+                if fh.status == 'expired':
+                    flags.append(('danger', 'Food Handler cert EXPIRED'))
+                elif fh.status == 'expiring_soon':
+                    flags.append(('warning', f'Food Handler expires in {fh.days_until_expiration}d'))
+
+        if needs_basset:
+            bs = doc_types.get('basset')
+            if not bs and hired_over_30_days:
+                flags.append(('danger', 'Missing BASSET cert'))
+            elif bs:
+                if bs.status == 'expired':
+                    flags.append(('danger', 'BASSET cert EXPIRED'))
+                elif bs.status == 'expiring_soon':
+                    flags.append(('warning', f'BASSET expires in {bs.days_until_expiration}d'))
+
+        if needs_cfpm:
+            cfpm = doc_types.get('cfpm') or doc_types.get('servsafe')
+            if not cfpm:
+                flags.append(('danger', 'Missing CFPM (ServSafe)'))
+            elif cfpm.status == 'expired':
+                flags.append(('danger', 'CFPM EXPIRED'))
+            elif cfpm.status == 'expiring_soon':
+                flags.append(('warning', f'CFPM expires in {cfpm.days_until_expiration}d'))
+
+        compliance_flags[emp.id] = flags
+
+    return render_template(
+        "employees.html",
+        employees=emps,
+        restaurants=restaurants,
+        selected_restaurant=restaurant,
+        compliance_flags=compliance_flags,
+    )
 
 
 @app.route("/employees/<int:emp_id>/manual-rate", methods=["POST"])
@@ -3816,6 +3899,235 @@ def settings_delete_preset(preset_id):
     db.session.commit()
     flash("Preset removed.", "success")
     return redirect(url_for("settings", tab="positions"))
+
+# ─────────────────────────────────────────────────────────────
+# EMPLOYEE DETAIL
+# ─────────────────────────────────────────────────────────────
+
+def _get_or_create_profile(employee_id):
+    p = EmployeeProfile.query.filter_by(employee_id=employee_id).first()
+    if not p:
+        p = EmployeeProfile(employee_id=employee_id)
+        db.session.add(p)
+        db.session.commit()
+    return p
+
+
+@app.route("/employees/<int:emp_id>/detail")
+def employee_detail(emp_id):
+    emp = Employee.query.get_or_404(emp_id)
+    restaurant = _get_selected_restaurant()
+    restaurants = Restaurant.query.all()
+    tab = request.args.get("tab", "personal")
+    profile = _get_or_create_profile(emp_id)
+    jobs = EmployeeJob.query.filter_by(employee_id=emp_id).order_by(EmployeeJob.is_primary.desc()).all()
+    documents = EmployeeDocument.query.filter_by(employee_id=emp_id).order_by(EmployeeDocument.document_type).all()
+    availability = EmployeeAvailability.query.filter_by(
+        employee_id=emp_id, status='approved'
+    ).order_by(EmployeeAvailability.day_of_week).all()
+    pto_requests = PTORequest.query.filter_by(
+        employee_id=emp_id
+    ).order_by(PTORequest.requested_at.desc()).limit(20).all()
+    from datetime import date
+    year = date.today().year
+    pto_balance = PTOBalance.query.filter_by(
+        employee_id=emp_id, year=year
+    ).first()
+    positions = Position.query.filter_by(
+        restaurant_id=emp.restaurant_id, active=True
+    ).order_by(Position.display_order).all()
+
+    DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+
+    return render_template(
+        "employee_detail.html",
+        emp=emp,
+        profile=profile,
+        jobs=jobs,
+        documents=documents,
+        availability=availability,
+        pto_requests=pto_requests,
+        pto_balance=pto_balance,
+        positions=positions,
+        tab=tab,
+        year=year,
+        days=DAYS,
+        restaurant=restaurant,
+        restaurants=restaurants,
+        selected_restaurant=restaurant,
+    )
+
+
+@app.route("/employees/<int:emp_id>/profile/save", methods=["POST"])
+def employee_save_profile(emp_id):
+    emp = Employee.query.get_or_404(emp_id)
+    profile = _get_or_create_profile(emp_id)
+    f = request.form
+    profile.preferred_name = f.get("preferred_name", "").strip()
+    profile.email = f.get("email", "").strip()
+    profile.phone = f.get("phone", "").strip()
+    if f.get("date_of_birth"):
+        try:
+            profile.date_of_birth = datetime.strptime(f["date_of_birth"], "%Y-%m-%d").date()
+        except ValueError:
+            pass
+    if f.get("hire_date"):
+        try:
+            profile.hire_date = datetime.strptime(f["hire_date"], "%Y-%m-%d").date()
+        except ValueError:
+            pass
+    profile.preferred_hours_week = float(f["preferred_hours_week"]) if f.get("preferred_hours_week") else None
+    profile.hide_from_schedule = "hide_from_schedule" in f
+    profile.notes = f.get("notes", "")
+    profile.updated_at = datetime.utcnow()
+    db.session.commit()
+    flash("Profile saved.", "success")
+    return redirect(url_for("employee_detail", emp_id=emp_id, tab="personal"))
+
+
+@app.route("/employees/<int:emp_id>/job/add", methods=["POST"])
+def employee_add_job(emp_id):
+    f = request.form
+    emp = Employee.query.get_or_404(emp_id)
+    job_name = f.get("job_name", "").strip()
+    if not job_name:
+        flash("Position name required.", "danger")
+        return redirect(url_for("employee_detail", emp_id=emp_id, tab="wages"))
+    is_primary = f.get("is_primary") == "1"
+    if is_primary:
+        EmployeeJob.query.filter_by(employee_id=emp_id).update({"is_primary": False})
+    wage = float(f.get("wage", 0) or 0)
+    effective_date = None
+    if f.get("effective_date"):
+        try:
+            effective_date = datetime.strptime(f["effective_date"], "%Y-%m-%d").date()
+        except ValueError:
+            pass
+    db.session.add(EmployeeJob(
+        employee_id=emp_id,
+        restaurant_id=emp.restaurant_id,
+        job_name=job_name,
+        wage=wage,
+        is_primary=is_primary,
+        effective_date=effective_date,
+    ))
+    db.session.commit()
+    flash(f"Position '{job_name}' added.", "success")
+    return redirect(url_for("employee_detail", emp_id=emp_id, tab="wages"))
+
+
+@app.route("/employees/<int:emp_id>/job/<int:job_id>/edit", methods=["POST"])
+def employee_edit_job(emp_id, job_id):
+    job = EmployeeJob.query.get_or_404(job_id)
+    f = request.form
+    job.job_name = f.get("job_name", job.job_name).strip()
+    job.wage = float(f.get("wage", job.wage) or 0)
+    if f.get("effective_date"):
+        try:
+            job.effective_date = datetime.strptime(f["effective_date"], "%Y-%m-%d").date()
+        except ValueError:
+            pass
+    if f.get("is_primary") == "1":
+        EmployeeJob.query.filter_by(employee_id=emp_id).update({"is_primary": False})
+        job.is_primary = True
+    job.updated_at = datetime.utcnow()
+    db.session.commit()
+    flash("Position updated.", "success")
+    return redirect(url_for("employee_detail", emp_id=emp_id, tab="wages"))
+
+
+@app.route("/employees/<int:emp_id>/job/<int:job_id>/delete", methods=["POST"])
+def employee_delete_job(emp_id, job_id):
+    job = EmployeeJob.query.get_or_404(job_id)
+    db.session.delete(job)
+    db.session.commit()
+    flash("Position removed.", "success")
+    return redirect(url_for("employee_detail", emp_id=emp_id, tab="wages"))
+
+
+@app.route("/employees/<int:emp_id>/document/add", methods=["POST"])
+def employee_add_document(emp_id):
+    import os
+    from werkzeug.utils import secure_filename
+    emp = Employee.query.get_or_404(emp_id)
+    f = request.form
+    doc_type = f.get("document_type", "").strip()
+    if not doc_type:
+        flash("Document type required.", "danger")
+        return redirect(url_for("employee_detail", emp_id=emp_id, tab="documents"))
+
+    file_path = None
+    if "document_file" in request.files:
+        file = request.files["document_file"]
+        if file and file.filename:
+            filename = secure_filename(f"{emp_id}_{doc_type.replace(' ','_')}_{file.filename}")
+            upload_dir = os.path.join("/root/restaurant-ops/data/uploads/employee_docs")
+            os.makedirs(upload_dir, exist_ok=True)
+            save_path = os.path.join(upload_dir, filename)
+            file.save(save_path)
+            file_path = save_path
+
+    issued_date = None
+    expiration_date = None
+    if f.get("issued_date"):
+        try:
+            issued_date = datetime.strptime(f["issued_date"], "%Y-%m-%d").date()
+        except ValueError:
+            pass
+    if f.get("expiration_date"):
+        try:
+            expiration_date = datetime.strptime(f["expiration_date"], "%Y-%m-%d").date()
+        except ValueError:
+            pass
+
+    db.session.add(EmployeeDocument(
+        employee_id=emp_id,
+        restaurant_id=emp.restaurant_id,
+        document_type=doc_type,
+        document_name=f.get("document_name", doc_type).strip(),
+        file_path=file_path,
+        issued_date=issued_date,
+        expiration_date=expiration_date,
+        notes=f.get("notes", ""),
+    ))
+    db.session.commit()
+    flash(f"{doc_type} document added.", "success")
+    return redirect(url_for("employee_detail", emp_id=emp_id, tab="documents"))
+
+
+@app.route("/employees/<int:emp_id>/document/<int:doc_id>/delete", methods=["POST"])
+def employee_delete_document(emp_id, doc_id):
+    doc = EmployeeDocument.query.get_or_404(doc_id)
+    db.session.delete(doc)
+    db.session.commit()
+    flash("Document removed.", "success")
+    return redirect(url_for("employee_detail", emp_id=emp_id, tab="documents"))
+
+
+@app.route("/employees/sync-toast", methods=["POST"])
+def employees_sync_toast():
+    """Full Toast employee sync — pulls jobs, wage overrides, email, phone."""
+    from connectors.toast_pos import fetch_employees_full
+    restaurant = _get_selected_restaurant()
+    try:
+        result = fetch_employees_full(restaurant)
+        flash(f"Synced {result['updated']} employees, {result['jobs_updated']} job/wage records.", "success")
+    except Exception as e:
+        flash(f"Sync error: {e}", "danger")
+    return redirect(url_for("employees"))
+
+
+@app.route("/api/employees/<int:emp_id>/compliance")
+def api_employee_compliance(emp_id):
+    """Return compliance status for one employee as JSON."""
+    emp = Employee.query.get_or_404(emp_id)
+    docs = EmployeeDocument.query.filter_by(employee_id=emp_id).all()
+    return jsonify([{
+        "type": d.document_type,
+        "status": d.status,
+        "expiration_date": d.expiration_date.isoformat() if d.expiration_date else None,
+        "days_until_expiration": d.days_until_expiration,
+    } for d in docs])
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8082, debug=False)

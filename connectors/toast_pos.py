@@ -498,3 +498,126 @@ def _mock_menu():
             ],
         },
     ]
+
+
+def fetch_employees_full(restaurant):
+    """
+    Pull full employee data from Toast including:
+    - Multiple jobs (jobReferences)
+    - Per-job wage overrides (wageOverrides)
+    - Email, phone, preferred name
+
+    Updates Employee, EmployeeJob, and EmployeeProfile records.
+    Does NOT overwrite manually-set hire_date or profile notes.
+    """
+    import sys, os
+    sys.path.insert(0, '/root/restaurant-ops')
+
+    from database import db, Employee, EmployeeJob, EmployeeProfile
+    from flask import current_app
+
+    creds = _get_credentials(restaurant)
+    if not creds:
+        raise Exception(f"No Toast credentials for {restaurant.name}")
+
+    token = _get_token(creds)
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Toast-Restaurant-External-ID": creds["restaurant_guid"],
+        "Content-Type": "application/json",
+    }
+
+    # Pull jobs list first so we can map job GUID → job name
+    jobs_url = f"{TOAST_BASE}/labor/v1/jobs"
+    jobs_resp = requests.get(jobs_url, headers=headers, timeout=30)
+    job_map = {}  # guid → title
+    if jobs_resp.status_code == 200:
+        for job in jobs_resp.json():
+            guid = job.get("guid", "")
+            title = job.get("title", "")
+            if guid and title:
+                job_map[guid] = title
+
+    # Pull employees
+    emp_url = f"{TOAST_BASE}/labor/v1/employees"
+    resp = requests.get(emp_url, headers=headers, timeout=30)
+    if resp.status_code != 200:
+        raise Exception(f"Toast employees API returned {resp.status_code}")
+
+    toast_employees = resp.json()
+    updated = 0
+    jobs_updated = 0
+
+    for te in toast_employees:
+        if te.get("deleted"):
+            continue
+
+        toast_guid = te.get("guid", "")
+        if not toast_guid:
+            continue
+
+        emp = Employee.query.filter_by(
+            restaurant_id=restaurant.id,
+            toast_employee_id=toast_guid
+        ).first()
+        if not emp:
+            continue
+
+        # Update basic fields from Toast
+        emp.first_name = te.get("firstName", emp.first_name)
+        emp.last_name = te.get("lastName", emp.last_name)
+
+        # Update or create profile with contact info
+        profile = EmployeeProfile.query.filter_by(employee_id=emp.id).first()
+        if not profile:
+            profile = EmployeeProfile(employee_id=emp.id)
+            db.session.add(profile)
+
+        if te.get("email") and not profile.email:
+            profile.email = te["email"]
+        if te.get("phoneNumber") and not profile.phone:
+            profile.phone = te["phoneNumber"]
+        if te.get("chosenName") and not profile.preferred_name:
+            profile.preferred_name = te["chosenName"]
+
+        # Build wage override map: job_guid → wage
+        wage_map = {}
+        for wo in te.get("wageOverrides", []):
+            job_guid = wo.get("jobReference", {}).get("guid", "")
+            wage = wo.get("wage", 0)
+            if job_guid:
+                wage_map[job_guid] = wage
+
+        # Update job records
+        job_refs = te.get("jobReferences", [])
+        if job_refs:
+            # Clear existing job records for clean sync
+            EmployeeJob.query.filter_by(employee_id=emp.id).delete()
+
+            for i, jr in enumerate(job_refs):
+                job_guid = jr.get("guid", "")
+                job_name = job_map.get(job_guid, "")
+                if not job_name:
+                    continue
+                wage = wage_map.get(job_guid, 0)
+                is_primary = (i == 0)
+
+                db.session.add(EmployeeJob(
+                    employee_id=emp.id,
+                    restaurant_id=restaurant.id,
+                    toast_job_guid=job_guid,
+                    job_name=job_name,
+                    wage=wage,
+                    is_primary=is_primary,
+                ))
+                jobs_updated += 1
+
+                # Update employee's primary role and pay_rate
+                if is_primary:
+                    emp.role = job_name
+                    emp.pay_rate = wage
+
+        updated += 1
+
+    db.session.commit()
+    return {"updated": updated, "jobs_updated": jobs_updated}
