@@ -10,6 +10,7 @@ from flask import (
     Flask, render_template, request, redirect, url_for, flash,
     session, send_file, jsonify, make_response
 )
+from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from werkzeug.utils import secure_filename
 
 from database import (
@@ -17,7 +18,7 @@ from database import (
     PayrollRun, Employee, Recipe, RecipeIngredient,
     ItemAlias, PriceHistory, UnmatchedItem,
     StorageZone, InventoryItemZone, CountSession, CountEntry,
-    Alert, MenuItemSale, Shift,
+    Alert, MenuItemSale, Shift, User,
 )
 from mock_data import seed_mock_data
 from connectors.gfs_sftp import fetch_gfs_invoices
@@ -48,6 +49,23 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 db.init_app(app)
 
+login_manager = LoginManager()
+login_manager.init_app(app)
+login_manager.login_view = 'login'
+login_manager.login_message = 'Please log in to access Bison Stockyard.'
+login_manager.login_message_category = 'warning'
+
+@login_manager.user_loader
+def load_user(user_id):
+    return User.query.get(int(user_id))
+
+@app.before_request
+def require_login():
+    public_endpoints = {'login', 'logout', 'static', 'auth_status'}
+    if request.endpoint and request.endpoint not in public_endpoints:
+        if not current_user.is_authenticated:
+            return redirect(url_for('login', next=request.url))
+
 with app.app_context():
     db.create_all()
     seed_mock_data(app)
@@ -58,6 +76,13 @@ def _allowed_file(filename):
 
 
 def _get_selected_restaurant():
+    # Owners can switch between restaurants via cookie/session
+    # Managers are locked to their assigned restaurant
+    if current_user.is_authenticated and not current_user.is_owner:
+        if current_user.restaurant_id:
+            r = Restaurant.query.get(current_user.restaurant_id)
+            if r:
+                return r
     restaurant_id = request.cookies.get("restaurant_id") or session.get("restaurant_id")
     if restaurant_id:
         r = Restaurant.query.get(int(restaurant_id))
@@ -2599,6 +2624,200 @@ def api_get_shift(shift_id):
         "status": shift.status,
         "notes": shift.notes or "",
     })
+
+# ─────────────────────────────────────────────────────────────
+# AUTH ROUTES
+# ─────────────────────────────────────────────────────────────
+
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    if current_user.is_authenticated:
+        return redirect(url_for("dashboard"))
+    if request.method == "POST":
+        username = request.form.get("username", "").strip().lower()
+        password = request.form.get("password", "")
+        user = User.query.filter_by(username=username, active=True).first()
+        if user and user.check_password(password):
+            user.last_login = datetime.now(CENTRAL_TZ)
+            db.session.commit()
+            login_user(user, remember=True)
+            if user.temp_password:
+                flash("Welcome! Please set a new password.", "info")
+                return redirect(url_for("change_password"))
+            next_page = request.args.get("next")
+            return redirect(next_page or url_for("dashboard"))
+        flash("Invalid username or password.", "danger")
+    return render_template("login.html")
+
+
+@app.route("/logout")
+@login_required
+def logout():
+    logout_user()
+    flash("You have been logged out.", "info")
+    return redirect(url_for("login"))
+
+
+@app.route("/change-password", methods=["GET", "POST"])
+@login_required
+def change_password():
+    if request.method == "POST":
+        current_pw = request.form.get("current_password", "")
+        new_pw = request.form.get("new_password", "")
+        confirm_pw = request.form.get("confirm_password", "")
+        if not current_user.check_password(current_pw):
+            flash("Current password is incorrect.", "danger")
+        elif len(new_pw) < 8:
+            flash("New password must be at least 8 characters.", "danger")
+        elif new_pw != confirm_pw:
+            flash("Passwords do not match.", "danger")
+        else:
+            current_user.set_password(new_pw)
+            current_user.temp_password = False
+            db.session.commit()
+            flash("Password updated successfully.", "success")
+            return redirect(url_for("dashboard"))
+    return render_template("change_password.html")
+
+
+@app.route("/api/auth/status")
+def auth_status():
+    if current_user.is_authenticated:
+        return jsonify({
+            "authenticated": True,
+            "username": current_user.username,
+            "full_name": current_user.full_name,
+            "role": current_user.role,
+            "restaurant_id": current_user.restaurant_id,
+        })
+    return jsonify({"authenticated": False})
+
+# ─────────────────────────────────────────────────────────────
+# USER ACCOUNT MANAGEMENT
+# ─────────────────────────────────────────────────────────────
+
+@app.route("/admin/sync-users", methods=["POST"])
+@login_required
+def sync_users_from_toast():
+    """Auto-create User accounts for managers and owners from Toast employee data."""
+    import random
+    import string
+
+    if not current_user.is_owner:
+        flash("Owner access required.", "danger")
+        return redirect(url_for("dashboard"))
+
+    MANAGER_ROLES = {
+        'owner', 'general manager', 'assistant general manager',
+        'kitchen manager', 'bar manager', 'floor manager', 'shift manager',
+        'manager', 'agm', 'gm'
+    }
+
+    employees = Employee.query.filter_by(active=True).all()
+    created = []
+    skipped = []
+
+    for emp in employees:
+        role_lower = (emp.role or '').lower().strip()
+        if not any(mr in role_lower for mr in MANAGER_ROLES):
+            continue
+
+        username = f"{(emp.first_name or '').lower().strip()}.{(emp.last_name or '').lower().strip()}"
+        username = username.replace(' ', '').replace("'", '')
+        if not username or username == '.':
+            continue
+
+        existing = User.query.filter_by(username=username).first()
+        if existing:
+            skipped.append(username)
+            continue
+
+        # Determine role
+        user_role = 'owner' if 'owner' in role_lower or 'general manager' in role_lower else 'manager'
+
+        # Owners get NULL restaurant_id (all access)
+        restaurant_id = None if user_role == 'owner' else emp.restaurant_id
+
+        # Generate temp password
+        temp_pw = ''.join(random.choices(string.ascii_letters + string.digits, k=10))
+
+        user = User(
+            username=username,
+            first_name=emp.first_name,
+            last_name=emp.last_name,
+            role=user_role,
+            restaurant_id=restaurant_id,
+            temp_password=True,
+            active=True,
+        )
+        user.set_password(temp_pw)
+        db.session.add(user)
+        created.append({
+            'username': username,
+            'temp_password': temp_pw,
+            'role': user_role,
+            'restaurant': emp.restaurant.name if emp.restaurant else 'All',
+        })
+
+    db.session.commit()
+
+    # Print credentials to log (one time only)
+    if created:
+        app.logger.info("=" * 60)
+        app.logger.info("NEW USER ACCOUNTS CREATED — TEMP PASSWORDS (one time only)")
+        app.logger.info("=" * 60)
+        for u in created:
+            app.logger.info(f"  {u['username']:30} pw: {u['temp_password']:12} role: {u['role']:8} location: {u['restaurant']}")
+        app.logger.info("=" * 60)
+
+    flash(f"Created {len(created)} user account(s). Skipped {len(skipped)} existing. Check server logs for temp passwords.", "success")
+    return redirect(url_for("dashboard"))
+
+
+@app.route("/admin/users")
+@login_required
+def admin_users():
+    """Simple user management page for owners."""
+    if not current_user.is_owner:
+        flash("Owner access required.", "danger")
+        return redirect(url_for("dashboard"))
+    users = User.query.order_by(User.role, User.last_name).all()
+    restaurants = Restaurant.query.all()
+    return render_template("admin_users.html",
+        users=users,
+        restaurants=restaurants,
+        selected_restaurant=_get_selected_restaurant()
+    )
+
+
+@app.route("/admin/users/<int:user_id>/reset-password", methods=["POST"])
+@login_required
+def reset_user_password(user_id):
+    if not current_user.is_owner:
+        flash("Owner access required.", "danger")
+        return redirect(url_for("dashboard"))
+    import random, string
+    user = User.query.get_or_404(user_id)
+    temp_pw = ''.join(random.choices(string.ascii_letters + string.digits, k=10))
+    user.set_password(temp_pw)
+    user.temp_password = True
+    db.session.commit()
+    app.logger.info(f"PASSWORD RESET: {user.username} new temp pw: {temp_pw}")
+    flash(f"Password reset for {user.username}. New temp password printed to server log.", "success")
+    return redirect(url_for("admin_users"))
+
+
+@app.route("/admin/users/<int:user_id>/toggle", methods=["POST"])
+@login_required
+def toggle_user_active(user_id):
+    if not current_user.is_owner:
+        flash("Owner access required.", "danger")
+        return redirect(url_for("dashboard"))
+    user = User.query.get_or_404(user_id)
+    user.active = not user.active
+    db.session.commit()
+    flash(f"{'Activated' if user.active else 'Deactivated'} {user.username}.", "success")
+    return redirect(url_for("admin_users"))
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8082, debug=False)

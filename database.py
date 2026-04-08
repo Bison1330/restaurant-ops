@@ -1,5 +1,6 @@
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
+from flask_login import UserMixin
 
 db = SQLAlchemy()
 
@@ -375,3 +376,36 @@ class Shift(db.Model):
         if emp.pay_type == 'salary':
             return (rate / 52 / 5)
         return self.hours * (rate or 0)
+
+
+class User(UserMixin, db.Model):
+    """Login account for owners and managers."""
+    __tablename__ = 'users'
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(50), unique=True, nullable=False, index=True)
+    email = db.Column(db.String(100), unique=True, nullable=True)
+    password_hash = db.Column(db.String(200), nullable=False)
+    first_name = db.Column(db.String(50))
+    last_name = db.Column(db.String(50))
+    role = db.Column(db.String(20), default='manager')  # owner | manager | employee
+    restaurant_id = db.Column(db.Integer, db.ForeignKey('restaurants.id'), nullable=True)
+    # NULL restaurant_id = access to all restaurants (owners)
+    phone = db.Column(db.String(20))
+    temp_password = db.Column(db.Boolean, default=True)  # force change on first login
+    active = db.Column(db.Boolean, default=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    last_login = db.Column(db.DateTime, nullable=True)
+
+    restaurant = db.relationship('Restaurant', backref='users')
+
+    def set_password(self, password):
+        from werkzeug.security import generate_password_hash
+        self.password_hash = generate_password_hash(password)
+
+    def check_password(self, password):
+        from werkzeug.security import check_password_hash
+        return check_password_hash(self.password_hash, password)
+
+    @property
+    def full_name(self):
+        return f"{self.first_name or ''} {self.last_name or ''}".strip() or self.username
