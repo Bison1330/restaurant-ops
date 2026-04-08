@@ -2,6 +2,10 @@ import os
 import uuid
 from datetime import datetime, timedelta
 
+import pytz
+
+CENTRAL_TZ = pytz.timezone("US/Central")
+
 from flask import (
     Flask, render_template, request, redirect, url_for, flash,
     session, send_file, jsonify, make_response
@@ -187,25 +191,37 @@ def _toast_sales_summary(r):
         return summary
 
     try:
-        now_utc = datetime.utcnow()
-        today_start = datetime(now_utc.year, now_utc.month, now_utc.day)
-        week_start = today_start - timedelta(days=7)
-        end = now_utc
+        # All "today" math is local to US/Central — restaurants live in that
+        # timezone, not UTC. We compute today's window in Central, then convert
+        # the bounds to UTC for the Toast API.
+        now_central = datetime.now(CENTRAL_TZ)
+        today_start_central = CENTRAL_TZ.localize(
+            datetime(now_central.year, now_central.month, now_central.day)
+        )
+        week_start_central = today_start_central - timedelta(days=7)
+        end_central = now_central
 
-        def fmt(d):
-            return d.strftime("%Y-%m-%dT%H:%M:%S.000-0000")
+        today_start_utc = today_start_central.astimezone(pytz.UTC)
+        week_start_utc = week_start_central.astimezone(pytz.UTC)
+        end_utc = end_central.astimezone(pytz.UTC)
 
-        week_orders = fetch_orders(r, fmt(week_start), fmt(end))
+        def fmt(d_utc):
+            # Toast expects ISO-8601 with millisecond precision and a UTC offset
+            return d_utc.strftime("%Y-%m-%dT%H:%M:%S.000-0000")
+
+        print(f"[dashboard] {r.name} fetching orders {fmt(week_start_utc)} -> {fmt(end_utc)} (today starts at {fmt(today_start_utc)})")
+
+        week_orders = fetch_orders(r, fmt(week_start_utc), fmt(end_utc))
         today_total = 0.0
         week_total = 0.0
         for o in week_orders:
             opened = o.get("opened_date") or ""
             try:
-                opened_dt = datetime.strptime(opened, "%Y-%m-%dT%H:%M:%S.%f%z").replace(tzinfo=None)
+                opened_dt = datetime.strptime(opened, "%Y-%m-%dT%H:%M:%S.%f%z")
             except ValueError:
                 opened_dt = None
             week_total += o.get("total", 0)
-            if opened_dt and opened_dt >= today_start:
+            if opened_dt and opened_dt >= today_start_utc:
                 today_total += o.get("total", 0)
 
         summary["today_sales"] = round(today_total, 2)
@@ -216,7 +232,7 @@ def _toast_sales_summary(r):
         # has already converted the annual figure to an hourly equivalent (annual / 2080).
         # The < $100/hr guard catches any remaining bad data (e.g. legacy rows where
         # an annual was stored without conversion, like the seeded mock employee).
-        ts = fetch_timesheets(r, fmt(week_start), fmt(end))
+        ts = fetch_timesheets(r, fmt(week_start_utc), fmt(end_utc))
         emp_wage = {}
         for e in Employee.query.filter_by(restaurant_id=r.id).all():
             if 0 < (e.pay_rate or 0) < 100:
