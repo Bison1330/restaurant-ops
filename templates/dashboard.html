@@ -35,182 +35,154 @@
 {% endblock %}
 
 {% block content %}
-<img src="{{ url_for('static', filename='bison_stockyard.png') }}" alt="Bison Stockyard" style="width:100%; max-height:200px; object-fit:cover; object-position:center 20%; display:block; border-radius:12px; margin-bottom:20px;">
+<!-- Hero -->
+<img src="{{ url_for('static', filename='bison_stockyard.png') }}" alt="Bison Stockyard"
+     style="width:100%; max-height:200px; object-fit:cover; object-position:center 20%; display:block; border-radius:12px; margin-bottom:20px;">
 
-<!-- Row 1: key metric cards (sales/labor populated by JS, food_cost server-side) -->
-<style>
-    /* Override Bootstrap's col-md-2 (16.66% width) on the metric row so all
-       7 visible cards split the row equally instead of wrapping to a second
-       line. The col-md-2 markup stays so smaller breakpoints fall back to
-       Bootstrap's default behavior. */
-    @media (min-width: 768px) {
-        #metric-row .metric-col {
-            flex: 1 1 0;
-            max-width: none;
-        }
-    }
-    /* Uniform value font sizing across the metric row. nowrap keeps figures
-       like "$1,419" on a single line — without it the comma was wrapping
-       between digits and rendering as "$1 419" on narrow cards. */
-    #metric-row .stat-value {
-        font-size: 1.8rem !important;
-        line-height: 1.2;
-        white-space: nowrap;
-    }
-</style>
-<div class="row g-3 mb-4" id="metric-row">
-    <div class="col-md-2 metric-col">
-        <div class="stat-card" style="height:160px; min-height:140px; overflow:visible; display:flex; flex-direction:column; justify-content:space-between;">
-            <div class="stat-icon green"><i class="bi bi-cash-stack"></i></div>
-            <div class="stat-value" id="card-sales">—</div>
-            <div class="stat-date text-muted" id="card-sales-date" style="font-size:0.72rem;">&nbsp;</div>
-            <div class="stat-label">Total Sales</div>
-            <div class="stat-desc text-muted" style="font-size:0.72rem; line-height:1.2;">Incl. tax &amp; tips</div>
-        </div>
+<!-- Row 1: stat cards (single flex row, 7 visible cards; delta card hidden until compare is on) -->
+<div class="d-flex gap-2 mb-3">
+    <div style="flex:1; min-width:0; padding:14px; background:#111; border:1px solid #2a2a2a; border-radius:10px;">
+        <div class="stat-icon green"><i class="bi bi-cash-stack"></i></div>
+        <div id="card-sales" style="font-size:1.5rem; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">—</div>
+        <div id="card-sales-date" class="text-muted" style="font-size:0.7rem;">&nbsp;</div>
+        <div style="font-weight:700;">Total Sales</div>
+        <div class="text-muted" style="font-size:0.7rem;">Incl. tax &amp; tips</div>
     </div>
-    <div class="col-md-2 metric-col" id="card-delta-col" style="display:none;">
-        <div class="stat-card" style="height:160px; min-height:140px; overflow:visible; display:flex; flex-direction:column; justify-content:space-between;">
-            <div class="stat-icon blue"><i class="bi bi-arrow-left-right"></i></div>
-            <div class="stat-value" id="card-delta" style="font-size: 1.4rem;">—</div>
-            <div class="stat-date text-muted" id="card-delta-date" style="font-size:0.72rem;">&nbsp;</div>
-            <div class="stat-label">vs Prior Period</div>
-            <div class="stat-desc text-muted" style="font-size:0.72rem; line-height:1.2;">Change from previous range</div>
-        </div>
+
+    <div id="card-delta-col" style="flex:1; min-width:0; padding:14px; background:#111; border:1px solid #2a2a2a; border-radius:10px; display:none;">
+        <div class="stat-icon blue"><i class="bi bi-arrow-left-right"></i></div>
+        <div id="card-delta" style="font-size:1.5rem; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">—</div>
+        <div id="card-delta-date" class="text-muted" style="font-size:0.7rem;">&nbsp;</div>
+        <div style="font-weight:700;">vs Prior Period</div>
+        <div class="text-muted" style="font-size:0.7rem;">Change from previous range</div>
     </div>
-    <div class="col-md-2 metric-col">
-        <div class="stat-card" style="height:160px; min-height:140px; overflow:visible; display:flex; flex-direction:column; justify-content:space-between;">
-            <div class="stat-icon orange" id="card-labor-icon"><i class="bi bi-people"></i></div>
-            <div class="stat-value" id="card-labor">—</div>
-            <div class="stat-date text-muted" id="card-labor-date" style="font-size:0.72rem;">&nbsp;</div>
-            <div class="stat-label">Labor %</div>
-            <div class="stat-desc text-muted" style="font-size:0.72rem; line-height:1.2;">Labor cost as % of sales</div>
-        </div>
+
+    <div style="flex:1; min-width:0; padding:14px; background:#111; border:1px solid #2a2a2a; border-radius:10px;">
+        <div class="stat-icon orange" id="card-labor-icon"><i class="bi bi-people"></i></div>
+        <div id="card-labor" style="font-size:1.5rem; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">—</div>
+        <div id="card-labor-date" class="text-muted" style="font-size:0.7rem;">&nbsp;</div>
+        <div style="font-weight:700;">Labor %</div>
+        <div class="text-muted" style="font-size:0.7rem;">Labor cost as % of sales</div>
     </div>
-    <div class="col-md-2 metric-col">
-        <div class="stat-card" style="height:160px; min-height:140px; overflow:visible; display:flex; flex-direction:column; justify-content:space-between;">
-            <div class="stat-icon" id="card-food-icon"><i class="bi bi-pie-chart"></i></div>
-            <div class="stat-value" id="card-food">
-                {% if stats.food_cost_pct is not none %}{{ stats.food_cost_pct }}%{% else %}—{% endif %}
-            </div>
-            <div class="stat-date text-muted" style="font-size:0.72rem;">All active recipes</div>
-            <div class="stat-label">Food Cost %</div>
-            <div class="stat-desc text-muted" style="font-size:0.72rem; line-height:1.2;">Avg recipe cost % (weekly)</div>
+
+    <div style="flex:1; min-width:0; padding:14px; background:#111; border:1px solid #2a2a2a; border-radius:10px;">
+        <div class="stat-icon" id="card-food-icon"><i class="bi bi-pie-chart"></i></div>
+        <div id="card-food" style="font-size:1.5rem; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+            {% if stats.food_cost_pct is not none %}{{ stats.food_cost_pct }}%{% else %}—{% endif %}
         </div>
+        <div class="text-muted" style="font-size:0.7rem;">All active recipes</div>
+        <div style="font-weight:700;">Food Cost %</div>
+        <div class="text-muted" style="font-size:0.7rem;">Avg recipe cost % (weekly)</div>
     </div>
-    <div class="col-md-2 metric-col">
-        <div class="stat-card" style="height:160px; min-height:140px; overflow:visible; display:flex; flex-direction:column; justify-content:space-between;">
-            <div class="stat-icon blue"><i class="bi bi-receipt"></i></div>
-            <div class="stat-value" id="card-checks">—</div>
-            <div class="stat-date text-muted" id="card-checks-date" style="font-size:0.72rem;">&nbsp;</div>
-            <div class="stat-label">Check Count</div>
-            <div class="stat-desc text-muted" style="font-size:0.72rem; line-height:1.2;">Number of orders</div>
-        </div>
+
+    <div style="flex:1; min-width:0; padding:14px; background:#111; border:1px solid #2a2a2a; border-radius:10px;">
+        <div class="stat-icon blue"><i class="bi bi-receipt"></i></div>
+        <div id="card-checks" style="font-size:1.5rem; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">—</div>
+        <div id="card-checks-date" class="text-muted" style="font-size:0.7rem;">&nbsp;</div>
+        <div style="font-weight:700;">Check Count</div>
+        <div class="text-muted" style="font-size:0.7rem;">Number of orders</div>
     </div>
-    <div class="col-md-2 metric-col">
-        <div class="stat-card" style="height:160px; min-height:140px; overflow:visible; display:flex; flex-direction:column; justify-content:space-between;">
-            <div class="stat-icon orange"><i class="bi bi-currency-dollar"></i></div>
-            <div class="stat-value" id="card-avg-check">—</div>
-            <div class="stat-date text-muted" id="card-avg-check-date" style="font-size:0.72rem;">&nbsp;</div>
-            <div class="stat-label">Avg Check</div>
-            <div class="stat-desc text-muted" style="font-size:0.72rem; line-height:1.2;">Revenue per order</div>
-        </div>
+
+    <div style="flex:1; min-width:0; padding:14px; background:#111; border:1px solid #2a2a2a; border-radius:10px;">
+        <div class="stat-icon orange"><i class="bi bi-currency-dollar"></i></div>
+        <div id="card-avg-check" style="font-size:1.5rem; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">—</div>
+        <div id="card-avg-check-date" class="text-muted" style="font-size:0.7rem;">&nbsp;</div>
+        <div style="font-weight:700;">Avg Check</div>
+        <div class="text-muted" style="font-size:0.7rem;">Revenue per order</div>
     </div>
-    <div class="col-md-2 metric-col">
-        <div class="stat-card" style="height:160px; min-height:140px; overflow:visible; display:flex; flex-direction:column; justify-content:space-between;">
-            <div class="stat-icon orange"><i class="bi bi-tag"></i></div>
-            <div class="stat-value" id="card-discounts">—</div>
-            <div class="stat-date text-muted" id="card-discounts-date" style="font-size:0.72rem;">&nbsp;</div>
-            <div class="stat-label">Discounts</div>
-            <div class="stat-desc text-muted" style="font-size:0.72rem; line-height:1.2;">Comps &amp; promos</div>
-        </div>
+
+    <div style="flex:1; min-width:0; padding:14px; background:#111; border:1px solid #2a2a2a; border-radius:10px;">
+        <div class="stat-icon orange"><i class="bi bi-tag"></i></div>
+        <div id="card-discounts" style="font-size:1.5rem; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">—</div>
+        <div id="card-discounts-date" class="text-muted" style="font-size:0.7rem;">&nbsp;</div>
+        <div style="font-weight:700;">Discounts</div>
+        <div class="text-muted" style="font-size:0.7rem;">Comps &amp; promos</div>
     </div>
-    <div class="col-md-2 metric-col">
-        <div class="stat-card" style="height:160px; min-height:140px; overflow:visible; display:flex; flex-direction:column; justify-content:space-between;">
-            <div class="stat-icon" id="card-voids-icon"><i class="bi bi-x-octagon"></i></div>
-            <div class="stat-value" id="card-voids">—</div>
-            <div class="stat-date text-muted" id="card-voids-date" style="font-size:0.72rem;">&nbsp;</div>
-            <div class="stat-label">Voids</div>
-            <div class="stat-desc text-muted" style="font-size:0.72rem; line-height:1.2;">Voided checks</div>
-        </div>
+
+    <div style="flex:1; min-width:0; padding:14px; background:#111; border:1px solid #2a2a2a; border-radius:10px;">
+        <div class="stat-icon" id="card-voids-icon"><i class="bi bi-x-octagon"></i></div>
+        <div id="card-voids" style="font-size:1.5rem; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">—</div>
+        <div id="card-voids-date" class="text-muted" style="font-size:0.7rem;">&nbsp;</div>
+        <div style="font-weight:700;">Voids</div>
+        <div class="text-muted" style="font-size:0.7rem;">Voided checks</div>
     </div>
 </div>
 
-<!-- Row 2: Alerts + Pending Invoices -->
-<div class="row g-3 mb-4">
-    <div class="col-lg-6">
-        <div class="content-card">
-            <div class="card-header-row">
-                <h5>Open Alerts</h5>
-                <a href="{{ url_for('alerts') }}" class="btn btn-outline-brand btn-sm">View All</a>
-            </div>
-            <div style="max-height:220px; overflow-y:auto;">
-                {% if top_alerts %}
-                <table class="table table-clean">
-                    <tbody>
-                        {% for a in top_alerts %}
-                        <tr>
-                            <td style="width: 90px;">
-                                {% if a.severity == 'critical' %}
-                                <span class="badge-status overdue">Critical</span>
-                                {% elif a.severity == 'warning' %}
-                                <span class="badge-status pending">Warning</span>
-                                {% else %}
-                                <span class="badge-status">Info</span>
-                                {% endif %}
-                            </td>
-                            <td>{{ a.message }}</td>
-                            <td class="text-end" style="width: 90px; font-size: 0.78rem; color: #888;">{{ a.created_at.strftime('%b %d') }}</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-                {% else %}
-                <div class="text-center py-4 text-muted">No open alerts.</div>
-                {% endif %}
-            </div>
+<!-- Row 2: Open Alerts + Pending Invoices, equal-height side-by-side -->
+<div class="d-flex gap-3 mb-4" style="align-items:stretch;">
+    <div class="content-card" style="flex:1; display:flex; flex-direction:column;">
+        <div class="card-header-row">
+            <h5>Open Alerts</h5>
+            <a href="{{ url_for('alerts') }}" class="btn btn-outline-brand btn-sm">View All</a>
+        </div>
+        <div style="max-height:250px; overflow-y:auto;">
+            {% if top_alerts %}
+            <table class="table table-clean">
+                <tbody>
+                    {% for a in top_alerts %}
+                    <tr>
+                        <td style="width: 90px;">
+                            {% if a.severity == 'critical' %}
+                            <span class="badge-status overdue">Critical</span>
+                            {% elif a.severity == 'warning' %}
+                            <span class="badge-status pending">Warning</span>
+                            {% else %}
+                            <span class="badge-status">Info</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ a.message }}</td>
+                        <td class="text-end" style="width: 90px; font-size: 0.78rem; color: #888;">{{ a.created_at.strftime('%b %d') }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <div class="text-center py-4 text-muted">No open alerts.</div>
+            {% endif %}
         </div>
     </div>
-    <div class="col-lg-6">
-        <div class="content-card">
-            <div class="card-header-row">
-                <h5>Pending Invoices</h5>
-                <a href="{{ url_for('invoices', status='pending') }}" class="btn btn-outline-brand btn-sm">View All</a>
-            </div>
-            <div style="max-height:200px; overflow-y:auto;">
-                {% if pending_invoices %}
-                <table class="table table-clean">
-                    <thead>
-                        <tr>
-                            <th>Vendor</th>
-                            <th>Amount</th>
-                            <th>Due</th>
-                            <th></th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for inv in pending_invoices %}
-                        <tr>
-                            <td class="fw-semibold">{{ inv.vendor.name if inv.vendor else '—' }}</td>
-                            <td>${{ "{:,.2f}".format(inv.total_amount) }}</td>
-                            <td style="font-size: 0.82rem;">{{ inv.due_date.strftime('%b %d') if inv.due_date else '—' }}</td>
-                            <td class="text-end">
-                                <form action="{{ url_for('approve_invoice', id=inv.id) }}" method="POST" style="display:inline;">
-                                    <button class="btn btn-sm btn-outline-success"><i class="bi bi-check-lg"></i> Approve</button>
-                                </form>
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-                {% else %}
-                <div class="text-center py-4 text-muted">No pending invoices.</div>
-                {% endif %}
-            </div>
+
+    <div class="content-card" style="flex:1; display:flex; flex-direction:column;">
+        <div class="card-header-row">
+            <h5>Pending Invoices</h5>
+            <a href="{{ url_for('invoices', status='pending') }}" class="btn btn-outline-brand btn-sm">View All</a>
         </div>
+        {% if pending_invoices %}
+        <table class="table table-clean mb-0">
+            <thead>
+                <tr>
+                    <th>Vendor</th>
+                    <th>Amount</th>
+                    <th>Due</th>
+                    <th></th>
+                </tr>
+            </thead>
+        </table>
+        <div style="max-height:250px; overflow-y:auto;">
+            <table class="table table-clean">
+                <tbody>
+                    {% for inv in pending_invoices %}
+                    <tr>
+                        <td class="fw-semibold">{{ inv.vendor.name if inv.vendor else '—' }}</td>
+                        <td>${{ "{:,.2f}".format(inv.total_amount) }}</td>
+                        <td style="font-size: 0.82rem;">{{ inv.due_date.strftime('%b %d') if inv.due_date else '—' }}</td>
+                        <td class="text-end">
+                            <form action="{{ url_for('approve_invoice', id=inv.id) }}" method="POST" style="display:inline;">
+                                <button class="btn btn-sm btn-outline-success"><i class="bi bi-check-lg"></i> Approve</button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="text-center py-4 text-muted">No pending invoices.</div>
+        {% endif %}
     </div>
 </div>
 
-<!-- Row 3: Price Tracker -->
+<!-- Row 3: Price Tracker (full width) -->
 <div class="content-card mb-4">
     <div class="card-header-row">
         <h5>Price Tracker — Biggest Recent Moves</h5>
@@ -252,15 +224,13 @@
     </div>
 </div>
 
-<!-- Row 4: Weekly sales trend chart -->
+<!-- Row 4: Sales Trend (full width) -->
 <div class="content-card mb-4">
     <div class="card-header-row">
         <h5>Sales Trend — Last 14 Days</h5>
         <span class="text-muted" style="font-size: 0.78rem;">This week vs last week</span>
     </div>
-    <div style="position: relative; height: 280px;">
-        <canvas id="salesTrendChart" height="120"></canvas>
-    </div>
+    <canvas id="salesTrendChart" height="120"></canvas>
 </div>
 {% endblock %}
 
