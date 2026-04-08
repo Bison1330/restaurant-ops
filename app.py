@@ -17,7 +17,7 @@ from database import (
     PayrollRun, Employee, Recipe, RecipeIngredient,
     ItemAlias, PriceHistory, UnmatchedItem,
     StorageZone, InventoryItemZone, CountSession, CountEntry,
-    Alert,
+    Alert, MenuItemSale,
 )
 from mock_data import seed_mock_data
 from connectors.gfs_sftp import fetch_gfs_invoices
@@ -27,6 +27,7 @@ from connectors.email_ingestion import poll_invoice_email
 from connectors.qb_export import export_invoices_iif, export_payroll_iif
 from connectors.toast_pos import fetch_toast_menu, fetch_orders, fetch_timesheets
 from connectors.alerts import run_alerts, run_alerts_all
+from connectors.pmix import fetch_pmix
 from connectors.recipe_csv import parse_recipe_csv
 from connectors.item_matcher import (
     match_item, update_price, confirm_match, create_new_from_unmatched,
@@ -556,6 +557,207 @@ def api_sales_summary():
 
 
 # ---------------------------------------------------------------------------
+# Product Mix (PMIX) — Toast-driven menu item sales analytics
+# ---------------------------------------------------------------------------
+
+def _pmix_resolve_window(range_name, custom_start=None, custom_end=None):
+    """Map a range name to (start_dt, end_dt) in Central time, ISO formatted."""
+    today = datetime.now(CENTRAL_TZ).replace(hour=0, minute=0, second=0, microsecond=0)
+    if range_name == "yesterday":
+        start = today - timedelta(days=1)
+        end = today
+    elif range_name == "week":
+        start = today - timedelta(days=today.weekday())
+        end = today + timedelta(days=1)
+    elif range_name == "last_week":
+        end = today - timedelta(days=today.weekday())
+        start = end - timedelta(days=7)
+    elif range_name == "month":
+        start = today.replace(day=1)
+        end = today + timedelta(days=1)
+    elif range_name == "custom" and custom_start and custom_end:
+        start = CENTRAL_TZ.localize(datetime.strptime(custom_start, "%Y-%m-%d"))
+        end = CENTRAL_TZ.localize(datetime.strptime(custom_end, "%Y-%m-%d")) + timedelta(days=1)
+    else:  # today
+        start = today
+        end = today + timedelta(days=1)
+    return start, end
+
+
+def _pmix_persist(restaurant, items, sale_date):
+    """Replace any existing PMIX rows for (restaurant, sale_date) with `items`.
+
+    `sale_date` is a date — we store it as midnight datetime so the column can
+    stay DateTime. We delete + insert because Toast may revise historic sales
+    and the cleanest behavior is "the snapshot for that day is whatever Toast
+    says now".
+    """
+    if not items:
+        return
+    midnight = datetime.combine(sale_date, datetime.min.time())
+    MenuItemSale.query.filter_by(
+        restaurant_id=restaurant.id, sale_date=midnight
+    ).delete()
+    # Build a quick GUID -> recipe_id index so each PMIX row links straight to
+    # the matching recipe via its toast_guid (or toast_recipe_id as a fallback).
+    recipe_index = {}
+    for r in Recipe.query.filter_by(restaurant_id=restaurant.id).all():
+        if r.toast_guid:
+            recipe_index[r.toast_guid] = r.id
+        if r.toast_recipe_id:
+            recipe_index.setdefault(r.toast_recipe_id, r.id)
+    for it in items:
+        guid = it.get("toast_item_guid")
+        db.session.add(MenuItemSale(
+            restaurant_id=restaurant.id,
+            sale_date=midnight,
+            toast_item_guid=guid,
+            item_name=it.get("item_name"),
+            category=it.get("category"),
+            quantity=int(it.get("quantity") or 0),
+            unit_price=float(it.get("unit_price") or 0),
+            total_revenue=float(it.get("total_revenue") or 0),
+            recipe_id=recipe_index.get(guid),
+        ))
+    db.session.commit()
+
+
+def _pmix_with_recipes(restaurant, items):
+    """Decorate PMIX rows with linked recipe cost data."""
+    if not items:
+        return []
+    recipe_by_guid = {}
+    for r in Recipe.query.filter_by(restaurant_id=restaurant.id).all():
+        if r.toast_guid:
+            recipe_by_guid[r.toast_guid] = r
+        if r.toast_recipe_id:
+            recipe_by_guid.setdefault(r.toast_recipe_id, r)
+    out = []
+    for it in items:
+        guid = it.get("toast_item_guid")
+        rec = recipe_by_guid.get(guid)
+        recipe_id = rec.id if rec else None
+        cost_pct = round(rec.cost_percent, 1) if rec and rec.menu_price else None
+        food_cost = round(rec.total_cost, 2) if rec else None
+        margin = None
+        if rec and rec.menu_price:
+            margin = round((rec.menu_price - rec.total_cost) * (it.get("quantity") or 0), 2)
+        out.append({
+            **it,
+            "recipe_id": recipe_id,
+            "recipe_name": rec.name if rec else None,
+            "food_cost": food_cost,
+            "cost_pct": cost_pct,
+            "margin": margin,
+        })
+    return out
+
+
+def _pmix_for_restaurant(restaurant, range_name, custom_start, custom_end):
+    """Try Toast first; on failure, fall back to whatever's already cached in
+    `menu_item_sales` for the window."""
+    start_dt, end_dt = _pmix_resolve_window(range_name, custom_start, custom_end)
+    items = []
+    used_cache = False
+    error = None
+    try:
+        items = fetch_pmix(restaurant, start_dt, end_dt)
+        if items:
+            # Persist as a single snapshot keyed on the start day
+            _pmix_persist(restaurant, items, start_dt.date())
+    except Exception as e:
+        error = str(e)
+        print(f"[pmix] Toast fetch failed for restaurant {restaurant.id}: {e}")
+        # Fall back to whatever we already have stored for the window
+        rows = (
+            MenuItemSale.query.filter(
+                MenuItemSale.restaurant_id == restaurant.id,
+                MenuItemSale.sale_date >= start_dt.replace(tzinfo=None),
+                MenuItemSale.sale_date < end_dt.replace(tzinfo=None),
+            )
+            .order_by(MenuItemSale.quantity.desc())
+            .all()
+        )
+        # Re-aggregate the cached rows in case the window spans multiple days
+        bucket = {}
+        for r in rows:
+            key = (r.toast_item_guid, r.item_name)
+            cur = bucket.get(key)
+            if cur is None:
+                bucket[key] = {
+                    "toast_item_guid": r.toast_item_guid,
+                    "item_name": r.item_name,
+                    "category": r.category,
+                    "quantity": r.quantity or 0,
+                    "total_revenue": r.total_revenue or 0.0,
+                }
+            else:
+                cur["quantity"] += r.quantity or 0
+                cur["total_revenue"] += r.total_revenue or 0.0
+        items = sorted(bucket.values(), key=lambda x: x["quantity"], reverse=True)
+        for it in items:
+            qty = it["quantity"] or 0
+            it["unit_price"] = round(it["total_revenue"] / qty, 2) if qty else 0.0
+            it["total_revenue"] = round(it["total_revenue"], 2)
+        used_cache = True
+    return _pmix_with_recipes(restaurant, items), {
+        "start": start_dt.isoformat(),
+        "end": end_dt.isoformat(),
+        "used_cache": used_cache,
+        "error": error,
+    }
+
+
+@app.route("/api/pmix")
+def api_pmix():
+    rid = int(request.args.get("restaurant_id", 0) or 0)
+    range_name = request.args.get("range", "today")
+    custom_start = request.args.get("start_date")
+    custom_end = request.args.get("end_date")
+    r = db.session.get(Restaurant, rid) if rid else _get_selected_restaurant()
+    if not r:
+        return jsonify({"error": "no restaurant"}), 400
+    items, meta = _pmix_for_restaurant(r, range_name, custom_start, custom_end)
+    total_qty = sum(it["quantity"] or 0 for it in items)
+    total_rev = round(sum(it["total_revenue"] or 0 for it in items), 2)
+    return jsonify({
+        "items": items,
+        "total_qty": total_qty,
+        "total_revenue": total_rev,
+        "top_item": items[0] if items else None,
+        **meta,
+    })
+
+
+@app.route("/pmix")
+def pmix():
+    r = _get_selected_restaurant()
+    range_name = request.args.get("range", "today")
+    custom_start = request.args.get("start_date")
+    custom_end = request.args.get("end_date")
+    items = []
+    meta = {}
+    if r:
+        items, meta = _pmix_for_restaurant(r, range_name, custom_start, custom_end)
+    categories = sorted({(it.get("category") or "Uncategorized") for it in items})
+    total_qty = sum(it["quantity"] or 0 for it in items)
+    total_rev = round(sum(it["total_revenue"] or 0 for it in items), 2)
+    top_item = items[0] if items else None
+    return render_template(
+        "pmix.html",
+        items=items,
+        categories=categories,
+        selected_range=range_name,
+        custom_start=custom_start or "",
+        custom_end=custom_end or "",
+        total_qty=total_qty,
+        total_revenue=total_rev,
+        top_item=top_item,
+        meta=meta,
+    )
+
+
+# ---------------------------------------------------------------------------
 # Bison AI Assistant — chat + proactive co-pilot backed by Anthropic Claude
 # ---------------------------------------------------------------------------
 
@@ -568,7 +770,8 @@ ASSISTANT_SYSTEM_TEMPLATE = (
     "Current context — Restaurant: {restaurant_name}. Time: {date}. "
     "Sales today: ${sales_today}. Labor: {labor_pct}%. Food cost: {food_cost_pct}%. "
     "Open alerts: {alert_count}. Low stock items: {low_stock_count}. "
-    "Pending invoices: {pending_invoices}.\n\n"
+    "Pending invoices: {pending_invoices}.\n"
+    "Top sellers today: {top_sellers}.\n\n"
     "Common UOM rules: spirits measured in oz, beer in each/case, proteins in oz or lb, "
     "produce in lb or each, dairy in oz or lb. Flag anything that doesn't match expected "
     "UOM for its category.\n\n"
@@ -687,6 +890,7 @@ def _assistant_gather_context(restaurant):
     sales_today = 0.0
     labor_pct = "—"
     food_cost_pct = "—"
+    top_sellers = "(no data)"
 
     if restaurant:
         alert_count = Alert.query.filter_by(restaurant_id=rid, resolved=False).count()
@@ -708,6 +912,26 @@ def _assistant_gather_context(restaurant):
         except Exception as e:
             print(f"[assistant] sales summary failed: {e}")
 
+        # Top 5 sellers today, pulled from cached PMIX rows
+        try:
+            today_midnight = datetime.combine(
+                datetime.now(CENTRAL_TZ).date(), datetime.min.time()
+            )
+            top_rows = (
+                MenuItemSale.query.filter_by(
+                    restaurant_id=restaurant.id, sale_date=today_midnight
+                )
+                .order_by(MenuItemSale.quantity.desc())
+                .limit(5)
+                .all()
+            )
+            if top_rows:
+                top_sellers = ", ".join(
+                    f"{r.item_name} ({r.quantity})" for r in top_rows
+                )
+        except Exception as e:
+            print(f"[assistant] top sellers lookup failed: {e}")
+
     return {
         "restaurant_name": restaurant.name if restaurant else "(no restaurant selected)",
         "date": date_str,
@@ -717,6 +941,7 @@ def _assistant_gather_context(restaurant):
         "alert_count": alert_count,
         "low_stock_count": low_stock_count,
         "pending_invoices": pending_invoices,
+        "top_sellers": top_sellers,
     }
 
 

@@ -312,6 +312,23 @@ class CountEntry(db.Model):
     def variance_value(self):
         return self.variance * self.unit_cost
 
+
+class MenuItemSale(db.Model):
+    """One row per menu item sold on a given day, aggregated from Toast PMIX."""
+    __tablename__ = 'menu_item_sales'
+    id = db.Column(db.Integer, primary_key=True)
+    restaurant_id = db.Column(db.Integer, db.ForeignKey('restaurants.id'), index=True)
+    sale_date = db.Column(db.DateTime, index=True)
+    toast_item_guid = db.Column(db.String(100), index=True)
+    item_name = db.Column(db.String(200))
+    category = db.Column(db.String(100))
+    quantity = db.Column(db.Integer, default=0)
+    unit_price = db.Column(db.Float, default=0)
+    total_revenue = db.Column(db.Float, default=0)
+    recipe_id = db.Column(db.Integer, db.ForeignKey('recipes.id'), nullable=True)
+    restaurant = db.relationship('Restaurant', backref='menu_item_sales')
+    recipe = db.relationship('Recipe', backref='sales')
+
     @property
     def variance_percent(self):
         if self.expected_count and self.expected_count > 0:
