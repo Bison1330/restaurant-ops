@@ -419,6 +419,144 @@
 </style>
 
 <script>
+let currentEditShiftId = null;
+
+// ── Employee rates for cost preview ──
+const empRates = {
+    {% for emp in employees %}
+    {{ emp.id }}: { rate: {{ (emp.manual_pay_rate if emp.manual_pay_rate is not none else emp.pay_rate) or 0 }}, pay_type: "{{ emp.pay_type or 'hourly' }}" },
+    {% endfor %}
+};
+
+// ── DRAG AND DROP ──
+let dragShiftId = null;
+let dragEmpId = null;
+let dragDate = null;
+
+function dragShift(event, shiftId, empId, date) {
+    dragShiftId = shiftId;
+    dragEmpId = empId;
+    dragDate = date;
+    event.dataTransfer.effectAllowed = 'move';
+    event.dataTransfer.setData('text/plain', shiftId);
+    setTimeout(() => event.target.style.opacity = '0.4', 0);
+}
+
+function dropShift(event, targetEmpId, targetDate) {
+    event.preventDefault();
+    event.currentTarget.classList.remove('drag-over');
+    if (!dragShiftId) return;
+    if (dragEmpId === targetEmpId && dragDate === targetDate) {
+        dragShiftId = null;
+        document.querySelectorAll('.shift-pill').forEach(p => p.style.opacity = '');
+        return;
+    }
+    fetch('/api/schedule/shift/move', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+            shift_id: dragShiftId,
+            employee_id: targetEmpId,
+            shift_date: targetDate,
+            week: MONDAY,
+        })
+    }).then(r => r.json()).then(d => {
+        if (d.ok) { autosave(); location.reload(); }
+        else { alert('Move failed: ' + (d.error || 'unknown error')); }
+    });
+    dragShiftId = null;
+}
+
+// ── COPY / PASTE ──
+function copyCurrentShift() {
+    if (!currentEditShiftId) return;
+    fetch('/api/schedule/shift/' + currentEditShiftId)
+        .then(r => r.json())
+        .then(s => {
+            clipboard = {
+                shift_id: s.id,
+                start_time: s.start_time,
+                end_time: s.end_time,
+                role: s.role,
+                notes: s.notes,
+                hours: s.hours,
+            };
+            document.getElementById('paste-btn').style.display = 'inline-flex';
+            document.getElementById('copy-hint').style.display = 'block';
+            const modal = bootstrap.Modal.getInstance(document.getElementById('editShiftModal'));
+            if (modal) modal.hide();
+        });
+}
+
+function handleShiftClick(event, shiftId, empId, date) {
+    if (clipboard && document.getElementById('paste-mode-hint').style.display !== 'none') {
+        pasteToCell(empId, date);
+        return;
+    }
+    openEditModal(shiftId);
+}
+
+function handleCellClick(event, empId, date, role) {
+    if (clipboard) { pasteToCell(empId, date); return; }
+    openAddModal(empId, date, role);
+}
+
+function showPasteMode() {
+    document.getElementById('paste-mode-hint').style.display = 'block';
+    document.getElementById('copy-hint').style.display = 'none';
+    document.querySelectorAll('.shift-cell').forEach(cell => cell.classList.add('paste-target'));
+}
+
+function pasteToCell(empId, date) {
+    if (!clipboard) return;
+    fetch('/api/schedule/shift/paste', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+            employee_id: empId,
+            shift_date: date,
+            start_time: clipboard.start_time,
+            end_time: clipboard.end_time,
+            role: clipboard.role,
+            notes: clipboard.notes,
+            week: MONDAY,
+        })
+    }).then(r => r.json()).then(d => {
+        if (d.ok) { autosave(); location.reload(); }
+        else { alert('Paste failed: ' + (d.error || 'unknown error')); }
+    });
+}
+
+function clearClipboard() {
+    clipboard = null;
+    document.getElementById('paste-btn').style.display = 'none';
+    document.getElementById('copy-hint').style.display = 'none';
+    document.getElementById('paste-mode-hint').style.display = 'none';
+    document.querySelectorAll('.shift-cell').forEach(cell => cell.classList.remove('paste-target'));
+}
+
+// ── AUTOSAVE ──
+function autosave() {
+    fetch('/api/schedule/autosave', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({week: MONDAY}),
+    });
+}
+
+// ── PROJECTED SALES ──
+function saveProjectedSales(input) {
+    const raw = input.value.replace(/[$,]/g, '').trim();
+    const amount = parseFloat(raw) || 0;
+    input.value = amount > 0 ? '$' + amount.toLocaleString('en-US', {maximumFractionDigits:0}) : '';
+    fetch('/api/schedule/projected-sales', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({date: input.dataset.date, amount: amount}),
+    });
+}
+
+// ── MODALS ──
 function openAddModal(empId, dateStr, role) {
     if (empId) document.getElementById('add-emp-select').value = empId;
     if (dateStr) document.getElementById('add-date-select').value = dateStr;
@@ -427,11 +565,12 @@ function openAddModal(empId, dateStr, role) {
 }
 
 function openEditModal(shiftId) {
-    fetch(`/api/schedule/shift/${shiftId}`)
+    currentEditShiftId = shiftId;
+    fetch('/api/schedule/shift/' + shiftId)
         .then(r => r.json())
         .then(s => {
-            document.getElementById('editShiftForm').action = `/schedule/shift/${shiftId}/edit`;
-            document.getElementById('deleteShiftForm').action = `/schedule/shift/${shiftId}/delete`;
+            document.getElementById('editShiftForm').action = '/schedule/shift/' + shiftId + '/edit';
+            document.getElementById('deleteShiftForm').action = '/schedule/shift/' + shiftId + '/delete';
             document.getElementById('edit-emp-select').value = s.employee_id;
             document.getElementById('edit-date-select').value = s.shift_date;
             document.getElementById('edit-start').value = s.start_time;
@@ -443,17 +582,55 @@ function openEditModal(shiftId) {
         });
 }
 
+function openAddOpenShiftModal(dateStr) {
+    if (dateStr) document.getElementById('open-date-select').value = dateStr;
+    new bootstrap.Modal(document.getElementById('addOpenShiftModal')).show();
+}
+
+function openClaimModal(openShiftId, role, start, end, date) {
+    document.getElementById('claimForm').action = '/schedule/open-shift/' + openShiftId + '/claim';
+    document.getElementById('deleteOpenShiftForm').action = '/schedule/open-shift/' + openShiftId + '/delete';
+    document.getElementById('claim-shift-info').innerHTML =
+        '<i class="bi bi-unlock me-1"></i><strong>' + (role || 'Any position') + '</strong> &nbsp;·&nbsp; ' +
+        start + '–' + end + ' &nbsp;·&nbsp; ' + date;
+    new bootstrap.Modal(document.getElementById('claimModal')).show();
+}
+
+function openSaveTemplateModal() {
+    new bootstrap.Modal(document.getElementById('saveTemplateModal')).show();
+}
+
+function openLoadTemplateModal(templateId, templateName) {
+    document.getElementById('loadTemplateForm').action = '/schedule/templates/' + templateId + '/load';
+    document.getElementById('load-template-name').textContent = 'Load: ' + templateName;
+    new bootstrap.Modal(document.getElementById('loadTemplateModal')).show();
+}
+
+function executePaste() {
+    const empId = document.getElementById('paste-emp-select').value;
+    const date = document.getElementById('paste-date-select').value;
+    if (!empId || !date) { alert('Select employee and date.'); return; }
+    const modal = bootstrap.Modal.getInstance(document.getElementById('pasteModal'));
+    if (modal) modal.hide();
+    pasteToCell(parseInt(empId), date);
+}
+
+function filterEmpList(query) {
+    document.querySelectorAll('.emp-filter-item').forEach(item => {
+        item.style.display = item.dataset.name.includes(query.toLowerCase()) ? '' : 'none';
+    });
+}
+
+function toggleAvailTime(checkbox) {
+    const fields = document.getElementById('avail-time-fields');
+    fields.style.display = checkbox.checked ? 'none' : 'flex';
+}
+
 document.getElementById('add-emp-select').addEventListener('change', function() {
     const opt = this.options[this.selectedIndex];
     if (opt && opt.dataset.role) document.getElementById('add-role').value = opt.dataset.role;
     updateCostPreview();
 });
-
-const empRates = {
-    {% for emp in employees %}
-    {{ emp.id }}: { rate: {{ (emp.manual_pay_rate if emp.manual_pay_rate is not none else emp.pay_rate) or 0 }}, pay_type: "{{ emp.pay_type or 'hourly' }}" },
-    {% endfor %}
-};
 
 function updateCostPreview() {
     const empId = parseInt(document.getElementById('add-emp-select').value);
@@ -470,8 +647,8 @@ function updateCostPreview() {
     if (!emp) { preview.style.display='none'; return; }
     const cost=emp.pay_type==='salary'?emp.rate/52/5:hrs*emp.rate;
     preview.style.display='block';
-    preview.innerHTML=`<i class="bi bi-info-circle me-1"></i><strong>${hrs.toFixed(1)} hrs</strong> &nbsp;·&nbsp; Est. cost: <strong>$${cost.toFixed(2)}</strong>`;
+    preview.innerHTML='<i class="bi bi-info-circle me-1"></i><strong>'+hrs.toFixed(1)+' hrs</strong> &nbsp;·&nbsp; Est. cost: <strong>$'+cost.toFixed(2)+'</strong>';
 }
-['add-start','add-end'].forEach(id=>document.getElementById(id).addEventListener('change',updateCostPreview));
+['add-start','add-end'].forEach(id => document.getElementById(id).addEventListener('change', updateCostPreview));
 </script>
 {% endblock %}
