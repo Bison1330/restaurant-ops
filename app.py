@@ -87,16 +87,20 @@ def load_user(user_id):
 
 @app.before_request
 def require_login():
-    # Owner auth enabled — managers and employees still open during testing
-    public_endpoints = {'login', 'logout', 'change_password', 'static', 'auth_status'}
-    if request.endpoint and request.endpoint not in public_endpoints:
+    public_endpoints = {
+        'login', 'logout', 'change_password', 'static', 'auth_status'
+    }
+    if request.endpoint in public_endpoints:
+        return None
+
+    if request.path.startswith('/admin'):
         if not current_user.is_authenticated:
-            # Only enforce login for admin/owner routes
-            owner_prefixes = ['/admin', '/payroll', '/reports']
-            owner_paths = any(request.path.startswith(p) for p in owner_prefixes)
-            # For now just redirect to login if they hit admin routes unauthenticated
-            # Full enforcement comes when manager rollout happens
-            pass
+            return redirect(url_for('login', next=request.url))
+        if not current_user.is_owner:
+            flash("Owner access required.", "danger")
+            return redirect(url_for('dashboard'))
+
+    return None
 
 with app.app_context():
     db.create_all()
