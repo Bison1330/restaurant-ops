@@ -68,6 +68,15 @@ def _job_lookup(restaurant):
     return {j.get("guid"): j.get("title", "") for j in resp.json()}
 
 
+def _mark_synced(restaurant):
+    """Stamp restaurant.last_toast_sync. The caller's existing commit picks
+    up the change because restaurant is a SQLAlchemy ORM object."""
+    try:
+        restaurant.last_toast_sync = datetime.utcnow()
+    except Exception:
+        pass
+
+
 def fetch_employees(restaurant):
     """Return a list of employee dicts for the given Restaurant.
 
@@ -80,6 +89,7 @@ def fetch_employees(restaurant):
     )
     resp.raise_for_status()
     raw = resp.json()
+    _mark_synced(restaurant)
 
     jobs = _job_lookup(restaurant)
     employees = []
@@ -149,6 +159,7 @@ def fetch_menu(restaurant):
         headers=_auth_headers(restaurant),
     )
     resp.raise_for_status()
+    _mark_synced(restaurant)
     payload = resp.json()
     items = []
 

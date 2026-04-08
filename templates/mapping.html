@@ -1,9 +1,9 @@
 {% extends "base.html" %}
 
-{% block title %}Item Matching — RestaurantOps{% endblock %}
+{% block title %}Item Mapping — RestaurantOps{% endblock %}
 
 {% block topbar %}
-<h1>Item Matching</h1>
+<h1>Item Mapping</h1>
 {% endblock %}
 
 {% block topbar_actions %}
@@ -105,7 +105,7 @@
                         <span class="confidence-fill {% if score >= 0.7 %}good{% elif score >= 0.5 %}medium{% else %}low{% endif %}" style="width: {{ (score * 100)|int }}%;"></span>
                     </span>
                     <span style="font-size: 0.75rem; font-weight: 600; color: #666; min-width: 35px;">{{ "%.0f"|format(score * 100) }}%</span>
-                    <form action="{{ url_for('matching_confirm') }}" method="POST" style="display:inline;">
+                    <form action="{{ url_for('mapping_confirm') }}" method="POST" style="display:inline;">
                         <input type="hidden" name="unmatched_id" value="{{ item.id }}">
                         <input type="hidden" name="inventory_item_id" value="{{ inv_item.id }}">
                         <button type="submit" class="btn btn-sm btn-outline-success" style="font-size: 0.72rem; padding: 2px 10px;">
@@ -120,7 +120,7 @@
 
         <!-- Manual match + actions -->
         <div class="match-actions">
-            <form action="{{ url_for('matching_confirm') }}" method="POST" class="d-flex gap-2 align-items-center" style="flex: 1;">
+            <form action="{{ url_for('mapping_confirm') }}" method="POST" class="d-flex gap-2 align-items-center" style="flex: 1;">
                 <input type="hidden" name="unmatched_id" value="{{ item.id }}">
                 <select name="inventory_item_id" class="form-select form-select-sm" style="font-size: 0.82rem; max-width: 300px;">
                     <option value="">— Select inventory item manually —</option>
@@ -133,7 +133,7 @@
                 </button>
             </form>
             <div class="d-flex gap-1">
-                <form action="{{ url_for('matching_create_new') }}" method="POST" style="display:inline;">
+                <form action="{{ url_for('mapping_create_new') }}" method="POST" style="display:inline;">
                     <input type="hidden" name="unmatched_id" value="{{ item.id }}">
                     <select name="category" class="form-select form-select-sm" style="font-size: 0.78rem; width: auto; display: inline-block;">
                         <option value="protein">Protein</option>
@@ -148,7 +148,7 @@
                         <i class="bi bi-plus-lg"></i> New Item
                     </button>
                 </form>
-                <form action="{{ url_for('matching_dismiss') }}" method="POST" style="display:inline;">
+                <form action="{{ url_for('mapping_dismiss') }}" method="POST" style="display:inline;">
                     <input type="hidden" name="unmatched_id" value="{{ item.id }}">
                     <button type="submit" class="btn btn-sm btn-outline-secondary" style="font-size: 0.78rem;">
                         <i class="bi bi-x-lg"></i> Dismiss

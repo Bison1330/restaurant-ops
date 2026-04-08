@@ -536,10 +536,20 @@
             <a href="{{ url_for('vendors') }}" class="{% if '/vendors' in request.path %}active{% endif %}">
                 <i class="bi bi-truck"></i> Vendors
             </a>
-            <a href="{{ url_for('matching') }}" class="{% if '/matching' in request.path %}active{% endif %}" style="position: relative;">
-                <i class="bi bi-link-45deg"></i> Item Matching
+            <a href="{{ url_for('mapping') }}" class="{% if '/mapping' in request.path or '/matching' in request.path %}active{% endif %}" style="position: relative;">
+                <i class="bi bi-link-45deg"></i> Item Mapping
                 {% if unmatched_count is defined and unmatched_count > 0 %}
                 <span style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); background: var(--red); color: #000; font-size: 0.6rem; font-weight: 700; padding: 1px 6px; border-radius: 8px;">{{ unmatched_count }}</span>
+                {% endif %}
+            </a>
+            <a href="{{ url_for('alerts') }}" class="{% if '/alerts' in request.path %}active{% endif %}" style="position: relative;">
+                <i class="bi bi-bell"></i> Alerts
+                {% if alert_critical is defined and alert_critical > 0 %}
+                <span style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); background: var(--red, #e63946); color: #fff; font-size: 0.6rem; font-weight: 700; padding: 1px 6px; border-radius: 8px;">{{ alert_critical }}</span>
+                {% elif alert_warning is defined and alert_warning > 0 %}
+                <span style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); background: #f4a261; color: #000; font-size: 0.6rem; font-weight: 700; padding: 1px 6px; border-radius: 8px;">{{ alert_warning }}</span>
+                {% elif alert_info is defined and alert_info > 0 %}
+                <span style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); background: #6c757d; color: #fff; font-size: 0.6rem; font-weight: 700; padding: 1px 6px; border-radius: 8px;">{{ alert_info }}</span>
                 {% endif %}
             </a>
 

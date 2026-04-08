@@ -13,6 +13,7 @@ from database import (
     PayrollRun, Employee, Recipe, RecipeIngredient,
     ItemAlias, PriceHistory, UnmatchedItem,
     StorageZone, InventoryItemZone, CountSession, CountEntry,
+    Alert,
 )
 from mock_data import seed_mock_data
 from connectors.gfs_sftp import fetch_gfs_invoices
@@ -20,7 +21,8 @@ from connectors.fintech_api import fetch_fintech_invoices
 from connectors.invoice_ocr import extract_invoice_from_image
 from connectors.email_ingestion import poll_invoice_email
 from connectors.qb_export import export_invoices_iif, export_payroll_iif
-from connectors.toast_pos import fetch_toast_menu
+from connectors.toast_pos import fetch_toast_menu, fetch_orders, fetch_timesheets
+from connectors.alerts import run_alerts, run_alerts_all
 from connectors.recipe_csv import parse_recipe_csv
 from connectors.item_matcher import (
     match_item, update_price, confirm_match, create_new_from_unmatched,
@@ -131,7 +133,101 @@ def inject_restaurants():
     unmatched_count = UnmatchedItem.query.filter_by(
         restaurant_id=selected.id, status="pending"
     ).count() if selected else 0
-    return dict(restaurants=restaurants, selected_restaurant=selected, unmatched_count=unmatched_count)
+
+    alert_critical = alert_warning = alert_info = 0
+    if selected:
+        alert_critical = Alert.query.filter_by(
+            restaurant_id=selected.id, resolved=False, severity="critical"
+        ).count()
+        alert_warning = Alert.query.filter_by(
+            restaurant_id=selected.id, resolved=False, severity="warning"
+        ).count()
+        alert_info = Alert.query.filter_by(
+            restaurant_id=selected.id, resolved=False, severity="info"
+        ).count()
+    return dict(
+        restaurants=restaurants,
+        selected_restaurant=selected,
+        unmatched_count=unmatched_count,
+        alert_critical=alert_critical,
+        alert_warning=alert_warning,
+        alert_info=alert_info,
+        alert_total=alert_critical + alert_warning + alert_info,
+    )
+
+
+def _toast_sales_summary(r):
+    """Pull today + this week's sales from Toast and compute labor/food cost %.
+
+    Returns a dict of {today_sales, week_sales, labor_pct, labor_pct_suspicious,
+    food_cost_pct}. Labor cost only counts hourly employees with rates under
+    $100/hr to defend against salaried employees whose annual figure is stored
+    in pay_rate. labor_pct is capped at 100; labor_pct_suspicious is True when
+    the raw computed value exceeds 80% (likely a data issue).
+    Best-effort: any failure returns Nones so the dashboard still renders.
+    """
+    summary = {
+        "today_sales": None,
+        "week_sales": None,
+        "labor_pct": None,
+        "labor_pct_suspicious": False,
+        "food_cost_pct": None,
+    }
+
+    # Average food cost % from active recipes — DB only, always cheap
+    avg_fc = db.session.query(db.func.avg(Recipe.food_cost_pct)).filter(
+        Recipe.restaurant_id == r.id,
+        Recipe.status == "active",
+        Recipe.food_cost_pct > 0,
+    ).scalar()
+    if avg_fc:
+        summary["food_cost_pct"] = round(float(avg_fc), 1)
+
+    if not r.toast_client_id or not r.toast_location_id:
+        return summary
+
+    try:
+        now_utc = datetime.utcnow()
+        today_start = datetime(now_utc.year, now_utc.month, now_utc.day)
+        week_start = today_start - timedelta(days=7)
+        end = now_utc
+
+        def fmt(d):
+            return d.strftime("%Y-%m-%dT%H:%M:%S.000-0000")
+
+        week_orders = fetch_orders(r, fmt(week_start), fmt(end))
+        today_total = 0.0
+        week_total = 0.0
+        for o in week_orders:
+            opened = o.get("opened_date") or ""
+            try:
+                opened_dt = datetime.strptime(opened, "%Y-%m-%dT%H:%M:%S.%f%z").replace(tzinfo=None)
+            except ValueError:
+                opened_dt = None
+            week_total += o.get("total", 0)
+            if opened_dt and opened_dt >= today_start:
+                today_total += o.get("total", 0)
+
+        summary["today_sales"] = round(today_total, 2)
+        summary["week_sales"] = round(week_total, 2)
+
+        # Labor cost = sum(hours * wage) for last 7 days / week_sales.
+        # Only hourly employees with sane rates (<$100/hr) — guards against
+        # salaried staff whose annual figure landed in pay_rate.
+        ts = fetch_timesheets(r, fmt(week_start), fmt(end))
+        emp_wage = {}
+        for e in Employee.query.filter_by(restaurant_id=r.id).all():
+            if (e.pay_type or "").lower() == "hourly" and 0 < (e.pay_rate or 0) < 100:
+                emp_wage[e.toast_employee_id] = e.pay_rate
+        labor_cost = sum((t.get("hours") or 0) * emp_wage.get(t.get("employee_guid"), 0) for t in ts)
+        if week_total > 0:
+            raw_pct = (labor_cost / week_total) * 100
+            summary["labor_pct_suspicious"] = raw_pct > 80
+            summary["labor_pct"] = round(min(raw_pct, 100.0), 1)
+    except Exception as e:
+        print(f"[dashboard] toast sales fetch failed for {r.name}: {e}")
+
+    return summary
 
 
 @app.route("/")
@@ -158,11 +254,17 @@ def dashboard():
     ).scalar() or 0
     recent_invoices = Invoice.query.filter_by(restaurant_id=r.id).order_by(Invoice.imported_at.desc()).limit(5).all()
 
+    sales = _toast_sales_summary(r)
+
     stats = {
         "pending_count": pending_count,
         "overdue_count": overdue_count,
         "low_stock_count": low_stock_count,
         "thirty_day_spend": round(spend_result, 2),
+        "today_sales": sales["today_sales"],
+        "week_sales": sales["week_sales"],
+        "labor_pct": sales["labor_pct"],
+        "food_cost_pct": sales["food_cost_pct"],
     }
     return render_template("dashboard.html", stats=stats, recent_invoices=recent_invoices)
 
@@ -199,6 +301,7 @@ def pay_invoice(id):
 
 
 @app.route("/invoices/import")
+@app.route("/invoices/upload")
 def import_invoices():
     return render_template("import.html")
 
@@ -830,8 +933,8 @@ def api_recipe_cost():
     })
 
 
-@app.route("/matching")
-def matching():
+@app.route("/mapping")
+def mapping():
     r = _get_selected_restaurant()
     pending = get_pending_unmatched(r.id) if r else []
     # Attach suggestions to each unmatched item
@@ -846,7 +949,7 @@ def matching():
         ItemAlias.confirmed == True,
     ).count() if r else 0
     inventory_items = InventoryItem.query.filter_by(restaurant_id=r.id).order_by(InventoryItem.name).all() if r else []
-    return render_template("matching.html",
+    return render_template("mapping.html",
         pending=pending,
         resolved_count=resolved_count,
         alias_count=alias_count,
@@ -854,19 +957,19 @@ def matching():
     )
 
 
-@app.route("/matching/confirm", methods=["POST"])
-def matching_confirm():
+@app.route("/mapping/confirm", methods=["POST"])
+def mapping_confirm():
     unmatched_id = int(request.form.get("unmatched_id", 0))
     inventory_item_id = int(request.form.get("inventory_item_id", 0))
     if confirm_match(unmatched_id, inventory_item_id):
         flash("Match confirmed and alias saved.", "success")
     else:
         flash("Could not confirm match.", "error")
-    return redirect(url_for("matching"))
+    return redirect(url_for("mapping"))
 
 
-@app.route("/matching/create-new", methods=["POST"])
-def matching_create_new():
+@app.route("/mapping/create-new", methods=["POST"])
+def mapping_create_new():
     unmatched_id = int(request.form.get("unmatched_id", 0))
     category = request.form.get("category", "uncategorized")
     item = create_new_from_unmatched(unmatched_id, category)
@@ -874,26 +977,95 @@ def matching_create_new():
         flash(f"Created new inventory item '{item.name}' and saved alias.", "success")
     else:
         flash("Could not create item.", "error")
-    return redirect(url_for("matching"))
+    return redirect(url_for("mapping"))
 
 
-@app.route("/matching/dismiss", methods=["POST"])
-def matching_dismiss():
+@app.route("/mapping/dismiss", methods=["POST"])
+def mapping_dismiss():
     unmatched_id = int(request.form.get("unmatched_id", 0))
     dismiss_unmatched(unmatched_id)
     flash("Item dismissed.", "success")
-    return redirect(url_for("matching"))
+    return redirect(url_for("mapping"))
 
 
-@app.route("/matching/relink-recipes", methods=["POST"])
+@app.route("/mapping/relink-recipes", methods=["POST"])
 def relink_recipes():
     r = _get_selected_restaurant()
     if not r:
         flash("No restaurant selected.", "error")
-        return redirect(url_for("matching"))
+        return redirect(url_for("mapping"))
     count = auto_link_recipe_ingredients(r.id)
     flash(f"Re-linked {count} recipe ingredient(s) to inventory.", "success")
-    return redirect(url_for("matching"))
+    return redirect(url_for("mapping"))
+
+
+# Legacy /matching* paths — keep old bookmarks/tests working.
+@app.route("/matching")
+def matching_redirect():
+    return redirect(url_for("mapping"), code=301)
+
+
+@app.route("/matching/confirm", methods=["POST"])
+def matching_confirm_redirect():
+    return redirect(url_for("mapping_confirm"), code=308)
+
+
+@app.route("/matching/create-new", methods=["POST"])
+def matching_create_new_redirect():
+    return redirect(url_for("mapping_create_new"), code=308)
+
+
+@app.route("/matching/dismiss", methods=["POST"])
+def matching_dismiss_redirect():
+    return redirect(url_for("mapping_dismiss"), code=308)
+
+
+@app.route("/matching/relink-recipes", methods=["POST"])
+def matching_relink_redirect():
+    return redirect(url_for("relink_recipes"), code=308)
+
+
+# ========== Alerts ==========
+
+@app.route("/alerts")
+def alerts():
+    r = _get_selected_restaurant()
+    if not r:
+        return render_template("alerts.html", alerts=[], counts={})
+    open_alerts = (
+        Alert.query.filter_by(restaurant_id=r.id, resolved=False)
+        .order_by(
+            db.case(
+                {"critical": 0, "warning": 1, "info": 2},
+                value=Alert.severity,
+                else_=3,
+            ),
+            Alert.created_at.desc(),
+        )
+        .all()
+    )
+    return render_template("alerts.html", alerts=open_alerts)
+
+
+@app.route("/alerts/<int:id>/resolve", methods=["POST"])
+def alerts_resolve(id):
+    a = Alert.query.get_or_404(id)
+    a.resolved = True
+    a.resolved_at = datetime.utcnow()
+    db.session.commit()
+    flash("Alert resolved.", "success")
+    return redirect(request.referrer or url_for("alerts"))
+
+
+@app.route("/alerts/run", methods=["POST"])
+def alerts_run():
+    r = _get_selected_restaurant()
+    if not r:
+        flash("No restaurant selected.", "error")
+        return redirect(url_for("alerts"))
+    n = run_alerts(r.id)
+    flash(f"Alert check complete — {n} new alert(s).", "success")
+    return redirect(url_for("alerts"))
 
 
 @app.route("/api/price-history/<int:item_id>")
@@ -979,5 +1151,31 @@ def set_restaurant(id):
 from xtrachef_blueprint import xtrachef_bp
 app.register_blueprint(xtrachef_bp)
 
+# ========== Background scheduler ==========
+
+def _scheduler_run_alerts():
+    """Wrapper so the scheduler job runs inside an app context."""
+    with app.app_context():
+        try:
+            run_alerts_all()
+        except Exception as e:
+            print(f"[scheduler] run_alerts failed: {e}")
+
+
+def _start_scheduler():
+    from apscheduler.schedulers.background import BackgroundScheduler
+    scheduler = BackgroundScheduler(daemon=True)
+    scheduler.add_job(_scheduler_run_alerts, "interval", minutes=30, id="run_alerts")
+    scheduler.start()
+    # Run once on startup so we have fresh state right away
+    _scheduler_run_alerts()
+
+
+# Avoid double-start in Flask debug reloader. In production debug=False so this
+# guard is essentially always true; in dev it gates on WERKZEUG_RUN_MAIN.
+if not app.debug or os.environ.get("WERKZEUG_RUN_MAIN") == "true":
+    _start_scheduler()
+
+
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=8082, debug=True)
+    app.run(host="0.0.0.0", port=8082, debug=False)

@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+
+{% block title %}Alerts — RestaurantOps{% endblock %}
+
+{% block topbar %}
+<h1>Alerts</h1>
+{% endblock %}
+
+{% block topbar_actions %}
+<form action="{{ url_for('alerts_run') }}" method="POST" style="display:inline;">
+    <button class="btn btn-outline-brand btn-sm" type="submit">
+        <i class="bi bi-arrow-repeat"></i> Run Checks Now
+    </button>
+</form>
+{% endblock %}
+
+{% block content %}
+<div class="row g-3 mb-4">
+    <div class="col-md-4">
+        <div class="stat-card">
+            <div class="stat-icon red"><i class="bi bi-exclamation-octagon"></i></div>
+            <div class="stat-value">{{ alert_critical|default(0) }}</div>
+            <div class="stat-label">Critical</div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="stat-card">
+            <div class="stat-icon orange"><i class="bi bi-exclamation-triangle"></i></div>
+            <div class="stat-value">{{ alert_warning|default(0) }}</div>
+            <div class="stat-label">Warning</div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="stat-card">
+            <div class="stat-icon blue"><i class="bi bi-info-circle"></i></div>
+            <div class="stat-value">{{ alert_info|default(0) }}</div>
+            <div class="stat-label">Info</div>
+        </div>
+    </div>
+</div>
+
+<div class="content-card">
+    <div class="card-header-row">
+        <h5>Open Alerts</h5>
+        {% if alerts|length > 0 %}<span class="badge-status pending">{{ alerts|length }} unresolved</span>{% endif %}
+    </div>
+
+    {% if alerts|length > 0 %}
+    <table class="table table-clean">
+        <thead>
+            <tr>
+                <th>Severity</th>
+                <th>Type</th>
+                <th>Message</th>
+                <th>Detected</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for a in alerts %}
+            <tr>
+                <td>
+                    {% if a.severity == 'critical' %}
+                    <span class="badge-status overdue">Critical</span>
+                    {% elif a.severity == 'warning' %}
+                    <span class="badge-status pending">Warning</span>
+                    {% else %}
+                    <span class="badge-status">Info</span>
+                    {% endif %}
+                </td>
+                <td><code style="font-size: 0.78rem;">{{ a.alert_type }}</code></td>
+                <td>{{ a.message }}</td>
+                <td>{{ a.created_at.strftime('%b %d %H:%M') if a.created_at else '—' }}</td>
+                <td class="text-end">
+                    <form action="{{ url_for('alerts_resolve', id=a.id) }}" method="POST" style="display:inline;">
+                        <button type="submit" class="btn btn-sm btn-outline-success">
+                            <i class="bi bi-check-lg"></i> Resolve
+                        </button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <div class="text-center py-5">
+        <i class="bi bi-check-circle" style="font-size: 3rem; color: var(--accent-green); opacity: 0.5;"></i>
+        <p class="text-muted mt-3 mb-0">No open alerts. The next scheduled check runs in under 30 minutes.</p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

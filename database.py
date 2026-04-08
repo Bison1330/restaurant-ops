@@ -12,6 +12,7 @@ class Restaurant(db.Model):
     toast_location_id = db.Column(db.String(50))
     toast_client_id = db.Column(db.String(100))
     toast_client_secret = db.Column(db.String(200))
+    last_toast_sync = db.Column(db.DateTime)
     active = db.Column(db.Boolean, default=True)
 
 class Vendor(db.Model):
@@ -255,6 +256,19 @@ class CountSession(db.Model):
     submitted_at = db.Column(db.DateTime)
     restaurant = db.relationship('Restaurant', backref='count_sessions')
     entries = db.relationship('CountEntry', backref='session', cascade='all, delete-orphan')
+
+
+class Alert(db.Model):
+    __tablename__ = 'alerts'
+    id = db.Column(db.Integer, primary_key=True)
+    restaurant_id = db.Column(db.Integer, db.ForeignKey('restaurants.id'), index=True)
+    alert_type = db.Column(db.String(50))  # invoice_overdue, low_stock, zero_cost_recipe, unmapped_invoice_line, stale_toast_sync
+    severity = db.Column(db.String(20))    # info, warning, critical
+    message = db.Column(db.String(500))
+    resolved = db.Column(db.Boolean, default=False, index=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    resolved_at = db.Column(db.DateTime)
+    restaurant = db.relationship('Restaurant', backref='alerts')
 
 
 class ItemMap(db.Model):
