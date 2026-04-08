@@ -2436,18 +2436,22 @@ def _week_bounds(date_str=None):
 @app.route("/schedule")
 def schedule():
     from datetime import timedelta, date
+    from sqlalchemy import func
     restaurant = _get_selected_restaurant()
     week_str = request.args.get("week")
+    tab = request.args.get("tab", "full")
     monday, sunday = _week_bounds(week_str)
     week_days = [monday + timedelta(days=i) for i in range(7)]
     today_str = datetime.now(CENTRAL_TZ).date().isoformat()
 
-    positions = Position.query.filter_by(restaurant_id=restaurant.id, active=True).order_by(Position.display_order).all()
-    position_map = {p.name.lower(): p for p in positions}
-
     employees = Employee.query.filter_by(
         restaurant_id=restaurant.id, active=True
     ).order_by(Employee.role, Employee.last_name).all()
+
+    positions = Position.query.filter_by(
+        restaurant_id=restaurant.id, active=True
+    ).order_by(Position.display_order).all()
+    position_map = {p.name.lower(): p for p in positions}
 
     shifts = Shift.query.filter_by(restaurant_id=restaurant.id).filter(
         Shift.shift_date >= monday,
@@ -2459,21 +2463,39 @@ def schedule():
         key = (s.employee_id, s.shift_date.isoformat())
         shift_map.setdefault(key, []).append(s)
 
-    weekly_cost = sum(s.labor_cost for s in shifts if s.status not in ('called_out', 'no_show'))
-    weekly_hours = sum(s.hours for s in shifts if s.status not in ('called_out', 'no_show'))
+    active_shifts = [s for s in shifts if s.status not in ('called_out', 'no_show', 'pto')]
+    weekly_cost = sum(s.labor_cost for s in active_shifts)
+    weekly_hours = sum(s.hours for s in active_shifts)
+
+    emp_hours = {}
+    for s in active_shifts:
+        emp_hours[s.employee_id] = emp_hours.get(s.employee_id, 0) + s.hours
+    rs = RestaurantSettings.query.filter_by(restaurant_id=restaurant.id).first()
+    ot_threshold = rs.overtime_weekly_hours if rs else 40.0
+    ot_rate = rs.overtime_weekly_rate if rs else 1.5
+    ot_cost = 0.0
+    ot_hours = 0.0
+    for emp_id, hrs in emp_hours.items():
+        if hrs > ot_threshold:
+            extra = hrs - ot_threshold
+            emp = Employee.query.get(emp_id)
+            if emp:
+                rate = emp.manual_pay_rate if emp.manual_pay_rate is not None else emp.pay_rate
+                ot_cost += extra * rate * (ot_rate - 1)
+                ot_hours += extra
+
+    absences = len([s for s in shifts if s.status in ('called_out', 'no_show')])
+    total_shifts = len([s for s in shifts if s.status != 'pto'])
 
     daily_cost = {}
     daily_hours = {}
-    for s in shifts:
-        if s.status in ('called_out', 'no_show'):
-            continue
+    for s in active_shifts:
         d = s.shift_date.isoformat()
         daily_cost[d] = daily_cost.get(d, 0) + s.labor_cost
         daily_hours[d] = daily_hours.get(d, 0) + s.hours
 
     last_mon = monday - timedelta(days=7)
     last_sun = sunday - timedelta(days=7)
-    from sqlalchemy import func
     last_week_sales_row = db.session.query(
         func.sum(MenuItemSale.total_revenue)
     ).filter(
@@ -2482,11 +2504,16 @@ def schedule():
         MenuItemSale.sale_date <= last_sun
     ).scalar()
     last_week_sales = float(last_week_sales_row or 0)
+    labor_pct_goal = rs.labor_pct_goal if rs else 25.0
     projected_labor_pct = (weekly_cost / last_week_sales * 100) if last_week_sales > 0 else None
 
     prev_week = (monday - timedelta(days=7)).isoformat()
     next_week = (monday + timedelta(days=7)).isoformat()
     restaurants = Restaurant.query.all()
+
+    pending_pto = PTORequest.query.filter_by(
+        restaurant_id=restaurant.id, status='pending'
+    ).count()
 
     return render_template(
         "schedule.html",
@@ -2496,18 +2523,25 @@ def schedule():
         week_days=week_days,
         monday=monday,
         today_str=today_str,
+        tab=tab,
         employees=employees,
+        positions=positions,
+        position_map=position_map,
         shift_map=shift_map,
         daily_cost=daily_cost,
         daily_hours=daily_hours,
         weekly_cost=weekly_cost,
         weekly_hours=weekly_hours,
+        ot_cost=ot_cost,
+        ot_hours=ot_hours,
+        absences=absences,
+        total_shifts=total_shifts,
         last_week_sales=last_week_sales,
         projected_labor_pct=projected_labor_pct,
+        labor_pct_goal=labor_pct_goal,
         prev_week=prev_week,
         next_week=next_week,
-        positions=positions,
-        position_map=position_map,
+        pending_pto=pending_pto,
     )
 
 
