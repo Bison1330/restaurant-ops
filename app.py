@@ -1310,9 +1310,9 @@ def api_assistant():
         # as we loop through any read-only tool calls.
         messages = [dict(m) for m in history]
 
-        for _iter in range(6):
+        for _iter in range(3):
             resp = client.messages.create(
-                model="claude-sonnet-4-5",
+                model="claude-sonnet-4-6",
                 max_tokens=1024,
                 system=system_prompt,
                 tools=ASSISTANT_TOOLS,
