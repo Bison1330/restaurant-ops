@@ -42,6 +42,29 @@ from connectors.inventory_calc import calculate_expected_counts, generate_varian
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("FLASK_SECRET_KEY", "dev-secret-key-change-in-production")
+import functools
+_cache = {}
+_cache_times = {}
+
+def _cached(key, ttl_seconds, fn):
+    import time
+    now = time.time()
+    if key in _cache and (now - _cache_times.get(key, 0)) < ttl_seconds:
+        return _cache[key]
+    result = fn()
+    _cache[key] = result
+    _cache_times[key] = now
+    return result
+
+def _bust_cache(key_prefix=None):
+    if key_prefix is None:
+        _cache.clear()
+        _cache_times.clear()
+    else:
+        for k in list(_cache.keys()):
+            if k.startswith(key_prefix):
+                del _cache[k]
+                _cache_times.pop(k, None)
 app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:////root/restaurant-ops/data/restaurant_ops.db"
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
@@ -1901,9 +1924,25 @@ def vendors():
 def employees():
     restaurant = _get_selected_restaurant()
     restaurants = Restaurant.query.all()
-    emps = Employee.query.filter_by(
-        restaurant_id=restaurant.id
-    ).order_by(Employee.last_name).all()
+
+    page = request.args.get('page', 1, type=int)
+    per_page = 50
+    search = request.args.get('q', '').strip()
+
+    query = Employee.query.filter_by(restaurant_id=restaurant.id)
+    if search:
+        query = query.filter(
+            db.or_(
+                Employee.first_name.ilike(f'%{search}%'),
+                Employee.last_name.ilike(f'%{search}%'),
+                Employee.role.ilike(f'%{search}%'),
+            )
+        )
+
+    pagination = query.order_by(Employee.last_name).paginate(
+        page=page, per_page=per_page, error_out=False
+    )
+    emps = pagination.items
 
     # Build compliance flags
     FOOD_HANDLER_POSITIONS = {
@@ -1983,6 +2022,8 @@ def employees():
         restaurants=restaurants,
         selected_restaurant=restaurant,
         compliance_flags=compliance_flags,
+        pagination=pagination,
+        search=search,
     )
 
 
@@ -2020,7 +2061,23 @@ def recipes():
     r = _get_selected_restaurant()
     if not r:
         return render_template("recipes.html", all_recipes=[], subcategory_groups=[], food_recipes=[], beverage_recipes=[], inventory_items=[])
-    all_recipes = Recipe.query.filter_by(restaurant_id=r.id, status='active').all()
+    page = request.args.get('page', 1, type=int)
+    per_page = 50
+    search = request.args.get('q', '').strip()
+    subcategory = request.args.get('subcategory', '').strip()
+
+    query = Recipe.query.filter_by(restaurant_id=r.id)
+    if search:
+        query = query.filter(Recipe.name.ilike(f'%{search}%'))
+    if subcategory:
+        query = query.filter(Recipe.subcategory == subcategory)
+
+    pagination = query.order_by(Recipe.name).paginate(
+        page=page, per_page=per_page, error_out=False
+    )
+    recipes = pagination.items
+
+    all_recipes = recipes
     food_recipes = [rec for rec in all_recipes if rec.category == "food"]
     beverage_recipes = [rec for rec in all_recipes if rec.category == "beverage"]
 
@@ -2044,6 +2101,9 @@ def recipes():
         food_recipes=food_recipes,
         beverage_recipes=beverage_recipes,
         inventory_items=inventory_items,
+        pagination=pagination,
+        search=search,
+        subcategory=subcategory,
     )
 
 

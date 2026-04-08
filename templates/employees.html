@@ -7,9 +7,28 @@
 {% endblock %}
 
 {% block topbar_actions %}
-<span class="text-muted" style="font-size: 0.82rem;">
-    {{ employees|length }} employee{{ 's' if employees|length != 1 else '' }}
-</span>
+<div class="d-flex align-items-center gap-2">
+    <form method="GET" action="{{ url_for('employees') }}" class="d-flex gap-2">
+        <input type="text" name="q" class="form-control form-control-sm"
+            placeholder="Search employees…" value="{{ search }}" style="width:180px;">
+        <button type="submit" class="btn btn-sm btn-outline-secondary">
+            <i class="bi bi-search"></i>
+        </button>
+        {% if search %}
+        <a href="{{ url_for('employees') }}" class="btn btn-sm btn-outline-danger">
+            <i class="bi bi-x"></i>
+        </a>
+        {% endif %}
+    </form>
+    <span class="text-muted" style="font-size:0.82rem;">
+        {{ pagination.total }} employee{{ 's' if pagination.total != 1 else '' }}
+    </span>
+    <form method="POST" action="{{ url_for('employees_sync_toast') }}" class="d-inline">
+        <button type="submit" class="btn btn-sm btn-outline-secondary">
+            <i class="bi bi-arrow-clockwise me-1"></i>Sync from Toast
+        </button>
+    </form>
+</div>
 {% endblock %}
 
 {% block content %}
@@ -82,6 +101,38 @@
         </table>
     </div>
 </div>
+
+{% if pagination.pages > 1 %}
+<div class="d-flex justify-content-center mt-4">
+    <nav>
+        <ul class="pagination pagination-sm">
+            {% if pagination.has_prev %}
+            <li class="page-item">
+                <a class="page-link" href="{{ url_for('employees', page=pagination.prev_num, q=search) }}">
+                    <i class="bi bi-chevron-left"></i>
+                </a>
+            </li>
+            {% endif %}
+            {% for p in pagination.iter_pages(left_edge=2, right_edge=2, left_current=2, right_current=2) %}
+            {% if p %}
+            <li class="page-item {% if p == pagination.page %}active{% endif %}">
+                <a class="page-link" href="{{ url_for('employees', page=p, q=search) }}">{{ p }}</a>
+            </li>
+            {% else %}
+            <li class="page-item disabled"><span class="page-link">…</span></li>
+            {% endif %}
+            {% endfor %}
+            {% if pagination.has_next %}
+            <li class="page-item">
+                <a class="page-link" href="{{ url_for('employees', page=pagination.next_num, q=search) }}">
+                    <i class="bi bi-chevron-right"></i>
+                </a>
+            </li>
+            {% endif %}
+        </ul>
+    </nav>
+</div>
+{% endif %}
 {% endblock %}
 
 {% block extra_js %}

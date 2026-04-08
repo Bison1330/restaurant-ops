@@ -7,12 +7,23 @@
 {% endblock %}
 
 {% block topbar_actions %}
-<button class="btn btn-outline-brand btn-sm" data-bs-toggle="modal" data-bs-target="#csvModal">
-    <i class="bi bi-filetype-csv"></i> Import CSV
-</button>
-<button class="btn btn-brand btn-sm" data-bs-toggle="modal" data-bs-target="#recipeModal" onclick="openNewRecipe()">
-    <i class="bi bi-plus-lg"></i> New Recipe
-</button>
+<div class="d-flex align-items-center gap-2">
+    <form method="GET" action="{{ url_for('recipes') }}" class="d-flex gap-2">
+        <input type="text" name="q" class="form-control form-control-sm"
+            placeholder="Search recipes…" value="{{ search }}" style="width:200px;">
+        <button type="submit" class="btn btn-sm btn-outline-secondary">
+            <i class="bi bi-search"></i>
+        </button>
+        {% if search %}
+        <a href="{{ url_for('recipes') }}" class="btn btn-sm btn-outline-danger">
+            <i class="bi bi-x"></i>
+        </a>
+        {% endif %}
+    </form>
+    <span class="text-muted" style="font-size:0.82rem;">
+        {{ pagination.total }} recipe{{ 's' if pagination.total != 1 else '' }}
+    </span>
+</div>
 {% endblock %}
 
 {% block content %}
@@ -332,6 +343,38 @@
     {% endfor %}
 ]
 </script>
+
+{% if pagination.pages > 1 %}
+<div class="d-flex justify-content-center mt-4">
+    <nav>
+        <ul class="pagination pagination-sm">
+            {% if pagination.has_prev %}
+            <li class="page-item">
+                <a class="page-link" href="{{ url_for('recipes', page=pagination.prev_num, q=search, subcategory=subcategory) }}">
+                    <i class="bi bi-chevron-left"></i>
+                </a>
+            </li>
+            {% endif %}
+            {% for p in pagination.iter_pages(left_edge=2, right_edge=2, left_current=2, right_current=2) %}
+            {% if p %}
+            <li class="page-item {% if p == pagination.page %}active{% endif %}">
+                <a class="page-link" href="{{ url_for('recipes', page=p, q=search, subcategory=subcategory) }}">{{ p }}</a>
+            </li>
+            {% else %}
+            <li class="page-item disabled"><span class="page-link">…</span></li>
+            {% endif %}
+            {% endfor %}
+            {% if pagination.has_next %}
+            <li class="page-item">
+                <a class="page-link" href="{{ url_for('recipes', page=pagination.next_num, q=search, subcategory=subcategory) }}">
+                    <i class="bi bi-chevron-right"></i>
+                </a>
+            </li>
+            {% endif %}
+        </ul>
+    </nav>
+</div>
+{% endif %}
 
 {% endblock %}
 
