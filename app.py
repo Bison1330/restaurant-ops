@@ -160,6 +160,158 @@ def inject_restaurants():
     )
 
 
+def _resolve_range(range_name, custom_start=None, custom_end=None):
+    """Convert a range name to (start, end, prior_start, prior_end) datetime
+    tuples in Central Time. The 'prior' window mirrors the same length
+    immediately before the main window so today vs yesterday, this_week vs
+    last_week, etc all work uniformly.
+    """
+    now = datetime.now(CENTRAL_TZ)
+    today_midnight = CENTRAL_TZ.localize(datetime(now.year, now.month, now.day))
+
+    if range_name == "today":
+        start = today_midnight
+        end = now
+    elif range_name == "yesterday":
+        start = today_midnight - timedelta(days=1)
+        end = today_midnight
+    elif range_name == "week":  # this week (last 7 days, rolling)
+        start = today_midnight - timedelta(days=6)
+        end = now
+    elif range_name == "last_week":
+        start = today_midnight - timedelta(days=13)
+        end = today_midnight - timedelta(days=6)
+    elif range_name == "month":  # this month, 1st to now
+        start = CENTRAL_TZ.localize(datetime(now.year, now.month, 1))
+        end = now
+    elif range_name == "custom" and custom_start and custom_end:
+        try:
+            start = CENTRAL_TZ.localize(datetime.strptime(custom_start, "%Y-%m-%d"))
+            end = CENTRAL_TZ.localize(datetime.strptime(custom_end, "%Y-%m-%d")) + timedelta(days=1)
+        except ValueError:
+            start = today_midnight
+            end = now
+    else:
+        # default fallback: today
+        start = today_midnight
+        end = now
+
+    span = end - start
+    prior_end = start
+    prior_start = start - span
+    return start, end, prior_start, prior_end
+
+
+def _fetch_orders_for_range(r, start_utc, end_utc):
+    """Best-effort wrapper around fetch_orders. Returns ([], False) on failure."""
+    fmt = lambda d: d.strftime("%Y-%m-%dT%H:%M:%S.000-0000")
+    try:
+        return fetch_orders(r, fmt(start_utc), fmt(end_utc)), True
+    except Exception as e:
+        print(f"[sales] fetch_orders failed for {r.name}: {e}")
+        return [], False
+
+
+def _build_sales_summary(r, range_name, custom_start=None, custom_end=None, compare=False):
+    """Returns the full sales-summary payload used by /api/sales-summary."""
+    start_ct, end_ct, prior_start_ct, prior_end_ct = _resolve_range(
+        range_name, custom_start, custom_end
+    )
+    start_utc = start_ct.astimezone(pytz.UTC)
+    end_utc = end_ct.astimezone(pytz.UTC)
+
+    payload = {
+        "range": range_name,
+        "start": start_ct.isoformat(),
+        "end": end_ct.isoformat(),
+        "sales": None,
+        "prior_sales": None,
+        "delta_amount": None,
+        "delta_pct": None,
+        "labor_pct": None,
+        "labor_pct_suspicious": False,
+        "food_cost_pct": None,
+        "check_count": None,
+        "avg_check": None,
+        "daily": [],
+    }
+
+    # Food cost % from active recipes — DB only
+    avg_fc = db.session.query(db.func.avg(Recipe.food_cost_pct)).filter(
+        Recipe.restaurant_id == r.id,
+        Recipe.status == "active",
+        Recipe.food_cost_pct > 0,
+    ).scalar()
+    if avg_fc:
+        payload["food_cost_pct"] = round(float(avg_fc), 1)
+
+    if not r.toast_client_id or not r.toast_location_id:
+        return payload
+
+    orders, ok = _fetch_orders_for_range(r, start_utc, end_utc)
+    if not ok:
+        return payload
+
+    sales_total = sum(o.get("total", 0) for o in orders)
+    payload["sales"] = round(sales_total, 2)
+    payload["check_count"] = len(orders)
+    if orders:
+        payload["avg_check"] = round(sales_total / len(orders), 2)
+
+    # Daily breakdown for trend chart (always computes 14 days for context)
+    chart_start_ct = end_ct - timedelta(days=13)
+    chart_start_utc = chart_start_ct.astimezone(pytz.UTC)
+    chart_orders, _ = _fetch_orders_for_range(r, chart_start_utc, end_utc)
+    daily_map = {}
+    for o in chart_orders:
+        opened = o.get("opened_date") or ""
+        try:
+            dt_utc = datetime.strptime(opened, "%Y-%m-%dT%H:%M:%S.%f%z")
+            dt_ct = dt_utc.astimezone(CENTRAL_TZ)
+            day_key = dt_ct.strftime("%Y-%m-%d")
+        except ValueError:
+            continue
+        daily_map.setdefault(day_key, 0.0)
+        daily_map[day_key] += o.get("total", 0)
+    for i in range(14):
+        d = (chart_start_ct + timedelta(days=i)).strftime("%Y-%m-%d")
+        payload["daily"].append({"date": d, "sales": round(daily_map.get(d, 0.0), 2)})
+
+    # Labor cost
+    try:
+        ts = fetch_timesheets(
+            r,
+            start_utc.strftime("%Y-%m-%dT%H:%M:%S.000-0000"),
+            end_utc.strftime("%Y-%m-%dT%H:%M:%S.000-0000"),
+        )
+        emp_wage = {
+            e.toast_employee_id: e.pay_rate
+            for e in Employee.query.filter_by(restaurant_id=r.id).all()
+            if 0 < (e.pay_rate or 0) < 100
+        }
+        labor_cost = sum((t.get("hours") or 0) * emp_wage.get(t.get("employee_guid"), 0) for t in ts)
+        if sales_total > 0:
+            raw_pct = (labor_cost / sales_total) * 100
+            payload["labor_pct_suspicious"] = raw_pct > 80
+            payload["labor_pct"] = round(min(raw_pct, 100.0), 1)
+    except Exception as e:
+        print(f"[sales] timesheets failed for {r.name}: {e}")
+
+    # Compare to prior period
+    if compare:
+        prior_start_utc = prior_start_ct.astimezone(pytz.UTC)
+        prior_end_utc = prior_end_ct.astimezone(pytz.UTC)
+        prior_orders, prior_ok = _fetch_orders_for_range(r, prior_start_utc, prior_end_utc)
+        if prior_ok:
+            prior_total = round(sum(o.get("total", 0) for o in prior_orders), 2)
+            payload["prior_sales"] = prior_total
+            payload["delta_amount"] = round(sales_total - prior_total, 2)
+            if prior_total > 0:
+                payload["delta_pct"] = round(((sales_total - prior_total) / prior_total) * 100, 1)
+
+    return payload
+
+
 def _toast_sales_summary(r):
     """Pull today + this week's sales from Toast and compute labor/food cost %.
 
@@ -248,13 +400,57 @@ def _toast_sales_summary(r):
     return summary
 
 
+def _price_tracker_top(restaurant_id, limit=10):
+    """Top N inventory items with biggest recent price moves, pulled from
+    price_history. Returns list of dicts with item, current, previous, change_pct,
+    delta_amount."""
+    rows = (
+        db.session.query(PriceHistory, InventoryItem)
+        .join(InventoryItem, PriceHistory.inventory_item_id == InventoryItem.id)
+        .filter(InventoryItem.restaurant_id == restaurant_id)
+        .order_by(PriceHistory.recorded_at.desc())
+        .limit(500)
+        .all()
+    )
+    # Keep only the most-recent change per item
+    seen = {}
+    for ph, item in rows:
+        if item.id in seen:
+            continue
+        seen[item.id] = (ph, item)
+    deduped = list(seen.values())
+    # Sort by absolute % change, biggest moves first
+    deduped.sort(key=lambda x: abs(x[0].change_percent or 0), reverse=True)
+    out = []
+    for ph, item in deduped[:limit]:
+        out.append({
+            "name": item.name,
+            "unit": item.unit,
+            "current": ph.new_cost,
+            "previous": ph.old_cost,
+            "change_pct": ph.change_percent,
+            "delta_amount": (ph.new_cost or 0) - (ph.old_cost or 0),
+            "recorded_at": ph.recorded_at,
+        })
+    return out
+
+
 @app.route("/")
 def dashboard():
     r = _get_selected_restaurant()
     if not r:
-        return render_template("dashboard.html", stats={}, recent_invoices=[])
+        return render_template(
+            "dashboard.html",
+            stats={}, recent_invoices=[], pending_invoices=[],
+            top_alerts=[], price_changes=[], selected_range="today", compare=False,
+        )
 
     now = datetime.now().date()
+    selected_range = request.args.get("range", "today")
+    custom_start = request.args.get("start_date")
+    custom_end = request.args.get("end_date")
+    compare = request.args.get("compare") == "1"
+
     pending_count = Invoice.query.filter_by(restaurant_id=r.id, status="pending").count()
     overdue_count = Invoice.query.filter(
         Invoice.restaurant_id == r.id,
@@ -270,21 +466,68 @@ def dashboard():
         Invoice.restaurant_id == r.id,
         Invoice.invoice_date >= thirty_days_ago,
     ).scalar() or 0
-    recent_invoices = Invoice.query.filter_by(restaurant_id=r.id).order_by(Invoice.imported_at.desc()).limit(5).all()
 
-    sales = _toast_sales_summary(r)
+    recent_invoices = Invoice.query.filter_by(restaurant_id=r.id).order_by(Invoice.imported_at.desc()).limit(5).all()
+    pending_invoices = (
+        Invoice.query.filter_by(restaurant_id=r.id, status="pending")
+        .order_by(Invoice.due_date.asc())
+        .limit(5)
+        .all()
+    )
+
+    # Top 5 unresolved alerts, severity-prioritized
+    top_alerts = (
+        Alert.query.filter_by(restaurant_id=r.id, resolved=False)
+        .order_by(
+            db.case({"critical": 0, "warning": 1, "info": 2}, value=Alert.severity, else_=3),
+            Alert.created_at.desc(),
+        )
+        .limit(5)
+        .all()
+    )
+
+    price_changes = _price_tracker_top(r.id, limit=10)
+
+    # Food cost % is cheap (DB only) — render server-side so the card doesn't
+    # flash. All Toast-dependent metrics start as None and JS populates them.
+    avg_fc = db.session.query(db.func.avg(Recipe.food_cost_pct)).filter(
+        Recipe.restaurant_id == r.id,
+        Recipe.status == "active",
+        Recipe.food_cost_pct > 0,
+    ).scalar()
 
     stats = {
         "pending_count": pending_count,
         "overdue_count": overdue_count,
         "low_stock_count": low_stock_count,
         "thirty_day_spend": round(spend_result, 2),
-        "today_sales": sales["today_sales"],
-        "week_sales": sales["week_sales"],
-        "labor_pct": sales["labor_pct"],
-        "food_cost_pct": sales["food_cost_pct"],
+        "food_cost_pct": round(float(avg_fc), 1) if avg_fc else None,
     }
-    return render_template("dashboard.html", stats=stats, recent_invoices=recent_invoices)
+    return render_template(
+        "dashboard.html",
+        stats=stats,
+        recent_invoices=recent_invoices,
+        pending_invoices=pending_invoices,
+        top_alerts=top_alerts,
+        price_changes=price_changes,
+        selected_range=selected_range,
+        custom_start=custom_start or "",
+        custom_end=custom_end or "",
+        compare=compare,
+    )
+
+
+@app.route("/api/sales-summary")
+def api_sales_summary():
+    rid = int(request.args.get("restaurant_id", 0))
+    range_name = request.args.get("range", "today")
+    custom_start = request.args.get("start_date")
+    custom_end = request.args.get("end_date")
+    compare = request.args.get("compare") == "1"
+    r = db.session.get(Restaurant, rid) if rid else _get_selected_restaurant()
+    if not r:
+        return jsonify({"error": "no restaurant"}), 400
+    return jsonify(_build_sales_summary(r, range_name, custom_start, custom_end, compare))
 
 
 @app.route("/invoices")

@@ -10,155 +10,198 @@
 {% endblock %}
 
 {% block topbar_actions %}
-<button class="btn btn-brand btn-sm" id="syncBtn" onclick="syncNow()">
-    <i class="bi bi-arrow-repeat"></i> Sync Now
+<form id="rangeForm" method="GET" action="{{ url_for('dashboard') }}" class="d-flex align-items-center gap-2" style="font-size: 0.85rem;">
+    <select name="range" class="form-select form-select-sm" style="width:auto;" onchange="if(this.value!='custom'){this.form.submit()}">
+        <option value="today" {% if selected_range=='today' %}selected{% endif %}>Today</option>
+        <option value="yesterday" {% if selected_range=='yesterday' %}selected{% endif %}>Yesterday</option>
+        <option value="week" {% if selected_range=='week' %}selected{% endif %}>This Week</option>
+        <option value="last_week" {% if selected_range=='last_week' %}selected{% endif %}>Last Week</option>
+        <option value="month" {% if selected_range=='month' %}selected{% endif %}>This Month</option>
+        <option value="custom" {% if selected_range=='custom' %}selected{% endif %}>Custom</option>
+    </select>
+    {% if selected_range == 'custom' %}
+    <input type="date" name="start_date" value="{{ custom_start }}" class="form-control form-control-sm" style="width:auto;">
+    <input type="date" name="end_date" value="{{ custom_end }}" class="form-control form-control-sm" style="width:auto;">
+    <button type="submit" class="btn btn-sm btn-outline-secondary">Apply</button>
+    {% endif %}
+    <label class="form-check-label d-flex align-items-center gap-1" style="font-size:0.78rem;">
+        <input type="checkbox" name="compare" value="1" class="form-check-input m-0" {% if compare %}checked{% endif %} onchange="this.form.submit()">
+        vs Prior
+    </label>
+</form>
+<button class="btn btn-brand btn-sm" id="refreshBtn" onclick="loadSales()">
+    <i class="bi bi-arrow-repeat"></i> Refresh
 </button>
 {% endblock %}
 
 {% block content %}
-<div style="border-radius:12px; overflow:hidden; margin-bottom:24px;">
-    <img src="{{ url_for('static', filename='bison_stockyard.png') }}" alt="Bison Stockyard" style="width:100%; aspect-ratio:600/155; object-fit:cover; object-position:center top; display:block;">
-</div>
-<!-- Sales Cards (live from Toast) -->
-<div class="row g-3 mb-3">
-    <div class="col-md-3">
+<!-- Row 1: 6 key metric cards (sales/labor populated by JS, food_cost server-side) -->
+<div class="row g-3 mb-4">
+    <div class="col-md-2">
         <div class="stat-card">
-            <div class="d-flex align-items-center justify-content-between">
-                <div class="stat-icon green"><i class="bi bi-cash-stack"></i></div>
-            </div>
-            <div class="stat-value">
-                {% if stats.today_sales is not none %}${{ "{:,.0f}".format(stats.today_sales) }}{% else %}—{% endif %}
-            </div>
-            <div class="stat-label">Today's Sales</div>
+            <div class="stat-icon green"><i class="bi bi-cash-stack"></i></div>
+            <div class="stat-value" id="card-sales">—</div>
+            <div class="stat-label">Net Sales</div>
         </div>
     </div>
-    <div class="col-md-3">
+    <div class="col-md-2">
         <div class="stat-card">
-            <div class="d-flex align-items-center justify-content-between">
-                <div class="stat-icon blue"><i class="bi bi-graph-up"></i></div>
-            </div>
-            <div class="stat-value">
-                {% if stats.week_sales is not none %}${{ "{:,.0f}".format(stats.week_sales) }}{% else %}—{% endif %}
-            </div>
-            <div class="stat-label">This Week's Sales</div>
+            <div class="stat-icon blue"><i class="bi bi-arrow-left-right"></i></div>
+            <div class="stat-value" id="card-delta" style="font-size: 1.4rem;">—</div>
+            <div class="stat-label">vs Prior Period</div>
         </div>
     </div>
-    <div class="col-md-3">
+    <div class="col-md-2">
         <div class="stat-card">
-            <div class="d-flex align-items-center justify-content-between">
-                <div class="stat-icon {% if stats.labor_pct_suspicious %}red{% else %}orange{% endif %}"><i class="bi bi-people"></i></div>
-                {% if stats.labor_pct_suspicious %}
-                <span title="Raw value exceeded 80% — likely a data issue (e.g. salaried employee with pay_type=hourly). Value capped at 100%." style="font-size: 0.7rem; color: #e63946;">
-                    <i class="bi bi-exclamation-triangle-fill"></i> check data
-                </span>
-                {% endif %}
-            </div>
-            <div class="stat-value">
-                {% if stats.labor_pct is not none %}{{ stats.labor_pct }}%{% else %}—{% endif %}
-            </div>
-            <div class="stat-label">Labor Cost %</div>
+            <div class="stat-icon orange" id="card-labor-icon"><i class="bi bi-people"></i></div>
+            <div class="stat-value" id="card-labor">—</div>
+            <div class="stat-label">Labor %</div>
         </div>
     </div>
-    <div class="col-md-3">
+    <div class="col-md-2">
         <div class="stat-card">
-            <div class="d-flex align-items-center justify-content-between">
-                <div class="stat-icon orange"><i class="bi bi-pie-chart"></i></div>
-            </div>
+            <div class="stat-icon" id="card-food-icon"><i class="bi bi-pie-chart"></i></div>
             <div class="stat-value">
                 {% if stats.food_cost_pct is not none %}{{ stats.food_cost_pct }}%{% else %}—{% endif %}
             </div>
             <div class="stat-label">Food Cost %</div>
         </div>
     </div>
+    <div class="col-md-2">
+        <div class="stat-card">
+            <div class="stat-icon blue"><i class="bi bi-receipt"></i></div>
+            <div class="stat-value" id="card-checks">—</div>
+            <div class="stat-label">Check Count</div>
+        </div>
+    </div>
+    <div class="col-md-2">
+        <div class="stat-card">
+            <div class="stat-icon orange"><i class="bi bi-currency-dollar"></i></div>
+            <div class="stat-value" id="card-avg-check">—</div>
+            <div class="stat-label">Avg Check</div>
+        </div>
+    </div>
 </div>
 
-<!-- Stat Cards -->
+<!-- Row 2: Alerts + Pending Invoices -->
 <div class="row g-3 mb-4">
-    <div class="col-md-3">
-        <div class="stat-card">
-            <div class="d-flex align-items-center justify-content-between">
-                <div class="stat-icon orange"><i class="bi bi-clock-history"></i></div>
-            </div>
-            <div class="stat-value">{{ stats.pending_count|default(0) }}</div>
-            <div class="stat-label">Pending Invoices</div>
-        </div>
-    </div>
-    <div class="col-md-3">
-        <div class="stat-card">
-            <div class="d-flex align-items-center justify-content-between">
-                <div class="stat-icon red"><i class="bi bi-exclamation-triangle"></i></div>
-            </div>
-            <div class="stat-value">{{ stats.overdue_count|default(0) }}</div>
-            <div class="stat-label">Overdue</div>
-        </div>
-    </div>
-    <div class="col-md-3">
-        <div class="stat-card">
-            <div class="d-flex align-items-center justify-content-between">
-                <div class="stat-icon orange"><i class="bi bi-box-seam"></i></div>
-            </div>
-            <div class="stat-value">{{ stats.low_stock_count|default(0) }}</div>
-            <div class="stat-label">Low Stock Items</div>
-        </div>
-    </div>
-    <div class="col-md-3">
-        <div class="stat-card">
-            <div class="d-flex align-items-center justify-content-between">
-                <div class="stat-icon blue"><i class="bi bi-currency-dollar"></i></div>
-            </div>
-            <div class="stat-value">${{ "{:,.2f}".format(stats.thirty_day_spend|default(0)) }}</div>
-            <div class="stat-label">30-Day Spend</div>
-        </div>
-    </div>
-</div>
-
-<!-- Recent Invoices + Chart -->
-<div class="row g-3">
-    <div class="col-lg-7">
+    <div class="col-lg-6">
         <div class="content-card">
             <div class="card-header-row">
-                <h5>Recent Invoices</h5>
-                <a href="{{ url_for('invoices') }}" class="btn btn-outline-brand btn-sm">View All</a>
+                <h5>Open Alerts</h5>
+                <a href="{{ url_for('alerts') }}" class="btn btn-outline-brand btn-sm">View All</a>
             </div>
+            {% if top_alerts %}
             <table class="table table-clean">
-                <thead>
-                    <tr>
-                        <th>Invoice #</th>
-                        <th>Vendor</th>
-                        <th>Amount</th>
-                        <th>Status</th>
-                        <th>Date</th>
-                    </tr>
-                </thead>
                 <tbody>
-                    {% for inv in recent_invoices %}
+                    {% for a in top_alerts %}
                     <tr>
-                        <td class="fw-semibold">{{ inv.invoice_number }}</td>
-                        <td>{{ inv.vendor.name if inv.vendor else '—' }}</td>
-                        <td>${{ "{:,.2f}".format(inv.total_amount) }}</td>
-                        <td><span class="badge-status {{ inv.status }}">{{ inv.status|capitalize }}</span></td>
-                        <td>{{ inv.invoice_date.strftime('%b %d, %Y') if inv.invoice_date else '—' }}</td>
-                    </tr>
-                    {% else %}
-                    <tr>
-                        <td colspan="5" class="text-center text-muted py-4">No invoices yet. Import some to get started.</td>
+                        <td style="width: 90px;">
+                            {% if a.severity == 'critical' %}
+                            <span class="badge-status overdue">Critical</span>
+                            {% elif a.severity == 'warning' %}
+                            <span class="badge-status pending">Warning</span>
+                            {% else %}
+                            <span class="badge-status">Info</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ a.message }}</td>
+                        <td class="text-end" style="width: 90px; font-size: 0.78rem; color: #888;">{{ a.created_at.strftime('%b %d') }}</td>
                     </tr>
                     {% endfor %}
                 </tbody>
             </table>
+            {% else %}
+            <div class="text-center py-4 text-muted">No open alerts.</div>
+            {% endif %}
         </div>
     </div>
-    <div class="col-lg-5">
-        <div class="content-card" style="height: 100%;">
+    <div class="col-lg-6">
+        <div class="content-card">
             <div class="card-header-row">
-                <h5>Spend by Vendor</h5>
-                <span class="text-muted" style="font-size: 0.78rem;">Last 30 days</span>
+                <h5>Pending Invoices</h5>
+                <a href="{{ url_for('invoices', status='pending') }}" class="btn btn-outline-brand btn-sm">View All</a>
             </div>
-            <div style="position: relative; width: 100%; max-width: 320px; margin: 0 auto;">
-                <canvas id="vendorChart"></canvas>
-            </div>
-            <div id="chartLegend" class="mt-3" style="font-size: 0.82rem;"></div>
+            {% if pending_invoices %}
+            <table class="table table-clean">
+                <thead>
+                    <tr>
+                        <th>Vendor</th>
+                        <th>Amount</th>
+                        <th>Due</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for inv in pending_invoices %}
+                    <tr>
+                        <td class="fw-semibold">{{ inv.vendor.name if inv.vendor else '—' }}</td>
+                        <td>${{ "{:,.2f}".format(inv.total_amount) }}</td>
+                        <td style="font-size: 0.82rem;">{{ inv.due_date.strftime('%b %d') if inv.due_date else '—' }}</td>
+                        <td class="text-end">
+                            <form action="{{ url_for('approve_invoice', id=inv.id) }}" method="POST" style="display:inline;">
+                                <button class="btn btn-sm btn-outline-success"><i class="bi bi-check-lg"></i> Approve</button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <div class="text-center py-4 text-muted">No pending invoices.</div>
+            {% endif %}
         </div>
+    </div>
+</div>
+
+<!-- Row 3: Price Tracker -->
+<div class="content-card mb-4">
+    <div class="card-header-row">
+        <h5>Price Tracker — Biggest Recent Moves</h5>
+        <span class="text-muted" style="font-size: 0.78rem;">From invoice line history</span>
+    </div>
+    {% if price_changes %}
+    <table class="table table-clean">
+        <thead>
+            <tr>
+                <th>Item</th>
+                <th class="text-end">Current</th>
+                <th class="text-end">Previous</th>
+                <th class="text-end">Change %</th>
+                <th class="text-end">$ Δ / unit</th>
+                <th>Recorded</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for p in price_changes %}
+            <tr>
+                <td class="fw-semibold">{{ p.name }}{% if p.unit %} <span class="text-muted" style="font-size:0.78rem;">/ {{ p.unit }}</span>{% endif %}</td>
+                <td class="text-end">${{ "{:,.2f}".format(p.current or 0) }}</td>
+                <td class="text-end text-muted">${{ "{:,.2f}".format(p.previous or 0) }}</td>
+                <td class="text-end fw-semibold" style="color: {% if (p.change_pct or 0) >= 0 %}#e63946{% else %}#2a9d8f{% endif %};">
+                    {{ "%+.1f"|format(p.change_pct or 0) }}%
+                </td>
+                <td class="text-end" style="color: {% if (p.delta_amount or 0) >= 0 %}#e63946{% else %}#2a9d8f{% endif %};">
+                    {{ "%+.2f"|format(p.delta_amount or 0) }}
+                </td>
+                <td style="font-size: 0.78rem; color: #888;">{{ p.recorded_at.strftime('%b %d, %Y') if p.recorded_at else '—' }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <div class="text-center py-4 text-muted">No price history yet. Import some invoices to populate this table.</div>
+    {% endif %}
+</div>
+
+<!-- Row 4: Weekly sales trend chart -->
+<div class="content-card mb-4">
+    <div class="card-header-row">
+        <h5>Sales Trend — Last 14 Days</h5>
+        <span class="text-muted" style="font-size: 0.78rem;">This week vs last week</span>
+    </div>
+    <div style="position: relative; height: 280px;">
+        <canvas id="salesTrendChart"></canvas>
     </div>
 </div>
 {% endblock %}
@@ -166,86 +209,124 @@
 {% block extra_js %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
 <script>
-    const CHART_COLORS = ['#e85d04', '#0077b6', '#2a9d8f', '#e63946', '#6c757d', '#f4a261', '#264653'];
+    const RESTAURANT_ID = {{ selected_restaurant.id if selected_restaurant else 0 }};
+    const RANGE = {{ selected_range|tojson }};
+    const COMPARE = {{ 1 if compare else 0 }};
+    const CUSTOM_START = {{ custom_start|tojson }};
+    const CUSTOM_END = {{ custom_end|tojson }};
 
-    function loadChart() {
-        const rid = {{ selected_restaurant.id if selected_restaurant else 0 }};
-        if (!rid) return;
+    function laborColorClass(pct) {
+        if (pct == null) return 'orange';
+        if (pct < 25) return 'green';
+        if (pct <= 30) return 'orange';
+        return 'red';
+    }
+    function foodColorClass(pct) {
+        if (pct == null) return 'orange';
+        if (pct < 30) return 'green';
+        if (pct <= 35) return 'orange';
+        return 'red';
+    }
 
-        fetch('/api/vendor-spend?restaurant_id=' + rid)
+    function fmtMoney(v) {
+        if (v == null) return '—';
+        return '$' + v.toLocaleString('en-US', {minimumFractionDigits:0, maximumFractionDigits:0});
+    }
+
+    function loadSales() {
+        if (!RESTAURANT_ID) return;
+        document.getElementById('refreshBtn').classList.add('disabled');
+
+        let url = `/api/sales-summary?restaurant_id=${RESTAURANT_ID}&range=${RANGE}&compare=${COMPARE}`;
+        if (RANGE === 'custom' && CUSTOM_START && CUSTOM_END) {
+            url += `&start_date=${CUSTOM_START}&end_date=${CUSTOM_END}`;
+        }
+
+        fetch(url)
             .then(r => r.json())
-            .then(data => {
-                const labels = data.vendors || [];
-                const values = data.amounts || [];
+            .then(d => {
+                document.getElementById('card-sales').textContent = fmtMoney(d.sales);
+                document.getElementById('card-checks').textContent = d.check_count != null ? d.check_count.toLocaleString() : '—';
+                document.getElementById('card-avg-check').textContent = fmtMoney(d.avg_check);
 
-                if (labels.length === 0) {
-                    document.getElementById('chartLegend').innerHTML =
-                        '<p class="text-muted text-center">No spend data available</p>';
-                    return;
+                // Delta card
+                const deltaEl = document.getElementById('card-delta');
+                if (d.delta_amount != null) {
+                    const arrow = d.delta_amount >= 0 ? '▲' : '▼';
+                    const color = d.delta_amount >= 0 ? '#2a9d8f' : '#e63946';
+                    deltaEl.innerHTML = `<span style="color:${color};">${arrow} ${fmtMoney(Math.abs(d.delta_amount))}` +
+                        (d.delta_pct != null ? ` <span style="font-size:0.7rem;">(${d.delta_pct >= 0 ? '+' : ''}${d.delta_pct}%)</span>` : '') + `</span>`;
+                } else {
+                    deltaEl.textContent = COMPARE ? '—' : 'off';
                 }
 
-                const ctx = document.getElementById('vendorChart').getContext('2d');
-                new Chart(ctx, {
-                    type: 'doughnut',
-                    data: {
-                        labels: labels,
-                        datasets: [{
-                            data: values,
-                            backgroundColor: CHART_COLORS.slice(0, labels.length),
-                            borderWidth: 0,
-                            hoverOffset: 6
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        cutout: '65%',
-                        plugins: {
-                            legend: { display: false },
-                            tooltip: {
-                                callbacks: {
-                                    label: function(ctx) {
-                                        return ctx.label + ': $' + ctx.parsed.toLocaleString('en-US', {minimumFractionDigits: 2});
-                                    }
-                                }
-                            }
-                        }
-                    }
-                });
+                // Labor card with color
+                const laborEl = document.getElementById('card-labor');
+                const laborIcon = document.getElementById('card-labor-icon');
+                if (d.labor_pct != null) {
+                    laborEl.textContent = d.labor_pct + '%';
+                    laborIcon.className = 'stat-icon ' + laborColorClass(d.labor_pct);
+                } else {
+                    laborEl.textContent = '—';
+                }
 
-                let legendHtml = '<div class="d-flex flex-wrap gap-3 justify-content-center">';
-                labels.forEach((label, i) => {
-                    const color = CHART_COLORS[i % CHART_COLORS.length];
-                    legendHtml += `<span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${color};margin-right:5px;"></span>${label}</span>`;
-                });
-                legendHtml += '</div>';
-                document.getElementById('chartLegend').innerHTML = legendHtml;
+                // Render trend chart
+                renderTrendChart(d.daily || []);
             })
-            .catch(() => {
-                document.getElementById('chartLegend').innerHTML =
-                    '<p class="text-muted text-center">Could not load chart data</p>';
-            });
+            .catch(e => console.error('sales-summary failed', e))
+            .finally(() => document.getElementById('refreshBtn').classList.remove('disabled'));
     }
 
-    async function syncNow() {
-        const btn = document.getElementById('syncBtn');
-        btn.disabled = true;
-        btn.innerHTML = '<i class="bi bi-arrow-repeat spin"></i> Syncing...';
+    let trendChart = null;
+    function renderTrendChart(daily) {
+        const ctx = document.getElementById('salesTrendChart').getContext('2d');
+        const labels = daily.map(d => new Date(d.date + 'T12:00:00').toLocaleDateString('en-US', {weekday:'short', month:'short', day:'numeric'}));
+        const values = daily.map(d => d.sales);
 
-        try {
-            await fetch('/invoices/import/gfs', { method: 'POST' });
-            await fetch('/invoices/import/fintech', { method: 'POST' });
-            window.location.reload();
-        } catch (e) {
-            btn.disabled = false;
-            btn.innerHTML = '<i class="bi bi-arrow-repeat"></i> Sync Now';
-            alert('Sync failed. Please try again.');
-        }
+        // Color this week vs last week differently (last 7 days vs previous 7)
+        const colors = values.map((_, i) => i < 7 ? '#cdd9e0' : '#e85d04');
+
+        if (trendChart) trendChart.destroy();
+        trendChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Daily Sales',
+                    data: values,
+                    backgroundColor: colors,
+                    borderRadius: 4,
+                }],
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: c => '$' + c.parsed.y.toLocaleString('en-US', {minimumFractionDigits:2}),
+                        },
+                    },
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: { callback: v => '$' + v.toLocaleString() },
+                    },
+                },
+            },
+        });
     }
 
-    document.addEventListener('DOMContentLoaded', loadChart);
+    // Color food cost icon based on server-rendered value
+    (function colorFoodCard() {
+        const fcText = document.querySelector('#card-food-icon').nextElementSibling.textContent.trim();
+        const m = fcText.match(/([\d.]+)/);
+        const pct = m ? parseFloat(m[1]) : null;
+        document.getElementById('card-food-icon').className = 'stat-icon ' + foodColorClass(pct);
+    })();
+
+    document.addEventListener('DOMContentLoaded', loadSales);
 </script>
-<style>
-    @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-    .spin { display: inline-block; animation: spin 1s linear infinite; }
-</style>
 {% endblock %}
