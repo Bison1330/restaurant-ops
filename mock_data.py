@@ -5,6 +5,9 @@ from database import (
 )
 from datetime import datetime, timedelta
 import random
+import pytz
+
+CENTRAL_TZ = pytz.timezone("US/Central")
 
 
 def seed_mock_data(app):
@@ -52,7 +55,7 @@ def seed_mock_data(app):
         db.session.flush()
 
         # Invoices
-        today = datetime.now().date()
+        today = datetime.now(CENTRAL_TZ).date()
 
         inv1 = Invoice(restaurant_id=r1.id, vendor_id=v1.id, invoice_number="GFS-2024-008812", invoice_date=today - timedelta(days=5), due_date=today + timedelta(days=9), total_amount=657.25, status="approved", source="gfs")
         inv2 = Invoice(restaurant_id=r1.id, vendor_id=v2.id, invoice_number="SGW-2024-088431", invoice_date=today - timedelta(days=3), due_date=today + timedelta(days=27), total_amount=1482.00, status="pending", source="fintech")

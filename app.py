@@ -75,9 +75,9 @@ def _save_invoice_to_db(invoice_data, restaurant_id):
         try:
             inv_date = datetime.strptime(inv_date, "%Y-%m-%d").date()
         except ValueError:
-            inv_date = datetime.now().date()
+            inv_date = datetime.now(CENTRAL_TZ).date()
     elif not inv_date:
-        inv_date = datetime.now().date()
+        inv_date = datetime.now(CENTRAL_TZ).date()
 
     invoice = Invoice(
         restaurant_id=restaurant_id,
@@ -471,7 +471,7 @@ def dashboard():
             top_alerts=[], price_changes=[], selected_range="today", compare=False,
         )
 
-    now = datetime.now().date()
+    now = datetime.now(CENTRAL_TZ).date()
     selected_range = request.args.get("range", "today")
     custom_start = request.args.get("start_date")
     custom_end = request.args.get("end_date")
@@ -1592,7 +1592,7 @@ def export_qb_invoices():
         })
         inv.qb_exported = True
     db.session.commit()
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    timestamp = datetime.now(CENTRAL_TZ).strftime("%Y%m%d_%H%M%S")
     output_path = f"/root/restaurant-ops/exports/invoices_{r.id}_{timestamp}.iif"
     export_invoices_iif(export_data, output_path)
     return send_file(output_path, as_attachment=True, download_name=f"invoices_{timestamp}.iif")
@@ -1727,7 +1727,7 @@ def new_count():
     if not r:
         flash("No restaurant selected.", "error")
         return redirect(url_for("counts"))
-    count_date = datetime.strptime(request.form.get("count_date", datetime.now().strftime("%Y-%m-%d")), "%Y-%m-%d").date()
+    count_date = datetime.strptime(request.form.get("count_date", datetime.now(CENTRAL_TZ).strftime("%Y-%m-%d")), "%Y-%m-%d").date()
     counted_by = request.form.get("counted_by", "")
 
     session = CountSession(
@@ -1857,7 +1857,7 @@ def export_payroll(id):
         "period_start": pr.period_start.strftime("%Y-%m-%d") if pr.period_start else "",
         "period_end": pr.period_end.strftime("%Y-%m-%d") if pr.period_end else "",
     }
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    timestamp = datetime.now(CENTRAL_TZ).strftime("%Y%m%d_%H%M%S")
     output_path = f"/root/restaurant-ops/exports/payroll_{pr.id}_{timestamp}.iif"
     export_payroll_iif(payroll_data, employees_data, output_path)
     pr.qb_exported = True
@@ -2305,7 +2305,7 @@ def api_dashboard_data():
     r = _get_selected_restaurant()
     if not r:
         return jsonify({"error": "No restaurant selected"}), 400
-    now = datetime.now().date()
+    now = datetime.now(CENTRAL_TZ).date()
     pending_count = Invoice.query.filter_by(restaurant_id=r.id, status="pending").count()
     overdue_count = Invoice.query.filter(
         Invoice.restaurant_id == r.id,
@@ -2335,7 +2335,7 @@ def api_vendor_spend():
     r = _get_selected_restaurant()
     if not r:
         return jsonify({"vendors": [], "amounts": []})
-    thirty_days_ago = datetime.now().date() - timedelta(days=30)
+    thirty_days_ago = datetime.now(CENTRAL_TZ).date() - timedelta(days=30)
     results = (
         db.session.query(Vendor.name, db.func.sum(Invoice.total_amount))
         .join(Vendor, Invoice.vendor_id == Vendor.id)

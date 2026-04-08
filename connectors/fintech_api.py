@@ -1,7 +1,9 @@
 import requests
 import os
 from datetime import datetime
+import pytz
 
+CENTRAL_TZ = pytz.timezone("US/Central")
 FINTECH_API_KEY = os.environ.get("FINTECH_API_KEY")
 
 
@@ -39,7 +41,7 @@ def fetch_fintech_invoices():
 
 
 def _mock_invoices():
-    today = datetime.now().strftime("%Y-%m-%d")
+    today = datetime.now(CENTRAL_TZ).strftime("%Y-%m-%d")
     lines = [
         {
             "description": "Tito's Vodka 1.75L",

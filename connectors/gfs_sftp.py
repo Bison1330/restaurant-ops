@@ -3,6 +3,9 @@ import csv
 import io
 import os
 from datetime import datetime
+import pytz
+
+CENTRAL_TZ = pytz.timezone("US/Central")
 
 GFS_HOST = "sftp-gordon.gfs.com"
 GFS_PORT = 22
@@ -56,7 +59,7 @@ def fetch_gfs_invoices(account_number):
 
 
 def _mock_invoices(account_number):
-    today = datetime.now().strftime("%Y-%m-%d")
+    today = datetime.now(CENTRAL_TZ).strftime("%Y-%m-%d")
     lines = [
         {
             "description": "Chicken Breast 40lb Case",

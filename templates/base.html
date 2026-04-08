@@ -937,7 +937,12 @@
 
         // ---- Context-aware chips --------------------------------------------
         function getBisonChips() {
-            const hour = new Date().getHours();
+            // Always use US/Central — that's where the restaurants live
+            const hour = parseInt(new Intl.DateTimeFormat('en-US', {
+                timeZone: 'America/Chicago',
+                hour: 'numeric',
+                hour12: false,
+            }).format(new Date()), 10);
             const path = window.location.pathname;
 
             // Page-specific chips
