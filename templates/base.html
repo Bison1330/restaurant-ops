@@ -595,6 +595,23 @@
             <a href="{{ url_for('xtra_chef.cogs') }}" class="{% if '/xtra-chef' in request.path %}active{% endif %}">
                 <i class="bi bi-graph-up-arrow"></i> xtraCHEF
             </a>
+
+            <div class="nav-section" style="margin-top:auto; padding-top:16px; border-top:1px solid var(--border); margin-top:16px;">
+                {% if current_user.is_authenticated %}
+                <div style="padding:10px 20px 6px; font-size:0.75rem; color:var(--text-muted);">
+                    <i class="bi bi-person-circle me-1"></i>
+                    {{ current_user.first_name }} {{ current_user.last_name }}
+                    <span style="display:block;font-size:0.68rem;opacity:0.6;">{{ current_user.role|title }}</span>
+                </div>
+                <a href="{{ url_for('logout') }}" style="color:#ef4444;">
+                    <i class="bi bi-box-arrow-left"></i> Log Out
+                </a>
+                {% else %}
+                <a href="{{ url_for('login') }}">
+                    <i class="bi bi-box-arrow-in-right"></i> Log In
+                </a>
+                {% endif %}
+            </div>
         </div>
 
         <div class="sidebar-status">
