@@ -422,3 +422,22 @@ class User(UserMixin, db.Model):
         if self.role == 'owner':
             return True
         return self.restaurant_id == restaurant_id
+
+
+class Position(db.Model):
+    """A job position with a display color, per restaurant."""
+    __tablename__ = 'positions'
+    id = db.Column(db.Integer, primary_key=True)
+    restaurant_id = db.Column(db.Integer, db.ForeignKey('restaurants.id'), index=True)
+    name = db.Column(db.String(50), nullable=False)
+    color_hex = db.Column(db.String(7), default='#64748b')  # e.g. #3b82f6
+    display_order = db.Column(db.Integer, default=0)
+    active = db.Column(db.Boolean, default=True)
+
+    restaurant = db.relationship('Restaurant', backref='positions')
+
+    @property
+    def color_rgb(self):
+        """Return r,g,b from hex for use in rgba() CSS."""
+        h = self.color_hex.lstrip('#')
+        return ','.join(str(int(h[i:i+2], 16)) for i in (0, 2, 4))

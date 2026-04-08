@@ -18,7 +18,7 @@ from database import (
     PayrollRun, Employee, Recipe, RecipeIngredient,
     ItemAlias, PriceHistory, UnmatchedItem,
     StorageZone, InventoryItemZone, CountSession, CountEntry,
-    Alert, MenuItemSale, Shift, User,
+    Alert, MenuItemSale, Shift, User, Position,
 )
 from mock_data import seed_mock_data
 from connectors.gfs_sftp import fetch_gfs_invoices
@@ -2441,6 +2441,9 @@ def schedule():
     week_days = [monday + timedelta(days=i) for i in range(7)]
     today_str = datetime.now(CENTRAL_TZ).date().isoformat()
 
+    positions = Position.query.filter_by(restaurant_id=restaurant.id, active=True).order_by(Position.display_order).all()
+    position_map = {p.name.lower(): p for p in positions}
+
     employees = Employee.query.filter_by(
         restaurant_id=restaurant.id, active=True
     ).order_by(Employee.role, Employee.last_name).all()
@@ -2502,6 +2505,8 @@ def schedule():
         projected_labor_pct=projected_labor_pct,
         prev_week=prev_week,
         next_week=next_week,
+        positions=positions,
+        position_map=position_map,
     )
 
 
@@ -2621,6 +2626,8 @@ def api_get_shift(shift_id):
         "role": shift.role or "",
         "status": shift.status,
         "notes": shift.notes or "",
+        "hours": round(shift.hours, 1),
+        "labor_cost": round(shift.labor_cost, 2),
     })
 
 # ─────────────────────────────────────────────────────────────

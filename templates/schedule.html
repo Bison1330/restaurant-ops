@@ -111,10 +111,14 @@
             {% set day_shifts = shift_map.get(key, []) %}
             <td class="shift-cell" data-emp="{{ emp.id }}" data-date="{{ day.isoformat() }}" data-role="{{ emp.role or '' }}">
                 {% for s in day_shifts %}
-                <div class="shift-pill {{ s.role|lower|replace(' ','-')|replace('/','-') if s.role else 'other' }}-pill {% if s.status == 'called_out' %}called-out{% elif s.status == 'no_show' %}no-show{% endif %}"
+                {% set pos = position_map.get(s.role|lower) if s.role else none %}
+                {% set pill_color = pos.color_hex if pos else '#64748b' %}
+                {% set pill_rgb = pos.color_rgb if pos else '100,116,139' %}
+                <div class="shift-pill {% if s.status == 'called_out' %}called-out{% elif s.status == 'no_show' %}no-show{% endif %}"
+                     style="background:rgba({{ pill_rgb }},0.18); color:{{ pill_color }}; border-left:3px solid {{ pill_color }};"
                      title="{{ s.role }} · {{ s.start_time }}–{{ s.end_time }}{% if s.notes %} · {{ s.notes }}{% endif %}"
                      onclick="openEditModal({{ s.id }})">
-                    <span class="shift-time">{{ s.start_time }}–{{ s.end_time }}</span>
+                    <span class="shift-time">{{ s.start_time }}–{{ s.end_time }} · {{ "%.0f"|format(s.hours) }}h</span>
                     {% if s.status == 'called_out' %}<i class="bi bi-telephone-x-fill" style="font-size:0.6rem;opacity:0.7;"></i>
                     {% elif s.status == 'no_show' %}<i class="bi bi-x-octagon-fill" style="font-size:0.6rem;opacity:0.7;"></i>{% endif %}
                 </div>
