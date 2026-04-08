@@ -253,7 +253,12 @@ def _build_sales_summary(r, range_name, custom_start=None, custom_end=None, comp
         return payload
 
     sales_total = sum(o.get("total", 0) for o in orders)
+    # net_sales (post-discount, pre-tax, pre-tip) is the industry-correct
+    # denominator for cost percentages. `sales` stays as customer-paid total
+    # so the headline number matches what operators see on Toast.
+    net_sales_total = sum(o.get("net_sales", 0) for o in orders)
     payload["sales"] = round(sales_total, 2)
+    payload["net_sales"] = round(net_sales_total, 2)
     payload["check_count"] = len(orders)
     if orders:
         payload["avg_check"] = round(sales_total / len(orders), 2)
@@ -294,8 +299,12 @@ def _build_sales_summary(r, range_name, custom_start=None, custom_end=None, comp
             if 0 < rate < 100:
                 emp_wage[e.toast_employee_id] = rate
         labor_cost = sum((t.get("hours") or 0) * emp_wage.get(t.get("employee_guid"), 0) for t in ts)
-        if sales_total > 0:
-            raw_pct = (labor_cost / sales_total) * 100
+        # Denominator: prefer net_sales (post-discount, pre-tax, pre-tip).
+        # Falls back to sales_total if for some reason net_sales is 0 — mostly
+        # a defense against old cached payloads or non-Toast data sources.
+        denom = net_sales_total if net_sales_total > 0 else sales_total
+        if denom > 0:
+            raw_pct = (labor_cost / denom) * 100
             payload["labor_pct_suspicious"] = raw_pct > 80
             payload["labor_pct"] = round(min(raw_pct, 100.0), 1)
     except Exception as e:
@@ -370,6 +379,7 @@ def _toast_sales_summary(r):
         week_orders = fetch_orders(r, fmt(week_start_utc), fmt(end_utc))
         today_total = 0.0
         week_total = 0.0
+        week_net = 0.0
         for o in week_orders:
             opened = o.get("opened_date") or ""
             try:
@@ -377,25 +387,29 @@ def _toast_sales_summary(r):
             except ValueError:
                 opened_dt = None
             week_total += o.get("total", 0)
+            week_net += o.get("net_sales", 0)
             if opened_dt and opened_dt >= today_start_utc:
                 today_total += o.get("total", 0)
 
         summary["today_sales"] = round(today_total, 2)
         summary["week_sales"] = round(week_total, 2)
 
-        # Labor cost = sum(hours * wage) for last 7 days / week_sales.
+        # Labor cost = sum(hours * wage) for last 7 days / net_sales.
         # Both hourly and salary employees count — for salaried staff, fetch_employees
         # has already converted the annual figure to an hourly equivalent (annual / 2080).
+        # Manager-set manual_pay_rate wins over the Toast-synced pay_rate.
         # The < $100/hr guard catches any remaining bad data (e.g. legacy rows where
-        # an annual was stored without conversion, like the seeded mock employee).
+        # an annual was stored without conversion).
         ts = fetch_timesheets(r, fmt(week_start_utc), fmt(end_utc))
         emp_wage = {}
         for e in Employee.query.filter_by(restaurant_id=r.id).all():
-            if 0 < (e.pay_rate or 0) < 100:
-                emp_wage[e.toast_employee_id] = e.pay_rate
+            rate = e.manual_pay_rate if e.manual_pay_rate is not None else (e.pay_rate or 0)
+            if 0 < rate < 100:
+                emp_wage[e.toast_employee_id] = rate
         labor_cost = sum((t.get("hours") or 0) * emp_wage.get(t.get("employee_guid"), 0) for t in ts)
-        if week_total > 0:
-            raw_pct = (labor_cost / week_total) * 100
+        denom = week_net if week_net > 0 else week_total
+        if denom > 0:
+            raw_pct = (labor_cost / denom) * 100
             summary["labor_pct_suspicious"] = raw_pct > 80
             summary["labor_pct"] = round(min(raw_pct, 100.0), 1)
     except Exception as e:

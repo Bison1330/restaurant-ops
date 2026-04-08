@@ -214,11 +214,22 @@ def fetch_menu(restaurant):
 
 
 def fetch_orders(restaurant, start_date, end_date):
-    """Fetch orders between start_date and end_date (ISO-8601 strings).
+    """Fetch orders between start_date and end_date.
+
+    Accepts either datetime objects or pre-formatted ISO-8601 strings. Datetimes
+    are normalized to `%Y-%m-%dT%H:%M:%S.000%z` because Toast's ordersBulk
+    endpoint rejects the space-separated form Python's default str(datetime)
+    produces and also rejects sub-second precision.
 
     Returns list of {guid, opened_date, total, items: [{name, qty, price}]}.
     Pages through ordersBulk until an empty page is returned.
     """
+    def _fmt(d):
+        if isinstance(d, datetime):
+            return d.strftime("%Y-%m-%dT%H:%M:%S.000%z")
+        return d
+    start_date = _fmt(start_date)
+    end_date = _fmt(end_date)
     page = 1
     page_size = 100
     summaries = []
@@ -240,7 +251,11 @@ def fetch_orders(restaurant, start_date, end_date):
             break
         for order in batch:
             items_sold = []
-            for check in order.get("checks", []) or []:
+            # Only count live checks. Voided checks still appear in the API
+            # response with non-zero amounts; we don't want them inflating
+            # either the customer-paid `total` or the `net_sales` denominator.
+            live_checks = [c for c in (order.get("checks") or []) if not c.get("voided")]
+            for check in live_checks:
                 for sel in check.get("selections", []) or []:
                     items_sold.append({
                         "name": sel.get("displayName") or sel.get("name") or "",
@@ -250,7 +265,13 @@ def fetch_orders(restaurant, start_date, end_date):
             summaries.append({
                 "guid": order.get("guid"),
                 "opened_date": order.get("openedDate"),
-                "total": sum(float(c.get("totalAmount", 0) or 0) for c in order.get("checks", []) or []),
+                # `total` = customer-paid (food + tax + tip). Matches what
+                # operators see on the POS as "money in the door".
+                "total": sum(float(c.get("totalAmount", 0) or 0) for c in live_checks),
+                # `net_sales` = post-discount, pre-tax, pre-tip. The industry-
+                # standard denominator for labor% and food cost%. Comes straight
+                # from `check.amount`, which is already post-discount in Toast.
+                "net_sales": sum(float(c.get("amount", 0) or 0) for c in live_checks),
                 "items": items_sold,
             })
         if len(batch) < page_size:
