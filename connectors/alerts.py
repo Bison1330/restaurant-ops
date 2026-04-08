@@ -66,14 +66,18 @@ def run_alerts(restaurant_id):
         if _add(restaurant_id, "low_stock", "warning", msg):
             created += 1
 
-    # c) Active recipes with food_cost = 0 (warning)
+    # c) Active recipes with food_cost = 0 (warning).
+    # Only flag recipes that have an xtra_chef_id — those came through with
+    # ingredient data and should have a real cost. CSV-only recipes (no
+    # xtra_chef_id) are intentionally cost-less and not actionable.
     zero_cost = Recipe.query.filter(
         Recipe.restaurant_id == restaurant_id,
         Recipe.status == "active",
         Recipe.food_cost == 0,
+        Recipe.xtra_chef_id.isnot(None),
     ).all()
     if zero_cost:
-        msg = f"{len(zero_cost)} active recipe(s) have food_cost = 0"
+        msg = f"{len(zero_cost)} active recipe(s) with xtraCHEF ID have food_cost = 0"
         if _add(restaurant_id, "zero_cost_recipe", "warning", msg):
             created += 1
 

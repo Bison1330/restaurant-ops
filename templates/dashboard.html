@@ -35,50 +35,64 @@
 {% endblock %}
 
 {% block content %}
-<!-- Row 1: 6 key metric cards (sales/labor populated by JS, food_cost server-side) -->
-<div class="row g-3 mb-4">
-    <div class="col-md-2">
+<img src="{{ url_for('static', filename='bison_stockyard.png') }}" alt="Bison Stockyard" style="width:100%; height:auto; display:block; border-radius:12px; margin-bottom:20px;">
+
+<!-- Row 1: key metric cards (sales/labor populated by JS, food_cost server-side) -->
+<div class="row g-3 mb-4" id="metric-row">
+    <div class="col-md-2 metric-col">
         <div class="stat-card">
             <div class="stat-icon green"><i class="bi bi-cash-stack"></i></div>
             <div class="stat-value" id="card-sales">—</div>
+            <div class="stat-date text-muted" id="card-sales-date" style="font-size:0.72rem;">&nbsp;</div>
             <div class="stat-label">Net Sales</div>
+            <div class="stat-desc text-muted" style="font-size:0.7rem;">Total revenue for period</div>
         </div>
     </div>
-    <div class="col-md-2">
+    <div class="col-md-2 metric-col" id="card-delta-col" style="display:none;">
         <div class="stat-card">
             <div class="stat-icon blue"><i class="bi bi-arrow-left-right"></i></div>
             <div class="stat-value" id="card-delta" style="font-size: 1.4rem;">—</div>
+            <div class="stat-date text-muted" id="card-delta-date" style="font-size:0.72rem;">&nbsp;</div>
             <div class="stat-label">vs Prior Period</div>
+            <div class="stat-desc text-muted" style="font-size:0.7rem;">Change from previous range</div>
         </div>
     </div>
-    <div class="col-md-2">
+    <div class="col-md-2 metric-col">
         <div class="stat-card">
             <div class="stat-icon orange" id="card-labor-icon"><i class="bi bi-people"></i></div>
             <div class="stat-value" id="card-labor">—</div>
+            <div class="stat-date text-muted" id="card-labor-date" style="font-size:0.72rem;">&nbsp;</div>
             <div class="stat-label">Labor %</div>
+            <div class="stat-desc text-muted" style="font-size:0.7rem;">Labor cost as % of sales</div>
         </div>
     </div>
-    <div class="col-md-2">
+    <div class="col-md-2 metric-col">
         <div class="stat-card">
             <div class="stat-icon" id="card-food-icon"><i class="bi bi-pie-chart"></i></div>
             <div class="stat-value">
                 {% if stats.food_cost_pct is not none %}{{ stats.food_cost_pct }}%{% else %}—{% endif %}
             </div>
+            <div class="stat-date text-muted" style="font-size:0.72rem;">All active recipes</div>
             <div class="stat-label">Food Cost %</div>
+            <div class="stat-desc text-muted" style="font-size:0.7rem;">Avg recipe cost % (weekly)</div>
         </div>
     </div>
-    <div class="col-md-2">
+    <div class="col-md-2 metric-col">
         <div class="stat-card">
             <div class="stat-icon blue"><i class="bi bi-receipt"></i></div>
             <div class="stat-value" id="card-checks">—</div>
+            <div class="stat-date text-muted" id="card-checks-date" style="font-size:0.72rem;">&nbsp;</div>
             <div class="stat-label">Check Count</div>
+            <div class="stat-desc text-muted" style="font-size:0.7rem;">Number of orders</div>
         </div>
     </div>
-    <div class="col-md-2">
+    <div class="col-md-2 metric-col">
         <div class="stat-card">
             <div class="stat-icon orange"><i class="bi bi-currency-dollar"></i></div>
             <div class="stat-value" id="card-avg-check">—</div>
+            <div class="stat-date text-muted" id="card-avg-check-date" style="font-size:0.72rem;">&nbsp;</div>
             <div class="stat-label">Avg Check</div>
+            <div class="stat-desc text-muted" style="font-size:0.7rem;">Revenue per order</div>
         </div>
     </div>
 </div>
@@ -233,6 +247,20 @@
         return '$' + v.toLocaleString('en-US', {minimumFractionDigits:0, maximumFractionDigits:0});
     }
 
+    function fmtDateRange(startIso, endIso) {
+        if (!startIso || !endIso) return '';
+        const s = new Date(startIso);
+        const e = new Date(endIso);
+        const opts = {month:'short', day:'numeric', year:'numeric'};
+        const sStr = s.toLocaleDateString('en-US', opts);
+        const eStr = e.toLocaleDateString('en-US', opts);
+        // Same calendar day → show one date; otherwise a range
+        if (s.toDateString() === new Date(e.getTime() - 60000).toDateString()) {
+            return sStr;
+        }
+        return sStr + ' – ' + eStr;
+    }
+
     function loadSales() {
         if (!RESTAURANT_ID) return;
         document.getElementById('refreshBtn').classList.add('disabled');
@@ -249,15 +277,25 @@
                 document.getElementById('card-checks').textContent = d.check_count != null ? d.check_count.toLocaleString() : '—';
                 document.getElementById('card-avg-check').textContent = fmtMoney(d.avg_check);
 
-                // Delta card
-                const deltaEl = document.getElementById('card-delta');
-                if (d.delta_amount != null) {
+                // Date subtitles for every Toast-driven card
+                const dateLabel = fmtDateRange(d.start, d.end);
+                document.getElementById('card-sales-date').textContent = dateLabel;
+                document.getElementById('card-labor-date').textContent = dateLabel;
+                document.getElementById('card-checks-date').textContent = dateLabel;
+                document.getElementById('card-avg-check-date').textContent = dateLabel;
+
+                // Delta card — show only when compare is on
+                const deltaCol = document.getElementById('card-delta-col');
+                if (COMPARE && d.delta_amount != null) {
+                    deltaCol.style.display = '';
+                    const deltaEl = document.getElementById('card-delta');
                     const arrow = d.delta_amount >= 0 ? '▲' : '▼';
                     const color = d.delta_amount >= 0 ? '#2a9d8f' : '#e63946';
                     deltaEl.innerHTML = `<span style="color:${color};">${arrow} ${fmtMoney(Math.abs(d.delta_amount))}` +
                         (d.delta_pct != null ? ` <span style="font-size:0.7rem;">(${d.delta_pct >= 0 ? '+' : ''}${d.delta_pct}%)</span>` : '') + `</span>`;
+                    document.getElementById('card-delta-date').textContent = 'Prior: ' + dateLabel;
                 } else {
-                    deltaEl.textContent = COMPARE ? '—' : 'off';
+                    deltaCol.style.display = 'none';
                 }
 
                 // Labor card with color
@@ -283,8 +321,8 @@
         const labels = daily.map(d => new Date(d.date + 'T12:00:00').toLocaleDateString('en-US', {weekday:'short', month:'short', day:'numeric'}));
         const values = daily.map(d => d.sales);
 
-        // Color this week vs last week differently (last 7 days vs previous 7)
-        const colors = values.map((_, i) => i < 7 ? '#cdd9e0' : '#e85d04');
+        // First 7 days = last week (dark gray), last 7 days = current week (green)
+        const colors = values.map((_, i) => i < 7 ? '#444' : '#3ddc84');
 
         if (trendChart) trendChart.destroy();
         trendChart = new Chart(ctx, {
