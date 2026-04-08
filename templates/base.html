@@ -1059,20 +1059,21 @@
 
             let i = 0;
             clearInterval(bisonState.typewriterTimer);
+            clearTimeout(bisonState.bubbleTimeout);
             bisonState.typewriterTimer = setInterval(() => {
                 i++;
                 target.innerHTML = bisonHighlightNumbers(text.slice(0, i));
                 bisonRepositionFloaters();
                 if (i >= text.length) {
                     clearInterval(bisonState.typewriterTimer);
+                    // Start the read-time timer only after the typewriter finishes
+                    clearTimeout(bisonState.bubbleTimeout);
+                    bisonState.bubbleTimeout = setTimeout(() => {
+                        bisonHideBubble();
+                        bisonShowChips();
+                    }, 20000);
                 }
             }, 18);
-
-            clearTimeout(bisonState.bubbleTimeout);
-            bisonState.bubbleTimeout = setTimeout(() => {
-                bisonHideBubble();
-                bisonShowChips();
-            }, 9000);
         }
         function bisonHighlightNumbers(s) {
             const esc = s.replace(/[&<>"']/g, c => ({
