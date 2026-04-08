@@ -597,7 +597,7 @@ def dashboard():
     top_alerts = (
         Alert.query.filter_by(restaurant_id=r.id, resolved=False)
         .order_by(
-            db.case({"critical": 0, "warning": 1, "info": 2}, value=Alert.severity, else_=3),
+            db.case({"critical": 0, "danger": 0, "warning": 1, "info": 2}, value=Alert.severity, else_=3),
             Alert.created_at.desc(),
         )
         .limit(5)
@@ -4368,6 +4368,16 @@ def create_owner_accounts():
     db.session.commit()
     flash(f"Created {len(created)} owner account(s). Passwords printed to server log.", "success")
     return redirect(url_for("admin_users"))
+
+@app.route("/employees/<int:emp_id>/set-pay-type", methods=["POST"])
+def employees_set_pay_type(emp_id):
+    emp = Employee.query.get_or_404(emp_id)
+    pay_type = request.form.get("pay_type", "hourly")
+    if pay_type in ("hourly", "salary"):
+        emp.pay_type = pay_type
+        db.session.commit()
+        flash(f"{emp.first_name} {emp.last_name} updated to {pay_type}.", "success")
+    return redirect(url_for("employees"))
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8082, debug=False)

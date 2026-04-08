@@ -78,9 +78,9 @@
         <div id="card-food" style="font-size:1.5rem; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
             {% if stats.food_cost_pct is not none %}{{ stats.food_cost_pct }}%{% else %}—{% endif %}
         </div>
-        <div class="text-muted" style="font-size:0.7rem;">All active recipes</div>
+        <div class="text-muted" style="font-size:0.7rem;">&nbsp;</div>
         <div style="font-weight:700;">Food Cost %</div>
-        <div class="text-muted" style="font-size:0.7rem;">Avg recipe cost % (weekly)</div>
+        <div class="text-muted" style="font-size:0.7rem;">Unweighted avg across all recipes — not sales-weighted</div>
     </div>
 
     <div style="flex:1; min-width:0; padding:14px; background:#111; border:1px solid #2a2a2a; border-radius:10px;">
@@ -343,14 +343,18 @@
                     laborEl.textContent = '—';
                 }
 
-                // Hourly-only labor card (matches Toast)
+                // Hourly-only labor card (matches Toast). Hide it entirely
+                // when there are no salaried employees — the two cards would
+                // be identical and the duplicate is just noise.
                 const hourlyEl = document.getElementById('card-hourly-labor');
                 const hourlyIcon = document.getElementById('card-hourly-labor-icon');
-                if (d.hourly_labor_pct != null) {
+                const hourlyCard = document.getElementById('card-hourly-labor').closest('div[style*="flex:1"]');
+                if (d.hourly_labor_pct === d.labor_pct || d.hourly_labor_pct == null) {
+                    if (hourlyCard) hourlyCard.style.display = 'none';
+                } else {
+                    if (hourlyCard) hourlyCard.style.display = '';
                     hourlyEl.textContent = d.hourly_labor_pct + '%';
                     hourlyIcon.className = 'stat-icon ' + laborColorClass(d.hourly_labor_pct);
-                } else {
-                    hourlyEl.textContent = '—';
                 }
 
                 // Food cost card — value is server-rendered but we still update

@@ -67,6 +67,15 @@
                         {% else %}
                         <span class="pay-type-badge hourly">Hourly</span>
                         {% endif %}
+                        <form method="POST" action="{{ url_for('employees_set_pay_type', emp_id=emp.id) }}"
+                              class="d-inline ms-1">
+                            <select name="pay_type" class="form-select form-select-sm d-inline"
+                                    style="width:90px;font-size:0.72rem;"
+                                    onchange="this.form.submit()">
+                                <option value="hourly" {% if emp.pay_type == 'hourly' %}selected{% endif %}>Hourly</option>
+                                <option value="salary" {% if emp.pay_type == 'salary' %}selected{% endif %}>Salary</option>
+                            </select>
+                        </form>
                     </td>
                     <td>
                         <form class="manual-rate-form d-flex gap-1 align-items-center" data-emp-id="{{ emp.id }}">
