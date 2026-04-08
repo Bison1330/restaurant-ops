@@ -284,11 +284,15 @@ def _build_sales_summary(r, range_name, custom_start=None, custom_end=None, comp
             start_utc.strftime("%Y-%m-%dT%H:%M:%S.000-0000"),
             end_utc.strftime("%Y-%m-%dT%H:%M:%S.000-0000"),
         )
-        emp_wage = {
-            e.toast_employee_id: e.pay_rate
-            for e in Employee.query.filter_by(restaurant_id=r.id).all()
-            if 0 < (e.pay_rate or 0) < 100
-        }
+        # Effective rate per employee: manual override (set by managers via the
+        # employees page, e.g. for staff whose Toast wage is missing) wins over
+        # the Toast-synced pay_rate. The < $100/hr guard still applies — it
+        # catches legacy rows that stored an annual figure in pay_rate.
+        emp_wage = {}
+        for e in Employee.query.filter_by(restaurant_id=r.id).all():
+            rate = e.manual_pay_rate if e.manual_pay_rate is not None else (e.pay_rate or 0)
+            if 0 < rate < 100:
+                emp_wage[e.toast_employee_id] = rate
         labor_cost = sum((t.get("hours") or 0) * emp_wage.get(t.get("employee_guid"), 0) for t in ts)
         if sales_total > 0:
             raw_pct = (labor_cost / sales_total) * 100
@@ -952,6 +956,35 @@ def employees():
     r = _get_selected_restaurant()
     emp_list = Employee.query.filter_by(restaurant_id=r.id).all() if r else []
     return render_template("employees.html", employees=emp_list)
+
+
+@app.route("/employees/<int:emp_id>/manual-rate", methods=["POST"])
+def employees_set_manual_rate(emp_id):
+    """Set or clear an employee's manual_pay_rate override.
+
+    Empty string clears the override (falls back to Toast pay_rate). Restricted
+    to employees of the currently-selected restaurant to prevent cross-tenant
+    edits.
+    """
+    r = _get_selected_restaurant()
+    if not r:
+        return jsonify({"ok": False, "error": "no restaurant selected"}), 400
+    emp = Employee.query.filter_by(id=emp_id, restaurant_id=r.id).first()
+    if not emp:
+        return jsonify({"ok": False, "error": "not found"}), 404
+    raw = (request.form.get("manual_pay_rate") or "").strip()
+    if raw == "":
+        emp.manual_pay_rate = None
+    else:
+        try:
+            val = float(raw)
+        except ValueError:
+            return jsonify({"ok": False, "error": "invalid number"}), 400
+        if val < 0 or val > 1000:
+            return jsonify({"ok": False, "error": "out of range"}), 400
+        emp.manual_pay_rate = val
+    db.session.commit()
+    return jsonify({"ok": True, "manual_pay_rate": emp.manual_pay_rate})
 
 
 @app.route("/recipes")

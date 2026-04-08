@@ -36,10 +36,40 @@ def _add(restaurant_id, alert_type, severity, message):
     return True
 
 
+def _resolve_stale(restaurant_id, alert_type, current_messages):
+    """Mark unresolved alerts of `alert_type` as resolved when their message
+    is no longer in `current_messages` (i.e. the underlying condition has
+    cleared, or the alert text has been superseded). Returns count resolved."""
+    q = Alert.query.filter(
+        Alert.restaurant_id == restaurant_id,
+        Alert.alert_type == alert_type,
+        Alert.resolved == False,  # noqa: E712
+    )
+    if current_messages:
+        q = q.filter(Alert.message.notin_(current_messages))
+    stale = q.all()
+    now = datetime.utcnow()
+    for a in stale:
+        a.resolved = True
+        a.resolved_at = now
+    return len(stale)
+
+
 def run_alerts(restaurant_id):
     """Run all checks for the given restaurant. Returns count of new alerts created."""
     created = 0
     today = datetime.utcnow().date()
+
+    # Track the messages each check produces this run, so we can resolve any
+    # previously-open alert of the same type whose condition no longer holds
+    # (or whose text has been superseded by a new message).
+    current = {
+        "invoice_overdue": [],
+        "low_stock": [],
+        "zero_cost_recipe": [],
+        "unmapped_invoice_line": [],
+        "stale_toast_sync": [],
+    }
 
     # a) Invoices overdue > 7 days (critical)
     cutoff = today - timedelta(days=7)
@@ -52,6 +82,7 @@ def run_alerts(restaurant_id):
     for inv in overdue:
         days_late = (today - inv.due_date).days
         msg = f"Invoice {inv.invoice_number} is {days_late} days overdue (${inv.total_amount:,.2f})"
+        current["invoice_overdue"].append(msg)
         if _add(restaurant_id, "invoice_overdue", "critical", msg):
             created += 1
 
@@ -63,6 +94,7 @@ def run_alerts(restaurant_id):
     ).all()
     for item in low_stock:
         msg = f"{item.name}: {item.current_stock} {item.unit or ''} (par {item.par_level})"
+        current["low_stock"].append(msg)
         if _add(restaurant_id, "low_stock", "warning", msg):
             created += 1
 
@@ -78,6 +110,7 @@ def run_alerts(restaurant_id):
     ).all()
     if zero_cost:
         msg = f"{len(zero_cost)} active recipe(s) with xtraCHEF ID have food_cost = 0"
+        current["zero_cost_recipe"].append(msg)
         if _add(restaurant_id, "zero_cost_recipe", "warning", msg):
             created += 1
 
@@ -91,6 +124,7 @@ def run_alerts(restaurant_id):
     )
     if unmapped > 0:
         msg = f"{unmapped} invoice line(s) have no inventory match"
+        current["unmapped_invoice_line"].append(msg)
         if _add(restaurant_id, "unmapped_invoice_line", "info", msg):
             created += 1
 
@@ -101,8 +135,17 @@ def run_alerts(restaurant_id):
         if not last or (datetime.utcnow() - last) > timedelta(hours=24):
             stale_for = "never" if not last else f"{(datetime.utcnow() - last).total_seconds() / 3600:.1f}h ago"
             msg = f"Toast sync stale (last: {stale_for})"
+            current["stale_toast_sync"].append(msg)
             if _add(restaurant_id, "stale_toast_sync", "warning", msg):
                 created += 1
+
+    # Auto-resolve any open alerts whose underlying condition cleared.
+    # Note: stale_toast_sync is only auto-resolved if Toast is still configured —
+    # otherwise an unconfigured restaurant would never clear its old alert.
+    for alert_type, msgs in current.items():
+        if alert_type == "stale_toast_sync" and not (r and r.toast_client_id):
+            continue
+        _resolve_stale(restaurant_id, alert_type, msgs)
 
     db.session.commit()
     return created

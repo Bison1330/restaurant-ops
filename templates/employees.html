@@ -25,6 +25,7 @@
                     <th>Role</th>
                     <th>Pay Rate</th>
                     <th>Pay Type</th>
+                    <th>Manual Rate ($/hr)</th>
                     <th>Filing Status</th>
                     <th>Status</th>
                 </tr>
@@ -48,6 +49,17 @@
                         <span class="pay-type-badge hourly">Hourly</span>
                         {% endif %}
                     </td>
+                    <td>
+                        <form class="manual-rate-form d-flex gap-1 align-items-center" data-emp-id="{{ emp.id }}">
+                            <input type="number" step="0.01" min="0" max="1000"
+                                   class="form-control form-control-sm manual-rate-input"
+                                   placeholder="—"
+                                   value="{{ '%.2f'|format(emp.manual_pay_rate) if emp.manual_pay_rate is not none else '' }}"
+                                   style="width: 90px;">
+                            <button type="submit" class="btn btn-sm btn-outline-primary">Save</button>
+                            <span class="manual-rate-status text-muted" style="font-size: 0.7rem;"></span>
+                        </form>
+                    </td>
                     <td style="text-transform: capitalize;">{{ emp.filing_status or '—' }}</td>
                     <td>
                         {% if emp.active %}
@@ -63,7 +75,7 @@
                 </tr>
                 {% else %}
                 <tr>
-                    <td colspan="6" class="text-center text-muted py-4">No employees found for this restaurant.</td>
+                    <td colspan="7" class="text-center text-muted py-4">No employees found for this restaurant.</td>
                 </tr>
                 {% endfor %}
             </tbody>
@@ -94,4 +106,33 @@
     .status-dot.active { background: #2a9d8f; }
     .status-dot.inactive { background: #ccc; }
 </style>
+<script>
+    document.querySelectorAll('.manual-rate-form').forEach(form => {
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const empId = form.dataset.empId;
+            const input = form.querySelector('.manual-rate-input');
+            const status = form.querySelector('.manual-rate-status');
+            const fd = new FormData();
+            fd.append('manual_pay_rate', input.value);
+            status.textContent = 'saving…';
+            status.style.color = '';
+            try {
+                const r = await fetch(`/employees/${empId}/manual-rate`, { method: 'POST', body: fd });
+                const data = await r.json();
+                if (data.ok) {
+                    status.textContent = 'saved';
+                    status.style.color = '#2a9d8f';
+                    setTimeout(() => { status.textContent = ''; }, 2000);
+                } else {
+                    status.textContent = data.error || 'error';
+                    status.style.color = '#e63946';
+                }
+            } catch (err) {
+                status.textContent = 'network error';
+                status.style.color = '#e63946';
+            }
+        });
+    });
+</script>
 {% endblock %}

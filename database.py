@@ -98,6 +98,10 @@ class Employee(db.Model):
     last_name = db.Column(db.String(50))
     role = db.Column(db.String(50))
     pay_rate = db.Column(db.Float, default=0)
+    # Manager-set override for cases where Toast has no wage data (e.g. salaried
+    # staff or employees whose wageOverrides aren't populated). When set, this
+    # value wins over the Toast-synced pay_rate in labor cost calculations.
+    manual_pay_rate = db.Column(db.Float, nullable=True)
     pay_type = db.Column(db.String(20))
     filing_status = db.Column(db.String(20))
     allowances = db.Column(db.Integer, default=0)

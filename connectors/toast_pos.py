@@ -1,7 +1,7 @@
 import requests
 import os
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 
 TOAST_API_BASE = "https://ws-api.toasttab.com"
 
@@ -126,11 +126,20 @@ def fetch_employees(restaurant):
 
 
 def fetch_timesheets(restaurant, start_date, end_date):
-    """Fetch time entries between start_date and end_date (ISO-8601 strings).
+    """Fetch time entries between start_date and end_date.
+
+    Accepts either datetime objects or pre-formatted ISO-8601 strings. Datetimes
+    are normalized to `%Y-%m-%dT%H:%M:%S.000%z` because Toast's labor endpoint
+    rejects the space-separated form Python's default str(datetime) produces and
+    also rejects sub-second precision.
 
     Returns list of {employee_guid, in_date, out_date, hours, job_guid}.
     """
-    params = {"startDate": start_date, "endDate": end_date}
+    def _fmt(d):
+        if isinstance(d, datetime):
+            return d.strftime("%Y-%m-%dT%H:%M:%S.000%z")
+        return d
+    params = {"startDate": _fmt(start_date), "endDate": _fmt(end_date)}
     resp = requests.get(
         f"{TOAST_API_BASE}/labor/v1/timeEntries",
         headers=_auth_headers(restaurant),
@@ -144,10 +153,17 @@ def fetch_timesheets(restaurant, start_date, end_date):
         in_date = t.get("inDate")
         out_date = t.get("outDate")
         hours = 0.0
-        if in_date and out_date:
+        fmt = "%Y-%m-%dT%H:%M:%S.%f%z"
+        if in_date:
             try:
-                fmt = "%Y-%m-%dT%H:%M:%S.%f%z"
-                hours = (datetime.strptime(out_date, fmt) - datetime.strptime(in_date, fmt)).total_seconds() / 3600.0
+                in_dt = datetime.strptime(in_date, fmt)
+                # If the shift is still open (no outDate), accrue against now —
+                # callers expect labor cost to reflect on-the-clock employees,
+                # not just completed shifts. Use UTC since inDate carries an offset.
+                end_dt = datetime.strptime(out_date, fmt) if out_date else datetime.now(timezone.utc)
+                hours = (end_dt - in_dt).total_seconds() / 3600.0
+                if hours < 0:
+                    hours = 0.0
             except ValueError:
                 hours = 0.0
         entries.append({
