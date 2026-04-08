@@ -7,6 +7,7 @@ sleep 2
 echo "Starting Gunicorn..."
 cd /root/restaurant-ops
 source venv/bin/activate
+export $(grep -v '^#' /root/restaurant-ops/.env | xargs)
 
 gunicorn \
   --workers 3 \

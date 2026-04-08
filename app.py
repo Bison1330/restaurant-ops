@@ -40,6 +40,9 @@ from connectors.item_matcher import (
 )
 from connectors.inventory_calc import calculate_expected_counts, generate_variance_report
 
+from dotenv import load_dotenv
+load_dotenv('/root/restaurant-ops/.env')
+
 app = Flask(__name__)
 app.secret_key = os.environ.get("FLASK_SECRET_KEY", "dev-secret-key-change-in-production")
 import functools
