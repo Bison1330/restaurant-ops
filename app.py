@@ -2484,10 +2484,110 @@ def _scheduler_run_alerts():
             print(f"[scheduler] run_alerts failed: {e}")
 
 
+def _check_certification_alerts():
+    """Run daily at 8am — create alerts for expiring/missing certifications."""
+    with app.app_context():
+        from datetime import date, timedelta
+
+        FOOD_HANDLER_POSITIONS = {
+            'server', 'wait staff', 'bartender', 'barback', 'cook', 'line cook',
+            'prep cook', 'dishwasher', 'busser', 'busser/runner', 'runner',
+            'food runner', 'expo', 'dish/bus/run', 'run/bus/dish', 'kitchen manager',
+            'host', 'hostess',
+        }
+        BASSET_POSITIONS = {
+            'bartender', 'barback', 'server', 'wait staff', 'shift lead',
+            'manager', 'general manager', 'assistant general manager', 'owner',
+        }
+        CFPM_POSITIONS = {
+            'manager', 'general manager', 'assistant general manager',
+            'kitchen manager', 'owner', 'floor manager', 'bar manager', 'shift lead',
+        }
+
+        today = date.today()
+        warn_30 = today + timedelta(days=30)
+        warn_7 = today + timedelta(days=7)
+
+        for restaurant in Restaurant.query.all():
+            employees = Employee.query.filter_by(
+                restaurant_id=restaurant.id, active=True
+            ).all()
+
+            for emp in employees:
+                role_lower = (emp.role or '').lower()
+                jobs = EmployeeJob.query.filter_by(employee_id=emp.id).all()
+                all_roles = {j.job_name.lower() for j in jobs} | {role_lower}
+
+                profile = emp.profile
+                hire_date = profile.hire_date if profile else None
+                hired_over_30 = hire_date and (today - hire_date).days > 30
+
+                docs = EmployeeDocument.query.filter_by(employee_id=emp.id).all()
+                doc_map = {d.document_type.lower(): d for d in docs}
+
+                name = f"{emp.first_name} {emp.last_name}"
+
+                def make_alert(msg, severity='warning', restaurant_id=restaurant.id):
+                    existing = Alert.query.filter_by(
+                        restaurant_id=restaurant_id,
+                        message=msg,
+                        resolved=False,
+                    ).first()
+                    if not existing:
+                        db.session.add(Alert(
+                            restaurant_id=restaurant_id,
+                            alert_type='compliance',
+                            message=msg,
+                            severity=severity,
+                        ))
+
+                if all_roles & FOOD_HANDLER_POSITIONS:
+                    fh = doc_map.get('food handler')
+                    if not fh and hired_over_30:
+                        make_alert(f"{name} — Missing Food Handler cert (required within 30 days of hire)", 'danger')
+                    elif fh and fh.expiration_date:
+                        if fh.expiration_date < today:
+                            make_alert(f"{name} — Food Handler cert EXPIRED {fh.expiration_date}", 'danger')
+                        elif fh.expiration_date <= warn_7:
+                            make_alert(f"{name} — Food Handler cert expires in {(fh.expiration_date - today).days} days", 'danger')
+                        elif fh.expiration_date <= warn_30:
+                            make_alert(f"{name} — Food Handler cert expires {fh.expiration_date}", 'warning')
+
+                if all_roles & BASSET_POSITIONS:
+                    bs = doc_map.get('basset')
+                    if not bs and hired_over_30:
+                        make_alert(f"{name} — Missing BASSET cert (required for alcohol service)", 'danger')
+                    elif bs and bs.expiration_date:
+                        if bs.expiration_date < today:
+                            make_alert(f"{name} — BASSET cert EXPIRED {bs.expiration_date}", 'danger')
+                        elif bs.expiration_date <= warn_30:
+                            make_alert(f"{name} — BASSET cert expires {bs.expiration_date}", 'warning')
+
+                if all_roles & CFPM_POSITIONS:
+                    cfpm = doc_map.get('cfpm') or doc_map.get('servsafe')
+                    if not cfpm:
+                        make_alert(f"{name} — Missing CFPM/ServSafe (required for all managers, DuPage County)", 'danger')
+                    elif cfpm.expiration_date:
+                        if cfpm.expiration_date < today:
+                            make_alert(f"{name} — CFPM EXPIRED {cfpm.expiration_date}", 'danger')
+                        elif cfpm.expiration_date <= warn_30:
+                            make_alert(f"{name} — CFPM expires {cfpm.expiration_date}", 'warning')
+
+            db.session.commit()
+
+
 def _start_scheduler():
     from apscheduler.schedulers.background import BackgroundScheduler
     scheduler = BackgroundScheduler(daemon=True)
     scheduler.add_job(_scheduler_run_alerts, "interval", minutes=30, id="run_alerts")
+    scheduler.add_job(
+        func=_check_certification_alerts,
+        trigger="cron",
+        hour=8,
+        minute=0,
+        id="cert_alerts",
+        replace_existing=True,
+    )
     scheduler.start()
     # Run once on startup so we have fresh state right away
     _scheduler_run_alerts()
