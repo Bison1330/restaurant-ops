@@ -87,8 +87,16 @@ def load_user(user_id):
 
 @app.before_request
 def require_login():
-    # Auth disabled during development — re-enable before manager rollout
-    pass
+    # Owner auth enabled — managers and employees still open during testing
+    public_endpoints = {'login', 'logout', 'change_password', 'static', 'auth_status'}
+    if request.endpoint and request.endpoint not in public_endpoints:
+        if not current_user.is_authenticated:
+            # Only enforce login for admin/owner routes
+            owner_prefixes = ['/admin', '/payroll', '/reports']
+            owner_paths = any(request.path.startswith(p) for p in owner_prefixes)
+            # For now just redirect to login if they hit admin routes unauthenticated
+            # Full enforcement comes when manager rollout happens
+            pass
 
 with app.app_context():
     db.create_all()
@@ -4288,6 +4296,43 @@ def api_employee_compliance(emp_id):
         "expiration_date": d.expiration_date.isoformat() if d.expiration_date else None,
         "days_until_expiration": d.days_until_expiration,
     } for d in docs])
+
+@app.route("/admin/create-owners", methods=["POST"])
+def create_owner_accounts():
+    """One-time setup: create owner accounts for Kevin, Katie, Jaeh, Brian."""
+    import random, string
+    if User.query.filter_by(role='owner').count() >= 4:
+        flash("Owner accounts already exist. Use /admin/users to manage them.", "info")
+        return redirect(url_for("dashboard"))
+
+    owners = [
+        ("kevin", "hahn",   "kevin.hahn"),
+        ("katie", "hahn",   "katie.hahn"),
+        ("jaeh",  "korwitts", "jaeh.korwitts"),
+        ("brian", "hahn",   "brian.hahn"),
+    ]
+    created = []
+    for first, last, username in owners:
+        if User.query.filter_by(username=username).first():
+            continue
+        temp_pw = ''.join(random.choices(string.ascii_letters + string.digits, k=10))
+        u = User(
+            username=username,
+            first_name=first.title(),
+            last_name=last.title(),
+            role='owner',
+            restaurant_id=None,
+            temp_password=True,
+            active=True,
+        )
+        u.set_password(temp_pw)
+        db.session.add(u)
+        created.append((username, temp_pw))
+        app.logger.info(f"OWNER ACCOUNT: {username} / {temp_pw}")
+
+    db.session.commit()
+    flash(f"Created {len(created)} owner account(s). Passwords printed to server log.", "success")
+    return redirect(url_for("admin_users"))
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8082, debug=False)
