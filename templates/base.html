@@ -6,6 +6,7 @@
     <title>{% block title %}RestaurantOps{% endblock %}</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
         :root {
             --sidebar-width: 220px;
@@ -26,7 +27,7 @@
 
         body {
             margin: 0;
-            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            font-family: 'DM Sans', sans-serif;
             background: var(--bg);
             color: var(--text);
         }
@@ -650,433 +651,522 @@
     </script>
     {% block extra_js %}{% endblock %}
 
-    <!-- Bison AI Co-pilot -->
+    <!-- Bison AI Co-pilot (Wandering Mascot) -->
     <style>
-        @keyframes bisonBob {
-            0%, 100% { transform: translateY(0); }
-            50%      { transform: translateY(-6px); }
+        @keyframes bisonBreath {
+            0%, 100% { transform: scale(1.0); }
+            50%      { transform: scale(1.03); }
         }
-        @keyframes bisonShake {
-            0%, 100% { transform: translateY(0) rotate(0deg); }
-            20%      { transform: translateY(-3px) rotate(-4deg); }
-            40%      { transform: translateY(-1px) rotate(4deg); }
-            60%      { transform: translateY(-3px) rotate(-3deg); }
-            80%      { transform: translateY(-1px) rotate(3deg); }
+        @keyframes bisonShakeStrong {
+            0%, 100% { transform: translate(0,0) rotate(0deg); }
+            15%      { transform: translate(-2px,-1px) rotate(-6deg); }
+            30%      { transform: translate(2px,0) rotate(6deg); }
+            45%      { transform: translate(-2px,1px) rotate(-5deg); }
+            60%      { transform: translate(2px,-1px) rotate(5deg); }
+            80%      { transform: translate(-1px,0) rotate(-3deg); }
         }
-        @keyframes bisonPulseDot {
-            0%, 100% { opacity: 1; transform: scale(1); }
-            50%      { opacity: 0.45; transform: scale(0.7); }
+        @keyframes bisonBubblePop {
+            0%   { opacity: 0; transform: translate(-50%, 4px) scale(0.92); }
+            100% { opacity: 1; transform: translate(-50%, 0) scale(1); }
         }
-        @keyframes bisonPulseDotFast {
-            0%, 100% { opacity: 1; transform: scale(1.15); box-shadow: 0 0 12px #3ddc84; }
-            50%      { opacity: 0.6; transform: scale(0.8); box-shadow: 0 0 4px #3ddc84; }
-        }
-        @keyframes bisonHeadLook {
-            0%, 100% { transform: rotate(0deg); }
-            10%      { transform: rotate(-12deg); }
-            20%      { transform: rotate(-12deg); }
-            30%      { transform: rotate(0deg); }
-            70%      { transform: rotate(0deg); }
-            80%      { transform: rotate(10deg); }
-            90%      { transform: rotate(10deg); }
-        }
-        @keyframes bubblePop {
-            0%   { opacity: 0; transform: translateY(8px) scale(0.92); }
-            100% { opacity: 1; transform: translateY(0) scale(1); }
+        @keyframes bisonChipsPop {
+            0%   { opacity: 0; transform: translateY(6px); }
+            100% { opacity: 1; transform: translateY(0); }
         }
 
         #bisonMascot {
             position: fixed;
-            bottom: 24px;
-            right: 24px;
-            width: 64px;
-            height: 64px;
+            left: 0;
+            top: 0;
+            width: 80px;
+            height: 80px;
             z-index: 9999;
             cursor: pointer;
-            animation: bisonBob 3.6s ease-in-out infinite;
-            transition: filter 0.2s ease;
+            transition: all 1.5s ease-in-out;
+            filter: drop-shadow(0 6px 14px rgba(0,0,0,0.55))
+                    drop-shadow(0 0 6px rgba(61,220,132,0.35));
+            will-change: transform, left, top;
         }
-        #bisonMascot.alert {
-            animation: bisonShake 0.9s ease-in-out infinite;
+        #bisonMascot .bison-breath {
+            transform-origin: 32px 38px;
+            animation: bisonBreath 4s ease-in-out infinite;
         }
-        #bisonMascot:hover {
-            filter: drop-shadow(0 0 8px rgba(61, 220, 132, 0.6));
+        #bisonMascot .bison-eye {
+            filter: drop-shadow(0 0 6px #3ddc84) drop-shadow(0 0 10px #3ddc84);
+            transition: fill 0.3s ease;
         }
         #bisonMascot:hover .bison-eye {
-            fill: #5fff9c;
-            filter: drop-shadow(0 0 4px #3ddc84);
+            fill: #7dffb6;
+            filter: drop-shadow(0 0 10px #3ddc84) drop-shadow(0 0 18px #3ddc84);
         }
-        #bisonMascot .bison-head {
-            transform-origin: 32px 38px;
-            animation: bisonHeadLook 9s ease-in-out infinite;
+        #bisonMascot.alert .bison-breath {
+            animation: bisonShakeStrong 0.55s ease-in-out infinite;
         }
-        #bisonMascotDot {
-            position: absolute;
-            top: 4px;
-            right: 4px;
-            width: 10px;
-            height: 10px;
-            background: #3ddc84;
-            border-radius: 50%;
-            border: 2px solid #000;
-            animation: bisonPulseDot 2.4s ease-in-out infinite;
-        }
-        #bisonMascot.alert #bisonMascotDot {
-            animation: bisonPulseDotFast 0.8s ease-in-out infinite;
-            background: #ffc107;
-        }
-        #bisonMascotTip {
-            position: absolute;
-            right: 72px;
-            bottom: 18px;
-            background: #111;
-            color: #fff;
-            border: 1px solid #2a2a2a;
-            border-radius: 8px;
-            padding: 6px 10px;
-            font-size: 0.78rem;
-            white-space: nowrap;
-            opacity: 0;
-            pointer-events: none;
-            transition: opacity 0.18s ease;
-        }
-        #bisonMascot:hover #bisonMascotTip {
-            opacity: 1;
+        #bisonMascot.alert .bison-eye {
+            fill: #ffb020;
+            filter: drop-shadow(0 0 8px #ffb020) drop-shadow(0 0 16px #ff8800);
         }
 
-        #bisonProactive {
+        /* Faint trail */
+        .bison-trail {
             position: fixed;
-            bottom: 100px;
-            right: 18px;
-            max-width: 300px;
-            background: #111;
-            border: 1px solid #3ddc84;
-            border-radius: 12px;
-            padding: 14px 14px 12px;
-            color: #fff;
-            font-size: 0.85rem;
-            box-shadow: 0 12px 30px rgba(0,0,0,0.55);
-            z-index: 9998;
-            display: none;
-            animation: bubblePop 0.25s ease-out;
+            width: 80px;
+            height: 80px;
+            pointer-events: none;
+            z-index: 9997;
+            opacity: 0.18;
+            filter: blur(2px);
+            transition: opacity 1.4s ease-out;
         }
-        #bisonProactive::after {
+
+        /* Suggestion chips card */
+        #bisonChips {
+            position: fixed;
+            z-index: 10000;
+            background: #0a0a0a;
+            border: 1px solid #2a2a2a;
+            border-radius: 14px;
+            padding: 10px;
+            display: none;
+            flex-direction: column;
+            gap: 6px;
+            min-width: 220px;
+            max-width: 260px;
+            box-shadow: 0 14px 36px rgba(0,0,0,0.7),
+                        0 0 0 1px rgba(61,220,132,0.15);
+            animation: bisonChipsPop 0.22s ease-out;
+            font-family: 'DM Sans', sans-serif;
+        }
+        #bisonChips .bison-chip {
+            background: #161616;
+            border: 1px solid #2a2a2a;
+            color: #fff;
+            border-radius: 10px;
+            padding: 9px 12px;
+            font-size: 0.82rem;
+            font-weight: 500;
+            cursor: pointer;
+            text-align: left;
+            transition: all 0.15s ease;
+            font-family: inherit;
+        }
+        #bisonChips .bison-chip:hover {
+            border-color: #3ddc84;
+            background: #1a2a1f;
+            color: #3ddc84;
+        }
+        #bisonChips .bison-chip.ask-other {
+            color: #888;
+            font-style: italic;
+        }
+        #bisonChipInput {
+            display: none;
+            background: #161616;
+            border: 1px solid #3ddc84;
+            color: #fff;
+            border-radius: 10px;
+            padding: 9px 12px;
+            font-size: 0.82rem;
+            font-family: inherit;
+            outline: none;
+        }
+
+        /* Speech bubble */
+        #bisonBubble {
+            position: fixed;
+            z-index: 10001;
+            max-width: 320px;
+            background: #000000;
+            border: 2px solid #3ddc84;
+            border-radius: 18px;
+            padding: 14px 36px 14px 16px;
+            color: #fff;
+            font-family: 'DM Sans', sans-serif;
+            font-size: 0.88rem;
+            line-height: 1.45;
+            font-weight: 400;
+            display: none;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.7),
+                        0 0 18px rgba(61,220,132,0.25);
+            animation: bisonBubblePop 0.3s ease-out;
+            transform: translate(-50%, 0);
+        }
+        #bisonBubble .bb-text { white-space: pre-wrap; word-wrap: break-word; }
+        #bisonBubble .bb-text .num { color: #3ddc84; font-weight: 700; }
+        #bisonBubble .bb-close {
+            position: absolute;
+            top: 6px;
+            right: 8px;
+            background: transparent;
+            border: none;
+            color: #888;
+            font-size: 1.05rem;
+            cursor: pointer;
+            line-height: 1;
+            padding: 2px 6px;
+            border-radius: 6px;
+        }
+        #bisonBubble .bb-close:hover { color: #3ddc84; background: #111; }
+        #bisonBubble::after {
             content: '';
             position: absolute;
-            bottom: -9px;
-            right: 30px;
+            bottom: -10px;
+            left: 50%;
+            margin-left: -9px;
             width: 16px;
             height: 16px;
-            background: #111;
-            border-right: 1px solid #3ddc84;
-            border-bottom: 1px solid #3ddc84;
+            background: #000000;
+            border-right: 2px solid #3ddc84;
+            border-bottom: 2px solid #3ddc84;
             transform: rotate(45deg);
         }
-        #bisonProactive .bp-msg { line-height: 1.4; margin-bottom: 10px; }
-        #bisonProactive .bp-actions { display: flex; gap: 8px; }
-        #bisonProactive button {
-            flex: 1;
-            border: none;
-            border-radius: 6px;
-            padding: 6px 10px;
-            font-size: 0.78rem;
-            font-weight: 600;
-            cursor: pointer;
-        }
-        #bisonProactive .bp-fix    { background: #3ddc84; color: #000; }
-        #bisonProactive .bp-ignore { background: #2a2a2a; color: #ccc; }
-
-        #bisonAiPanel .bp-confirm {
-            align-self: stretch;
-            background: #1a1a1a;
-            border: 1px solid #3ddc84;
-            border-radius: 10px;
-            padding: 10px 12px;
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-        }
-        #bisonAiPanel .bp-confirm .bp-confirm-msg {
-            font-size: 0.85rem;
-            color: #fff;
-            line-height: 1.35;
-        }
-        #bisonAiPanel .bp-confirm .bp-confirm-actions { display: flex; gap: 8px; }
-        #bisonAiPanel .bp-confirm button {
-            flex: 1;
-            border: none;
-            border-radius: 6px;
-            padding: 6px 10px;
-            font-size: 0.78rem;
-            font-weight: 700;
-            cursor: pointer;
-        }
-        #bisonAiPanel .bp-confirm .bp-go     { background: #3ddc84; color: #000; }
-        #bisonAiPanel .bp-confirm .bp-cancel { background: #2a2a2a; color: #ccc; }
     </style>
 
-    <div id="bisonMascot" onclick="bisonAiToggle()" title="Ask me anything">
-        <svg viewBox="0 0 64 64" width="64" height="64" xmlns="http://www.w3.org/2000/svg">
-            <!-- Horns (back layer) -->
-            <path d="M14 26 Q4 22 6 12 Q14 12 18 24 Z" fill="#1a0f08" stroke="#3a2418" stroke-width="0.6"/>
-            <path d="M50 26 Q60 22 58 12 Q50 12 46 24 Z" fill="#1a0f08" stroke="#3a2418" stroke-width="0.6"/>
-            <!-- Flag accents on horn tips -->
-            <rect x="5" y="11" width="4" height="1.2" fill="#b22234"/>
-            <rect x="5" y="12.2" width="4" height="1.2" fill="#ffffff"/>
-            <rect x="5" y="13.4" width="4" height="1.2" fill="#3c3b6e"/>
-            <rect x="55" y="11" width="4" height="1.2" fill="#b22234"/>
-            <rect x="55" y="12.2" width="4" height="1.2" fill="#ffffff"/>
-            <rect x="55" y="13.4" width="4" height="1.2" fill="#3c3b6e"/>
-
-            <g class="bison-head">
+    <div id="bisonMascot" onclick="bisonOnClick(event)" title="Ask me anything">
+        <svg viewBox="0 0 64 64" width="80" height="80" xmlns="http://www.w3.org/2000/svg">
+            <g class="bison-breath">
+                <!-- Horns -->
+                <path d="M14 26 Q4 22 6 12 Q14 12 18 24 Z" fill="#1a0f08" stroke="#3a2418" stroke-width="0.6"/>
+                <path d="M50 26 Q60 22 58 12 Q50 12 46 24 Z" fill="#1a0f08" stroke="#3a2418" stroke-width="0.6"/>
+                <rect x="5" y="11" width="4" height="1.2" fill="#b22234"/>
+                <rect x="5" y="12.2" width="4" height="1.2" fill="#ffffff"/>
+                <rect x="5" y="13.4" width="4" height="1.2" fill="#3c3b6e"/>
+                <rect x="55" y="11" width="4" height="1.2" fill="#b22234"/>
+                <rect x="55" y="12.2" width="4" height="1.2" fill="#ffffff"/>
+                <rect x="55" y="13.4" width="4" height="1.2" fill="#3c3b6e"/>
                 <!-- Head -->
                 <ellipse cx="32" cy="36" rx="20" ry="22" fill="#2a1a0e"/>
-                <!-- Forehead tuft -->
                 <path d="M18 22 Q22 12 26 18 Q30 10 32 18 Q34 10 38 18 Q42 12 46 22 L44 28 L20 28 Z" fill="#150a04"/>
-                <!-- Snout -->
                 <ellipse cx="32" cy="48" rx="12" ry="9" fill="#3d2516"/>
-                <!-- Nostrils -->
                 <ellipse cx="27.5" cy="48" rx="1.4" ry="2" fill="#000"/>
                 <ellipse cx="36.5" cy="48" rx="1.4" ry="2" fill="#000"/>
-                <!-- Mouth line -->
                 <path d="M27 53 Q32 55 37 53" stroke="#000" stroke-width="0.8" fill="none" stroke-linecap="round"/>
-                <!-- Eyes (glowing green) -->
-                <circle class="bison-eye" cx="25" cy="33" r="3" fill="#3ddc84"/>
-                <circle class="bison-eye" cx="39" cy="33" r="3" fill="#3ddc84"/>
+                <!-- Glowing eyes -->
+                <circle class="bison-eye" cx="25" cy="33" r="3.2" fill="#3ddc84"/>
+                <circle class="bison-eye" cx="39" cy="33" r="3.2" fill="#3ddc84"/>
                 <circle cx="25" cy="33" r="1.1" fill="#000"/>
                 <circle cx="39" cy="33" r="1.1" fill="#000"/>
             </g>
         </svg>
-        <div id="bisonMascotDot"></div>
-        <div id="bisonMascotTip">Ask me anything</div>
     </div>
 
-    <div id="bisonProactive">
-        <div class="bp-msg" id="bisonProactiveMsg"></div>
-        <div class="bp-actions">
-            <button class="bp-fix"    onclick="bisonProactiveFix()">Fix it</button>
-            <button class="bp-ignore" onclick="bisonProactiveIgnore()">Ignore</button>
-        </div>
-    </div>
+    <div id="bisonChips"></div>
 
-    <div id="bisonAiPanel"
-         style="position:fixed; bottom:100px; right:24px; width:380px; height:520px;
-                background:#111; border:1px solid #2a2a2a; border-radius:12px; z-index:9998;
-                display:none; flex-direction:column; box-shadow:0 12px 40px rgba(0,0,0,0.6);
-                overflow:hidden;">
-        <div style="padding:14px 16px; border-bottom:1px solid #2a2a2a; display:flex;
-                    align-items:flex-start; justify-content:space-between; gap:8px;">
-            <div>
-                <div style="color:#3ddc84; font-weight:700; font-size:1rem;">Bison AI Guardian</div>
-                <div style="color:#888; font-size:0.72rem;">Watching the operation</div>
-            </div>
-            <button onclick="bisonAiToggle()" aria-label="Close"
-                    style="background:transparent; border:none; color:#888; font-size:1.2rem;
-                           cursor:pointer; line-height:1;">&times;</button>
-        </div>
-        <div id="bisonAiMessages"
-             style="flex:1; overflow-y:auto; padding:14px 14px 8px; display:flex;
-                    flex-direction:column; gap:10px;"></div>
-        <div style="padding:10px 12px; border-top:1px solid #2a2a2a; display:flex; gap:8px;">
-            <input id="bisonAiInput" type="text" placeholder="Type your question…"
-                   onkeydown="if(event.key==='Enter'){event.preventDefault(); bisonAiSend();}"
-                   style="flex:1; background:#1a1a1a; border:1px solid #2a2a2a; color:#fff;
-                          border-radius:8px; padding:8px 12px; font-size:0.85rem;">
-            <button onclick="bisonAiSend()"
-                    style="background:#3ddc84; color:#000; border:none; border-radius:8px;
-                           padding:0 14px; font-weight:700; cursor:pointer;">Send</button>
-        </div>
+    <div id="bisonBubble">
+        <button class="bb-close" onclick="bisonHideBubble()" aria-label="Close">&times;</button>
+        <div class="bb-text" id="bisonBubbleText"></div>
     </div>
 
     <script>
         const BISON_AI_RID = {{ (selected_restaurant.id if selected_restaurant else 0)|tojson }};
         const BISON_CHECK_INTERVAL_MS = 5 * 60 * 1000;
         const BISON_IGNORE_MS = 30 * 60 * 1000;
+        const BISON_CACHE_TTL_MS = 5 * 60 * 1000;
 
-        let bisonAiOpened = false;
-        let bisonAiHistory = [];   // [{role:'user'|'assistant', content:'...'}]
-        let bisonProactiveCurrent = null;  // {type, message, severity, action}
-        let bisonIgnoredUntil = {};        // type -> ts
+        // Bounds: avoid sidebar (left >= 220) and topbar (top >= 80)
+        const BISON_MIN_LEFT = 230;
+        const BISON_MIN_TOP  = 90;
+        const BISON_SIZE     = 80;
 
-        // ---- Mascot toggle / panel ------------------------------------------
-        function bisonAiToggle() {
-            const panel = document.getElementById('bisonAiPanel');
-            const open = panel.style.display === 'none' || panel.style.display === '';
-            panel.style.display = open ? 'flex' : 'none';
-            if (open) {
-                document.getElementById('bisonMascot').classList.remove('alert');
-                if (!bisonAiOpened) {
-                    bisonAiOpened = true;
-                    bisonAiRenderMessage('assistant',
-                        "Hi! I'm watching the operation. I can look up recipes, items, sales, " +
-                        "and alerts, and I can take actions like approving invoices or " +
-                        "adjusting inventory once you confirm. What do you need?");
+        let bisonState = {
+            x: 0, y: 0,
+            wanderTimer: null,
+            currentAlert: null,
+            ignoredUntil: {},
+            history: [],
+            cache: new Map(),  // key: rid|q  -> {t, response}
+            chipsOpen: false,
+            bubbleTimeout: null,
+            typewriterTimer: null,
+        };
+
+        // ---- Initial position: bottom right ---------------------------------
+        function bisonInit() {
+            const m = document.getElementById('bisonMascot');
+            const x = Math.max(BISON_MIN_LEFT, window.innerWidth  - BISON_SIZE - 24);
+            const y = Math.max(BISON_MIN_TOP,  window.innerHeight - BISON_SIZE - 24);
+            bisonState.x = x; bisonState.y = y;
+            m.style.left = x + 'px';
+            m.style.top  = y + 'px';
+            bisonScheduleWander();
+        }
+
+        // ---- Wandering ------------------------------------------------------
+        function bisonRandomPos() {
+            const maxX = window.innerWidth  - BISON_SIZE - 16;
+            const maxY = window.innerHeight - BISON_SIZE - 16;
+            const x = BISON_MIN_LEFT + Math.random() * Math.max(0, maxX - BISON_MIN_LEFT);
+            const y = BISON_MIN_TOP  + Math.random() * Math.max(0, maxY - BISON_MIN_TOP);
+            return {x, y};
+        }
+        function bisonMoveTo(x, y) {
+            // Leave a faint trail
+            const m = document.getElementById('bisonMascot');
+            const trail = m.cloneNode(true);
+            trail.removeAttribute('id');
+            trail.classList.add('bison-trail');
+            trail.style.left = bisonState.x + 'px';
+            trail.style.top  = bisonState.y + 'px';
+            trail.onclick = null;
+            document.body.appendChild(trail);
+            setTimeout(() => { trail.style.opacity = '0'; }, 30);
+            setTimeout(() => trail.remove(), 1600);
+
+            bisonState.x = x; bisonState.y = y;
+            m.style.left = x + 'px';
+            m.style.top  = y + 'px';
+            bisonRepositionFloaters();
+        }
+        function bisonScheduleWander() {
+            clearTimeout(bisonState.wanderTimer);
+            const delay = 8000 + Math.random() * 4000;
+            bisonState.wanderTimer = setTimeout(() => {
+                if (!bisonState.chipsOpen) {
+                    if (bisonState.currentAlert) {
+                        const cx = (window.innerWidth  - BISON_SIZE) / 2 + (Math.random() * 100 - 50);
+                        const cy = (window.innerHeight - BISON_SIZE) / 2 + (Math.random() * 80  - 40);
+                        bisonMoveTo(Math.max(BISON_MIN_LEFT, cx), Math.max(BISON_MIN_TOP, cy));
+                    } else {
+                        const p = bisonRandomPos();
+                        bisonMoveTo(p.x, p.y);
+                    }
                 }
-                setTimeout(() => document.getElementById('bisonAiInput').focus(), 50);
+                bisonScheduleWander();
+            }, delay);
+        }
+
+        // ---- Context-aware chips --------------------------------------------
+        function bisonGetChips() {
+            const path = window.location.pathname;
+            const hour = new Date().getHours();
+            let chips = [];
+            if (path === '/' || path.startsWith('/dashboard')) {
+                if (hour >= 5 && hour < 11) {
+                    chips = ["Morning briefing", "Yesterday's recap", "Today's schedule"];
+                } else if ((hour >= 11 && hour < 14) || (hour >= 17 && hour < 21)) {
+                    chips = ["Current labor %", "Sales vs target", "Active alerts"];
+                } else {
+                    chips = ["Check my alerts", "Today's sales summary", "Low stock items"];
+                }
+            } else if (path.startsWith('/recipes')) {
+                chips = ["Recipe costs", "Low margin items", "Add new recipe"];
+            } else if (path.startsWith('/invoices')) {
+                chips = ["Pending approvals", "Price changes", "Sync invoices"];
+            } else if (path.startsWith('/inventory')) {
+                chips = ["Low stock items", "Last count summary", "Top usage items"];
+            } else if (path.startsWith('/alerts')) {
+                chips = ["Critical alerts", "Resolve all warnings", "Why did this fire?"];
+            } else {
+                chips = ["Check my alerts", "Today's sales summary", "Low stock items", "Approve pending invoices"];
+            }
+            chips.push("Ask something else...");
+            return chips;
+        }
+
+        // ---- Click & chips card ---------------------------------------------
+        function bisonOnClick(e) {
+            e && e.stopPropagation();
+            if (bisonState.chipsOpen) { bisonHideChips(); return; }
+            bisonHideBubble();
+            bisonShowChips();
+        }
+        function bisonShowChips() {
+            const card = document.getElementById('bisonChips');
+            card.innerHTML = '';
+            const chips = bisonGetChips();
+            chips.forEach(txt => {
+                const btn = document.createElement('button');
+                btn.className = 'bison-chip' + (txt.startsWith('Ask something') ? ' ask-other' : '');
+                btn.textContent = txt;
+                btn.onclick = (ev) => {
+                    ev.stopPropagation();
+                    if (txt.startsWith('Ask something')) {
+                        bisonShowChipInput();
+                    } else {
+                        bisonAsk(txt);
+                    }
+                };
+                card.appendChild(btn);
+            });
+            const input = document.createElement('input');
+            input.id = 'bisonChipInput';
+            input.type = 'text';
+            input.placeholder = 'Type your question…';
+            input.onkeydown = (ev) => {
+                if (ev.key === 'Enter') {
+                    ev.preventDefault();
+                    const v = input.value.trim();
+                    if (v) bisonAsk(v);
+                }
+                if (ev.key === 'Escape') bisonHideChips();
+            };
+            card.appendChild(input);
+            card.style.display = 'flex';
+            bisonState.chipsOpen = true;
+            bisonRepositionFloaters();
+            document.getElementById('bisonMascot').classList.remove('alert');
+        }
+        function bisonShowChipInput() {
+            const inp = document.getElementById('bisonChipInput');
+            document.querySelectorAll('#bisonChips .bison-chip').forEach(c => c.style.display = 'none');
+            inp.style.display = 'block';
+            setTimeout(() => inp.focus(), 30);
+        }
+        function bisonHideChips() {
+            document.getElementById('bisonChips').style.display = 'none';
+            bisonState.chipsOpen = false;
+        }
+
+        // ---- Speech bubble + typewriter -------------------------------------
+        function bisonHideBubble() {
+            const b = document.getElementById('bisonBubble');
+            b.style.display = 'none';
+            clearTimeout(bisonState.bubbleTimeout);
+            clearInterval(bisonState.typewriterTimer);
+        }
+        function bisonShowBubble(text) {
+            bisonHideChips();
+            const bubble = document.getElementById('bisonBubble');
+            const target = document.getElementById('bisonBubbleText');
+            target.innerHTML = '';
+            bubble.style.display = 'block';
+            bisonRepositionFloaters();
+
+            let i = 0;
+            clearInterval(bisonState.typewriterTimer);
+            bisonState.typewriterTimer = setInterval(() => {
+                i++;
+                target.innerHTML = bisonHighlightNumbers(text.slice(0, i));
+                bisonRepositionFloaters();
+                if (i >= text.length) {
+                    clearInterval(bisonState.typewriterTimer);
+                }
+            }, 18);
+
+            clearTimeout(bisonState.bubbleTimeout);
+            bisonState.bubbleTimeout = setTimeout(() => {
+                bisonHideBubble();
+                bisonShowChips();
+            }, 9000);
+        }
+        function bisonHighlightNumbers(s) {
+            const esc = s.replace(/[&<>"']/g, c => ({
+                '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+            }[c]));
+            return esc.replace(/(\$?\d[\d,]*(?:\.\d+)?%?)/g, '<span class="num">$1</span>');
+        }
+
+        // ---- Reposition chips & bubble relative to bison --------------------
+        function bisonRepositionFloaters() {
+            const bx = bisonState.x, by = bisonState.y;
+            const card = document.getElementById('bisonChips');
+            if (bisonState.chipsOpen) {
+                const cw = card.offsetWidth || 240;
+                const ch = card.offsetHeight || 180;
+                let cx = bx + BISON_SIZE / 2 - cw / 2;
+                let cy = by - ch - 14;
+                if (cy < BISON_MIN_TOP) cy = by + BISON_SIZE + 14;
+                if (cx < BISON_MIN_LEFT) cx = BISON_MIN_LEFT + 4;
+                if (cx + cw > window.innerWidth - 8) cx = window.innerWidth - cw - 8;
+                card.style.left = cx + 'px';
+                card.style.top  = cy + 'px';
+            }
+            const bubble = document.getElementById('bisonBubble');
+            if (bubble.style.display === 'block') {
+                const bw = bubble.offsetWidth  || 320;
+                const bh = bubble.offsetHeight || 80;
+                let lx = bx + BISON_SIZE / 2;
+                let ly = by - bh - 18;
+                if (ly < BISON_MIN_TOP) ly = by + BISON_SIZE + 18;
+                const half = bw / 2;
+                if (lx - half < BISON_MIN_LEFT + 4) lx = BISON_MIN_LEFT + half + 4;
+                if (lx + half > window.innerWidth - 8) lx = window.innerWidth - half - 8;
+                bubble.style.left = lx + 'px';
+                bubble.style.top  = ly + 'px';
             }
         }
 
-        // ---- Chat rendering -------------------------------------------------
-        function bisonAiRenderMessage(role, text) {
-            const wrap = document.getElementById('bisonAiMessages');
-            const bubble = document.createElement('div');
-            const isUser = role === 'user';
-            bubble.style.cssText =
-                'max-width:80%; padding:9px 13px; border-radius:14px; font-size:0.85rem;' +
-                'line-height:1.35; word-wrap:break-word; white-space:pre-wrap;' +
-                (isUser
-                    ? 'align-self:flex-end; background:#3ddc84; color:#000;'
-                    : 'align-self:flex-start; background:#1a1a1a; color:#fff; border:1px solid #2a2a2a;');
-            bubble.textContent = text;
-            wrap.appendChild(bubble);
-            wrap.scrollTop = wrap.scrollHeight;
-            return bubble;
-        }
-
-        function bisonAiAddTyping() {
-            const wrap = document.getElementById('bisonAiMessages');
-            const bubble = document.createElement('div');
-            bubble.id = 'bisonAiTyping';
-            bubble.style.cssText =
-                'align-self:flex-start; background:#1a1a1a; color:#888; border:1px solid #2a2a2a;' +
-                'padding:9px 13px; border-radius:14px; font-size:0.85rem; letter-spacing:2px;';
-            bubble.textContent = '• • •';
-            wrap.appendChild(bubble);
-            wrap.scrollTop = wrap.scrollHeight;
-        }
-        function bisonAiRemoveTyping() {
-            const t = document.getElementById('bisonAiTyping');
-            if (t) t.remove();
-        }
-
-        function bisonAiRenderConfirmation(pending) {
-            const wrap = document.getElementById('bisonAiMessages');
-            const card = document.createElement('div');
-            card.className = 'bp-confirm';
-            const msg = document.createElement('div');
-            msg.className = 'bp-confirm-msg';
-            msg.textContent = pending.description || 'Confirm action?';
-            const row = document.createElement('div');
-            row.className = 'bp-confirm-actions';
-            const go = document.createElement('button');
-            go.className = 'bp-go';
-            go.textContent = 'Confirm';
-            const cancel = document.createElement('button');
-            cancel.className = 'bp-cancel';
-            cancel.textContent = 'Cancel';
-            row.appendChild(go); row.appendChild(cancel);
-            card.appendChild(msg); card.appendChild(row);
-            wrap.appendChild(card);
-            wrap.scrollTop = wrap.scrollHeight;
-
-            go.onclick = async () => {
-                go.disabled = true; cancel.disabled = true;
-                go.textContent = 'Working…';
-                try {
-                    const r = await fetch('/api/assistant/execute', {
-                        method: 'POST',
-                        headers: {'Content-Type': 'application/json'},
-                        body: JSON.stringify({
-                            tool: pending.tool,
-                            input: pending.input,
-                            restaurant_id: BISON_AI_RID,
-                        }),
-                    });
-                    const data = await r.json();
-                    card.remove();
-                    const reply = data.message || (data.ok ? 'Done.' : 'Action failed.');
-                    bisonAiHistory.push({role: 'assistant', content: reply});
-                    bisonAiRenderMessage('assistant', reply);
-                } catch (e) {
-                    card.remove();
-                    bisonAiRenderMessage('assistant', 'Could not complete the action.');
-                }
-            };
-            cancel.onclick = () => {
-                card.remove();
-                bisonAiRenderMessage('assistant', 'Cancelled.');
-                bisonAiHistory.push({role: 'assistant', content: 'Cancelled.'});
-            };
-        }
-
-        async function bisonAiSend(prefilled) {
-            const input = document.getElementById('bisonAiInput');
-            const text = (prefilled !== undefined ? prefilled : input.value).trim();
-            if (!text) return;
-            if (prefilled === undefined) input.value = '';
-            bisonAiHistory.push({role: 'user', content: text});
-            bisonAiRenderMessage('user', text);
-            bisonAiAddTyping();
+        // ---- Ask the AI -----------------------------------------------------
+        async function bisonAsk(question) {
+            bisonHideChips();
+            const key = BISON_AI_RID + '|' + question;
+            const cached = bisonState.cache.get(key);
+            if (cached && (Date.now() - cached.t) < BISON_CACHE_TTL_MS) {
+                bisonShowBubble(cached.response);
+                return;
+            }
+            bisonShowBubble('…');
             try {
+                bisonState.history.push({role: 'user', content: question});
                 const r = await fetch('/api/assistant', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify({
-                        messages: bisonAiHistory,
+                        messages: bisonState.history,
                         restaurant_id: BISON_AI_RID,
                     }),
                 });
                 const data = await r.json();
-                bisonAiRemoveTyping();
                 const reply = data.response || data.error || '(no response)';
-                bisonAiHistory.push({role: 'assistant', content: reply});
-                bisonAiRenderMessage('assistant', reply);
-                if (data.pending_action) {
-                    bisonAiRenderConfirmation(data.pending_action);
-                }
+                bisonState.history.push({role: 'assistant', content: reply});
+                bisonState.cache.set(key, {t: Date.now(), response: reply});
+                bisonShowBubble(reply);
             } catch (e) {
-                bisonAiRemoveTyping();
-                bisonAiRenderMessage('assistant', 'Network error — please try again.');
+                bisonShowBubble('Network error — please try again.');
                 console.error('assistant fetch failed', e);
             }
         }
 
-        // ---- Proactive popup ------------------------------------------------
-        function bisonShowProactive(alert) {
-            bisonProactiveCurrent = alert;
-            document.getElementById('bisonProactiveMsg').textContent = alert.message;
-            document.getElementById('bisonProactive').style.display = 'block';
-            document.getElementById('bisonMascot').classList.add('alert');
-        }
-        function bisonHideProactive() {
-            document.getElementById('bisonProactive').style.display = 'none';
-            document.getElementById('bisonMascot').classList.remove('alert');
-        }
-        function bisonProactiveFix() {
-            if (!bisonProactiveCurrent) { bisonHideProactive(); return; }
-            const alert = bisonProactiveCurrent;
-            bisonHideProactive();
-            const panel = document.getElementById('bisonAiPanel');
-            if (panel.style.display === 'none' || panel.style.display === '') {
-                bisonAiToggle();
-            }
-            // Pre-load context as a user turn so the model picks up where the alert left off
-            bisonAiSend("About this alert: " + alert.message + " — what should I do?");
-        }
-        function bisonProactiveIgnore() {
-            if (bisonProactiveCurrent) {
-                bisonIgnoredUntil[bisonProactiveCurrent.type] = Date.now() + BISON_IGNORE_MS;
-            }
-            bisonHideProactive();
-        }
-
+        // ---- Proactive checks (lightweight) ---------------------------------
         async function bisonRunCheck() {
             try {
                 const r = await fetch('/api/assistant/check?restaurant_id=' + BISON_AI_RID);
                 const data = await r.json();
-                if (!data.has_alert) return;
-                const until = bisonIgnoredUntil[data.type] || 0;
+                if (!data.has_alert) {
+                    bisonState.currentAlert = null;
+                    document.getElementById('bisonMascot').classList.remove('alert');
+                    return;
+                }
+                const until = bisonState.ignoredUntil[data.type] || 0;
                 if (Date.now() < until) return;
-                // Don't stomp on an existing visible popup
-                if (document.getElementById('bisonProactive').style.display === 'block') return;
-                bisonShowProactive(data);
+                bisonState.currentAlert = data;
+                document.getElementById('bisonMascot').classList.add('alert');
+                const cx = (window.innerWidth  - BISON_SIZE) / 2;
+                const cy = (window.innerHeight - BISON_SIZE) / 2;
+                bisonMoveTo(Math.max(BISON_MIN_LEFT, cx), Math.max(BISON_MIN_TOP, cy));
+                bisonShowBubble(data.message || 'Heads up!');
             } catch (e) {
                 console.error('bisonRunCheck failed', e);
             }
         }
 
-        // Kick off polling. First check after 30s so the page settles, then
-        // every 5 minutes after that.
+        // Dismiss chips on outside click
+        document.addEventListener('click', (e) => {
+            const m = document.getElementById('bisonMascot');
+            const c = document.getElementById('bisonChips');
+            const b = document.getElementById('bisonBubble');
+            if (m.contains(e.target) || c.contains(e.target) || b.contains(e.target)) return;
+            if (bisonState.chipsOpen) bisonHideChips();
+        });
+
+        // Reposition on resize
+        window.addEventListener('resize', () => {
+            const maxX = window.innerWidth  - BISON_SIZE - 16;
+            const maxY = window.innerHeight - BISON_SIZE - 16;
+            bisonState.x = Math.min(Math.max(BISON_MIN_LEFT, bisonState.x), Math.max(BISON_MIN_LEFT, maxX));
+            bisonState.y = Math.min(Math.max(BISON_MIN_TOP,  bisonState.y), Math.max(BISON_MIN_TOP,  maxY));
+            const m = document.getElementById('bisonMascot');
+            m.style.left = bisonState.x + 'px';
+            m.style.top  = bisonState.y + 'px';
+            bisonRepositionFloaters();
+        });
+
+        // Boot
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', bisonInit);
+        } else {
+            bisonInit();
+        }
         setTimeout(bisonRunCheck, 30 * 1000);
         setInterval(bisonRunCheck, BISON_CHECK_INTERVAL_MS);
     </script>
