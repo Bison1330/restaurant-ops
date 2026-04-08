@@ -2454,6 +2454,16 @@ def schedule():
     ).order_by(Position.display_order).all()
     position_map = {p.name.lower(): p for p in positions}
 
+    filter_positions = request.args.getlist("fp")
+    filter_employees = request.args.getlist("fe")
+
+    filtered_employees = employees
+    if filter_positions:
+        filtered_employees = [e for e in filtered_employees if e.role in filter_positions]
+    if filter_employees:
+        fe_ids = [int(x) for x in filter_employees]
+        filtered_employees = [e for e in filtered_employees if e.id in fe_ids]
+
     shifts = Shift.query.filter_by(restaurant_id=restaurant.id).filter(
         Shift.shift_date >= monday,
         Shift.shift_date <= sunday
@@ -2471,9 +2481,10 @@ def schedule():
     emp_hours = {}
     for s in active_shifts:
         emp_hours[s.employee_id] = emp_hours.get(s.employee_id, 0) + s.hours
+
     rs = RestaurantSettings.query.filter_by(restaurant_id=restaurant.id).first()
     ot_threshold = rs.overtime_weekly_hours if rs else 40.0
-    ot_rate = rs.overtime_weekly_rate if rs else 1.5
+    ot_rate_mult = rs.overtime_weekly_rate if rs else 1.5
     ot_cost = 0.0
     ot_hours = 0.0
     for emp_id, hrs in emp_hours.items():
@@ -2482,7 +2493,7 @@ def schedule():
             emp = Employee.query.get(emp_id)
             if emp:
                 rate = emp.manual_pay_rate if emp.manual_pay_rate is not None else emp.pay_rate
-                ot_cost += extra * rate * (ot_rate - 1)
+                ot_cost += extra * rate * (ot_rate_mult - 1)
                 ot_hours += extra
 
     absences = len([s for s in shifts if s.status in ('called_out', 'no_show')])
@@ -2516,6 +2527,43 @@ def schedule():
         restaurant_id=restaurant.id, status='pending'
     ).count()
 
+    schedule_week = _get_or_create_schedule_week(restaurant.id, monday)
+
+    open_shifts = OpenShift.query.filter_by(
+        restaurant_id=restaurant.id, status='open'
+    ).filter(
+        OpenShift.shift_date >= monday,
+        OpenShift.shift_date <= sunday,
+    ).all()
+    open_shift_map = {}
+    for os in open_shifts:
+        open_shift_map.setdefault(os.shift_date.isoformat(), []).append(os)
+
+    proj_sales_rows = ProjectedSales.query.filter_by(
+        restaurant_id=restaurant.id
+    ).filter(
+        ProjectedSales.sale_date >= monday,
+        ProjectedSales.sale_date <= sunday,
+    ).all()
+    proj_sales_map = {ps.sale_date.isoformat(): ps.projected_amount for ps in proj_sales_rows}
+
+    availability = EmployeeAvailability.query.filter_by(
+        restaurant_id=restaurant.id, status='approved'
+    ).all()
+    avail_map = {}
+    for a in availability:
+        key = (a.employee_id, a.day_of_week)
+        avail_map.setdefault(key, []).append(a)
+
+    templates = ShiftTemplate.query.filter_by(restaurant_id=restaurant.id).all()
+
+    open_shift_count = OpenShift.query.filter_by(
+        restaurant_id=restaurant.id, status='open'
+    ).count()
+    pending_unavail = EmployeeAvailability.query.filter_by(
+        restaurant_id=restaurant.id, status='pending'
+    ).count()
+
     return render_template(
         "schedule.html",
         restaurant=restaurant,
@@ -2526,8 +2574,11 @@ def schedule():
         today_str=today_str,
         tab=tab,
         employees=employees,
+        filtered_employees=filtered_employees,
         positions=positions,
         position_map=position_map,
+        filter_positions=filter_positions,
+        filter_employees=filter_employees,
         shift_map=shift_map,
         daily_cost=daily_cost,
         daily_hours=daily_hours,
@@ -2535,6 +2586,7 @@ def schedule():
         weekly_hours=weekly_hours,
         ot_cost=ot_cost,
         ot_hours=ot_hours,
+        ot_threshold=ot_threshold,
         absences=absences,
         total_shifts=total_shifts,
         last_week_sales=last_week_sales,
@@ -2543,6 +2595,14 @@ def schedule():
         prev_week=prev_week,
         next_week=next_week,
         pending_pto=pending_pto,
+        schedule_week=schedule_week,
+        open_shifts=open_shifts,
+        open_shift_map=open_shift_map,
+        proj_sales_map=proj_sales_map,
+        avail_map=avail_map,
+        templates=templates,
+        open_shift_count=open_shift_count,
+        pending_unavail=pending_unavail,
     )
 
 
