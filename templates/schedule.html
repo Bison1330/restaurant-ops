@@ -448,62 +448,175 @@
 
 <!-- ADD SHIFT MODAL -->
 <div class="modal fade" id="addShiftModal" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title"><i class="bi bi-plus-circle me-2"></i>Add Shift</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
-            <form method="POST" action="{{ url_for('schedule_add_shift') }}">
-                <input type="hidden" name="week" value="{{ monday.isoformat() }}">
-                <div class="modal-body">
+            <div class="modal-body p-0">
+                <ul class="nav nav-tabs px-3 pt-2">
+                    <li class="nav-item">
+                        <a class="nav-link active" id="tab-custom" href="#" onclick="switchAddTab('custom'); return false;">Custom</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" id="tab-presets" href="#" onclick="switchAddTab('presets'); return false;">Presets</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" id="tab-timeoff" href="#" onclick="switchAddTab('timeoff'); return false;">Time Off</a>
+                    </li>
+                </ul>
+
+                <div id="addtab-custom" class="p-3">
+                    <form method="POST" action="{{ url_for('schedule_add_shift') }}" id="addShiftForm">
+                        <input type="hidden" name="week" value="{{ monday.isoformat() }}">
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Employee</label>
+                            <select name="employee_id" id="add-emp-select" class="form-select" required>
+                                <option value="">— select —</option>
+                                {% for emp in employees %}
+                                <option value="{{ emp.id }}" data-role="{{ emp.role or '' }}">
+                                    {{ emp.first_name }} {{ emp.last_name }}{% if emp.role %} ({{ emp.role }}){% endif %}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Date</label>
+                            <select name="shift_date" id="add-date-select" class="form-select" required>
+                                {% for day in week_days %}
+                                <option value="{{ day.isoformat() }}">{{ day.strftime('%A, %b %-d') }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="row g-2 mb-3">
+                            <div class="col">
+                                <label class="form-label fw-semibold">Start</label>
+                                <input type="time" name="start_time" id="add-start" class="form-control" value="09:00" required>
+                            </div>
+                            <div class="col">
+                                <label class="form-label fw-semibold">End</label>
+                                <input type="time" name="end_time" id="add-end" class="form-control" value="17:00" required>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Position</label>
+                            <select name="role" id="add-role" class="form-select">
+                                <option value="">— same as employee role —</option>
+                                {% for pos in positions %}
+                                <option value="{{ pos.name }}">{{ pos.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Notes</label>
+                            <input type="text" name="notes" class="form-control" placeholder="Optional">
+                        </div>
+                        <div id="add-cost-preview" class="alert alert-info py-2" style="font-size:0.8rem;display:none;"></div>
+                    </form>
+                </div>
+
+                <div id="addtab-presets" class="p-3" style="display:none;">
                     <div class="mb-3">
                         <label class="form-label fw-semibold">Employee</label>
-                        <select name="employee_id" id="add-emp-select" class="form-select" required>
+                        <select id="preset-emp-select" class="form-select">
                             <option value="">— select —</option>
                             {% for emp in employees %}
-                            <option value="{{ emp.id }}" data-role="{{ emp.role or '' }}">{{ emp.first_name }} {{ emp.last_name }}{% if emp.role %} ({{ emp.role }}){% endif %}</option>
+                            <option value="{{ emp.id }}">{{ emp.first_name }} {{ emp.last_name }}{% if emp.role %} ({{ emp.role }}){% endif %}</option>
                             {% endfor %}
                         </select>
                     </div>
                     <div class="mb-3">
                         <label class="form-label fw-semibold">Date</label>
-                        <select name="shift_date" id="add-date-select" class="form-select" required>
+                        <select id="preset-date-select" class="form-select">
                             {% for day in week_days %}
                             <option value="{{ day.isoformat() }}">{{ day.strftime('%A, %b %-d') }}</option>
                             {% endfor %}
                         </select>
                     </div>
-                    <div class="row g-2 mb-3">
-                        <div class="col">
-                            <label class="form-label fw-semibold">Start</label>
-                            <input type="time" name="start_time" id="add-start" class="form-control" value="09:00" required>
+                    <div class="mb-2 fw-semibold" style="font-size:0.85rem;">Select a preset:</div>
+                    <div class="preset-grid">
+                        {% for preset in presets %}
+                        <div class="preset-card" style="background:{{ preset.color_hex }};"
+                             onclick="selectPreset({{ preset.id }}, '{{ preset.name }}', '{{ preset.position_name }}', '{{ preset.start_time }}', '{{ preset.end_time }}', '{{ preset.color_hex }}')"
+                             data-preset-id="{{ preset.id }}">
+                            <div class="preset-name">{{ preset.name }}</div>
+                            <div class="preset-time">{{ preset.start_time }}–{{ preset.end_time }} · {{ "%.0f"|format(preset.hours) }}h</div>
                         </div>
-                        <div class="col">
-                            <label class="form-label fw-semibold">End</label>
-                            <input type="time" name="end_time" id="add-end" class="form-control" value="17:00" required>
+                        {% else %}
+                        <div class="text-muted" style="font-size:0.85rem;">
+                            No presets yet. Add them in <a href="{{ url_for('settings', tab='positions') }}">Settings → Positions</a>.
                         </div>
+                        {% endfor %}
                     </div>
-                    <div class="mb-3">
-                        <label class="form-label fw-semibold">Position</label>
-                        <select name="role" id="add-role" class="form-select">
-                            <option value="">— same as employee role —</option>
-                            {% for pos in positions %}
-                            <option value="{{ pos.name }}">{{ pos.name }}</option>
-                            {% endfor %}
-                        </select>
+                    <div id="preset-selected" class="alert py-2 mt-3" style="font-size:0.82rem;background:rgba(61,220,132,0.08);border:1px solid rgba(61,220,132,0.2);display:none;">
+                        <i class="bi bi-check-circle me-1" style="color:var(--accent);"></i>
+                        <span id="preset-selected-text"></span>
                     </div>
-                    <div class="mb-3">
-                        <label class="form-label fw-semibold">Notes</label>
-                        <input type="text" name="notes" class="form-control" placeholder="Optional">
-                    </div>
-                    <div id="add-cost-preview" class="alert alert-info py-2" style="font-size:0.8rem;display:none;"></div>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary">Add Shift</button>
+
+                <div id="addtab-timeoff" class="p-3" style="display:none;">
+                    <form method="POST" action="{{ url_for('pto_add_request') }}" id="scheduleTimeOffForm">
+                        <div class="alert py-2 mb-3" style="font-size:0.78rem;background:rgba(61,220,132,0.06);border:1px solid rgba(61,220,132,0.15);">
+                            <i class="bi bi-info-circle me-1"></i>
+                            Illinois PLAWA — employees may use PTO for <strong>any reason</strong>. Notes are optional.
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Employee</label>
+                            <select name="employee_id" id="timeoff-emp-select" class="form-select" required
+                                onchange="fetchBalanceInline(this.value)">
+                                <option value="">— select —</option>
+                                {% for emp in employees %}
+                                <option value="{{ emp.id }}">{{ emp.first_name }} {{ emp.last_name }}{% if emp.role %} ({{ emp.role }}){% endif %}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div id="inline-balance-preview" class="alert py-2 mb-3" style="font-size:0.78rem;display:none;"></div>
+                        <div class="mb-3">
+                            <div class="d-flex gap-3">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="pto_day_type" id="pto-fullday" value="full" checked onchange="togglePTOType(this)">
+                                    <label class="form-check-label fw-semibold" for="pto-fullday">Full Day</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="pto_day_type" id="pto-partial" value="partial" onchange="togglePTOType(this)">
+                                    <label class="form-check-label fw-semibold" for="pto-partial">Partial Day</label>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row g-2 mb-3">
+                            <div class="col">
+                                <label class="form-label fw-semibold">Start date</label>
+                                <select name="start_date" id="timeoff-start" class="form-select" required onchange="calcInlineHours()">
+                                    {% for day in week_days %}
+                                    <option value="{{ day.isoformat() }}">{{ day.strftime('%A, %b %-d') }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col">
+                                <label class="form-label fw-semibold">End date</label>
+                                <select name="end_date" id="timeoff-end" class="form-select" required onchange="calcInlineHours()">
+                                    {% for day in week_days %}
+                                    <option value="{{ day.isoformat() }}">{{ day.strftime('%A, %b %-d') }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Hours requested</label>
+                            <input type="number" name="hours_requested" id="timeoff-hours" class="form-control" value="8" min="0.5" max="400" step="0.5" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Notes <span class="text-muted">(optional)</span></label>
+                            <input type="text" name="notes" class="form-control" placeholder="Cannot be required by Illinois law">
+                        </div>
+                    </form>
                 </div>
-            </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="submitAddShift()">Add Shift</button>
+            </div>
         </div>
     </div>
 </div>
@@ -890,6 +1003,15 @@
 .unavail-type{font-weight:600;}
 .unavail-time{opacity:0.7;}
 .btn-xs{padding:2px 8px;font-size:0.72rem;}
+.preset-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;max-height:280px;overflow-y:auto;}
+.preset-card{border-radius:6px;padding:8px 10px;cursor:pointer;transition:transform 0.1s,opacity 0.1s;color:#fff;}
+.preset-card:hover{transform:scale(1.03);opacity:0.9;}
+.preset-card.selected{outline:3px solid #fff;box-shadow:0 0 0 5px rgba(255,255,255,0.3);}
+.preset-name{font-size:0.82rem;font-weight:600;}
+.preset-time{font-size:0.72rem;opacity:0.85;margin-top:2px;}
+.nav-tabs .nav-link{color:var(--text-muted);border:none;border-bottom:2px solid transparent;border-radius:0;padding:8px 16px;font-size:0.85rem;}
+.nav-tabs .nav-link.active{color:var(--accent);border-bottom-color:var(--accent);background:transparent;}
+.nav-tabs .nav-link:hover{color:var(--text);}
 </style>
 
 <script>
@@ -989,10 +1111,92 @@ function saveProjectedSales(input) {
 }
 
 function openAddModal(empId, dateStr, role) {
-    if (empId) document.getElementById('add-emp-select').value = empId;
-    if (dateStr) document.getElementById('add-date-select').value = dateStr;
+    if (empId) {
+        document.getElementById('add-emp-select').value = empId;
+        document.getElementById('preset-emp-select').value = empId;
+        document.getElementById('timeoff-emp-select').value = empId;
+    }
+    if (dateStr) {
+        document.getElementById('add-date-select').value = dateStr;
+        document.getElementById('preset-date-select').value = dateStr;
+        document.getElementById('timeoff-start').value = dateStr;
+        document.getElementById('timeoff-end').value = dateStr;
+    }
     if (role) document.getElementById('add-role').value = role;
+    switchAddTab('custom');
+    selectedPreset = null;
     new bootstrap.Modal(document.getElementById('addShiftModal')).show();
+}
+
+let activeAddTab = 'custom';
+let selectedPreset = null;
+
+function switchAddTab(tab) {
+    activeAddTab = tab;
+    ['custom','presets','timeoff'].forEach(t => {
+        document.getElementById('addtab-' + t).style.display = t === tab ? 'block' : 'none';
+        document.getElementById('tab-' + t).classList.toggle('active', t === tab);
+    });
+}
+
+function selectPreset(id, name, positionName, startTime, endTime, color) {
+    selectedPreset = {id, name, positionName, startTime, endTime};
+    document.querySelectorAll('.preset-card').forEach(c => {
+        c.classList.toggle('selected', parseInt(c.dataset.presetId) === id);
+    });
+    document.getElementById('preset-selected').style.display = 'block';
+    document.getElementById('preset-selected-text').textContent =
+        name + ' · ' + startTime + '–' + endTime + (positionName ? ' · ' + positionName : '');
+}
+
+function submitAddShift() {
+    if (activeAddTab === 'custom') {
+        document.getElementById('addShiftForm').submit();
+    } else if (activeAddTab === 'presets') {
+        if (!selectedPreset) { alert('Please select a preset first.'); return; }
+        const empId = document.getElementById('preset-emp-select').value;
+        const dateVal = document.getElementById('preset-date-select').value;
+        if (!empId) { alert('Please select an employee.'); return; }
+        fetch('/api/schedule/shift/paste', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                employee_id: parseInt(empId),
+                shift_date: dateVal,
+                start_time: selectedPreset.startTime,
+                end_time: selectedPreset.endTime,
+                role: selectedPreset.positionName,
+                notes: selectedPreset.name,
+                week: MONDAY,
+            })
+        }).then(r => r.json()).then(d => {
+            if (d.ok) { autosave(); location.reload(); }
+            else alert('Error: ' + (d.error || 'unknown'));
+        });
+    } else if (activeAddTab === 'timeoff') {
+        document.getElementById('scheduleTimeOffForm').submit();
+    }
+}
+
+function togglePTOType(radio) {
+    document.getElementById('timeoff-hours').value = radio.value === 'full' ? 8 : 4;
+}
+
+function calcInlineHours() {
+    const start = document.getElementById('timeoff-start').value;
+    const end = document.getElementById('timeoff-end').value;
+    if (!start || !end) return;
+    const days = Math.max(1, Math.round((new Date(end) - new Date(start)) / 86400000) + 1);
+    document.getElementById('timeoff-hours').value = days * 8;
+}
+
+function fetchBalanceInline(empId) {
+    const preview = document.getElementById('inline-balance-preview');
+    if (!empId) { preview.style.display='none'; return; }
+    fetch('/api/pto/balance/' + empId).then(r => r.json()).then(b => {
+        preview.style.display='block';
+        preview.innerHTML='<i class="bi bi-piggy-bank me-1"></i><strong>'+b.available.toFixed(1)+'h available</strong> · '+b.accrued.toFixed(1)+'h accrued · '+b.used.toFixed(1)+'h used · <strong>'+b.remaining_cap.toFixed(1)+'h remaining this year</strong>';
+    });
 }
 
 function openEditModal(shiftId) {
