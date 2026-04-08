@@ -374,8 +374,11 @@ def _build_sales_summary(r, range_name, custom_start=None, custom_end=None, comp
         denom = net_sales_total if net_sales_total > 0 else sales_total
         if denom > 0:
             raw_pct = (labor_cost / denom) * 100
+            payload["labor_pct"] = round(raw_pct, 1)
             payload["labor_pct_suspicious"] = raw_pct > 80
-            payload["labor_pct"] = round(min(raw_pct, 100.0), 1)
+        else:
+            payload["labor_pct"] = None  # No sales yet — show — instead of 100%
+            payload["labor_pct_suspicious"] = False
     except Exception as e:
         print(f"[sales] timesheets failed for {r.name}: {e}")
 
@@ -479,8 +482,11 @@ def _toast_sales_summary(r):
         denom = week_net if week_net > 0 else week_total
         if denom > 0:
             raw_pct = (labor_cost / denom) * 100
+            summary["labor_pct"] = round(raw_pct, 1)
             summary["labor_pct_suspicious"] = raw_pct > 80
-            summary["labor_pct"] = round(min(raw_pct, 100.0), 1)
+        else:
+            summary["labor_pct"] = None
+            summary["labor_pct_suspicious"] = False
     except Exception as e:
         print(f"[dashboard] toast sales fetch failed for {r.name}: {e}")
 
