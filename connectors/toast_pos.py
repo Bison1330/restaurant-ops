@@ -251,10 +251,12 @@ def fetch_orders(restaurant, start_date, end_date):
             break
         for order in batch:
             items_sold = []
-            # Only count live checks. Voided checks still appear in the API
-            # response with non-zero amounts; we don't want them inflating
-            # either the customer-paid `total` or the `net_sales` denominator.
-            live_checks = [c for c in (order.get("checks") or []) if not c.get("voided")]
+            all_checks = order.get("checks") or []
+            # Split checks into live vs voided. `total` and `net_sales` only
+            # count live checks; voided ones are tracked separately in
+            # `void_total` so the dashboard can surface lost revenue.
+            live_checks = [c for c in all_checks if not c.get("voided")]
+            voided_checks = [c for c in all_checks if c.get("voided")]
             for check in live_checks:
                 for sel in check.get("selections", []) or []:
                     items_sold.append({
@@ -262,6 +264,12 @@ def fetch_orders(restaurant, start_date, end_date):
                         "qty": float(sel.get("quantity", 0) or 0),
                         "price": float(sel.get("price", 0) or 0),
                     })
+            # Discounts: applied to live checks only. Voided check discounts
+            # would be double-counting since the whole check is already lost.
+            discount_total = 0.0
+            for c in live_checks:
+                for d in c.get("appliedDiscounts", []) or []:
+                    discount_total += float(d.get("discountAmount", 0) or 0)
             summaries.append({
                 "guid": order.get("guid"),
                 "opened_date": order.get("openedDate"),
@@ -272,6 +280,10 @@ def fetch_orders(restaurant, start_date, end_date):
                 # standard denominator for labor% and food cost%. Comes straight
                 # from `check.amount`, which is already post-discount in Toast.
                 "net_sales": sum(float(c.get("amount", 0) or 0) for c in live_checks),
+                # Lost revenue tracking — surfaced separately so the dashboard
+                # can show "discounts" and "voids" as two cards.
+                "discount_total": discount_total,
+                "void_total": sum(float(c.get("totalAmount", 0) or 0) for c in voided_checks),
                 "items": items_sold,
             })
         if len(batch) < page_size:

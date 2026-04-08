@@ -95,6 +95,24 @@
             <div class="stat-desc text-muted" style="font-size:0.7rem;">Revenue per order</div>
         </div>
     </div>
+    <div class="col-md-2 metric-col">
+        <div class="stat-card">
+            <div class="stat-icon orange"><i class="bi bi-tag"></i></div>
+            <div class="stat-value" id="card-discounts">—</div>
+            <div class="stat-date text-muted" id="card-discounts-date" style="font-size:0.72rem;">&nbsp;</div>
+            <div class="stat-label">Discounts</div>
+            <div class="stat-desc text-muted" style="font-size:0.7rem;">Comps &amp; promos</div>
+        </div>
+    </div>
+    <div class="col-md-2 metric-col">
+        <div class="stat-card">
+            <div class="stat-icon" id="card-voids-icon"><i class="bi bi-x-octagon"></i></div>
+            <div class="stat-value" id="card-voids">—</div>
+            <div class="stat-date text-muted" id="card-voids-date" style="font-size:0.72rem;">&nbsp;</div>
+            <div class="stat-label">Voids</div>
+            <div class="stat-desc text-muted" style="font-size:0.7rem;">Voided checks</div>
+        </div>
+    </div>
 </div>
 
 <!-- Row 2: Alerts + Pending Invoices -->
@@ -276,6 +294,13 @@
                 document.getElementById('card-sales').textContent = fmtMoney(d.sales);
                 document.getElementById('card-checks').textContent = d.check_count != null ? d.check_count.toLocaleString() : '—';
                 document.getElementById('card-avg-check').textContent = fmtMoney(d.avg_check);
+                document.getElementById('card-discounts').textContent = fmtMoney(d.discount_total);
+                document.getElementById('card-voids').textContent = fmtMoney(d.void_total);
+
+                // Voids icon turns red whenever any voided revenue exists,
+                // since voids are usually a manager-attention signal.
+                const voidsIcon = document.getElementById('card-voids-icon');
+                voidsIcon.className = 'stat-icon ' + ((d.void_total || 0) > 0 ? 'red' : '');
 
                 // Date subtitles for every Toast-driven card
                 const dateLabel = fmtDateRange(d.start, d.end);
@@ -283,6 +308,8 @@
                 document.getElementById('card-labor-date').textContent = dateLabel;
                 document.getElementById('card-checks-date').textContent = dateLabel;
                 document.getElementById('card-avg-check-date').textContent = dateLabel;
+                document.getElementById('card-discounts-date').textContent = dateLabel;
+                document.getElementById('card-voids-date').textContent = dateLabel;
 
                 // Delta card — show only when compare is on
                 const deltaCol = document.getElementById('card-delta-col');

@@ -225,6 +225,9 @@ def _build_sales_summary(r, range_name, custom_start=None, custom_end=None, comp
         "start": start_ct.isoformat(),
         "end": end_ct.isoformat(),
         "sales": None,
+        "net_sales": None,
+        "discount_total": None,
+        "void_total": None,
         "prior_sales": None,
         "delta_amount": None,
         "delta_pct": None,
@@ -257,8 +260,12 @@ def _build_sales_summary(r, range_name, custom_start=None, custom_end=None, comp
     # denominator for cost percentages. `sales` stays as customer-paid total
     # so the headline number matches what operators see on Toast.
     net_sales_total = sum(o.get("net_sales", 0) for o in orders)
+    discount_total = sum(o.get("discount_total", 0) for o in orders)
+    void_total = sum(o.get("void_total", 0) for o in orders)
     payload["sales"] = round(sales_total, 2)
     payload["net_sales"] = round(net_sales_total, 2)
+    payload["discount_total"] = round(discount_total, 2)
+    payload["void_total"] = round(void_total, 2)
     payload["check_count"] = len(orders)
     if orders:
         payload["avg_check"] = round(sales_total / len(orders), 2)
