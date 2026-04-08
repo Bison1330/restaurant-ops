@@ -682,3 +682,33 @@ class EmployeeAvailability(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     employee = db.relationship('Employee', backref='availability')
     restaurant = db.relationship('Restaurant', backref='employee_availability')
+
+
+class ShiftPreset(db.Model):
+    """A named time preset for a position (e.g. 'Bartender AM', 'Host PM').
+    Used to auto-fill start/end times when creating a shift."""
+    __tablename__ = 'shift_presets'
+    id = db.Column(db.Integer, primary_key=True)
+    restaurant_id = db.Column(db.Integer, db.ForeignKey('restaurants.id'), index=True)
+    name = db.Column(db.String(100), nullable=False)
+    position_name = db.Column(db.String(50))
+    start_time = db.Column(db.String(5), nullable=False)
+    end_time = db.Column(db.String(5), nullable=False)
+    color_hex = db.Column(db.String(7), default='#64748b')
+    display_order = db.Column(db.Integer, default=0)
+    active = db.Column(db.Boolean, default=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    restaurant = db.relationship('Restaurant', backref='shift_presets')
+
+    @property
+    def hours(self):
+        try:
+            sh, sm = map(int, self.start_time.split(':'))
+            eh, em = map(int, self.end_time.split(':'))
+            start_mins = sh * 60 + sm
+            end_mins = eh * 60 + em
+            if end_mins <= start_mins:
+                end_mins += 1440
+            return (end_mins - start_mins) / 60
+        except Exception:
+            return 0

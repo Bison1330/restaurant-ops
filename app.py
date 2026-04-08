@@ -20,7 +20,7 @@ from database import (
     StorageZone, InventoryItemZone, CountSession, CountEntry,
     Alert, MenuItemSale, Shift, User, Position, RestaurantSettings, ManagerPreference,
     PTOPolicy, PTOBalance, PTORequest, ScheduleWeek, ShiftTemplate, ShiftTemplateEntry,
-    OpenShift, ProjectedSales, EmployeeAvailability,
+    OpenShift, ProjectedSales, EmployeeAvailability, ShiftPreset,
 )
 from mock_data import seed_mock_data
 from connectors.gfs_sftp import fetch_gfs_invoices
@@ -2556,6 +2556,7 @@ def schedule():
         avail_map.setdefault(key, []).append(a)
 
     templates = ShiftTemplate.query.filter_by(restaurant_id=restaurant.id).all()
+    presets = ShiftPreset.query.filter_by(restaurant_id=restaurant.id, active=True).order_by(ShiftPreset.display_order).all()
 
     open_shift_count = OpenShift.query.filter_by(
         restaurant_id=restaurant.id, status='open'
@@ -2601,6 +2602,7 @@ def schedule():
         proj_sales_map=proj_sales_map,
         avail_map=avail_map,
         templates=templates,
+        presets=presets,
         open_shift_count=open_shift_count,
         pending_unavail=pending_unavail,
     )
@@ -2949,6 +2951,9 @@ def settings():
     positions = Position.query.filter_by(
         restaurant_id=restaurant.id, active=True
     ).order_by(Position.display_order).all()
+    presets = ShiftPreset.query.filter_by(
+        restaurant_id=restaurant.id, active=True
+    ).order_by(ShiftPreset.display_order).all()
     prefs = None
     if current_user.is_authenticated:
         prefs = _get_or_create_prefs(current_user.id)
@@ -2959,6 +2964,7 @@ def settings():
         tab=tab,
         rs=rs,
         positions=positions,
+        presets=presets,
         prefs=prefs,
     )
 
@@ -3755,6 +3761,61 @@ def schedule_delete_availability(avail_id):
     db.session.commit()
     flash("Availability block removed.", "success")
     return redirect(url_for("schedule", tab="unavailability", week=week_str))
+
+# ─────────────────────────────────────────────────────────────
+# SHIFT PRESETS
+# ─────────────────────────────────────────────────────────────
+
+@app.route("/api/schedule/presets")
+def api_get_presets():
+    """Return all shift presets for current restaurant as JSON."""
+    restaurant = _get_selected_restaurant()
+    presets = ShiftPreset.query.filter_by(
+        restaurant_id=restaurant.id, active=True
+    ).order_by(ShiftPreset.display_order).all()
+    return jsonify([{
+        "id": p.id,
+        "name": p.name,
+        "position_name": p.position_name or "",
+        "start_time": p.start_time,
+        "end_time": p.end_time,
+        "color_hex": p.color_hex,
+        "hours": round(p.hours, 1),
+    } for p in presets])
+
+
+@app.route("/settings/presets/add", methods=["POST"])
+def settings_add_preset():
+    restaurant = _get_selected_restaurant()
+    f = request.form
+    name = f.get("name", "").strip()
+    if not name:
+        flash("Preset name is required.", "danger")
+        return redirect(url_for("settings", tab="positions"))
+    max_order = db.session.query(
+        db.func.max(ShiftPreset.display_order)
+    ).filter_by(restaurant_id=restaurant.id).scalar() or 0
+    db.session.add(ShiftPreset(
+        restaurant_id=restaurant.id,
+        name=name,
+        position_name=f.get("position_name", "").strip(),
+        start_time=f.get("start_time", "09:00"),
+        end_time=f.get("end_time", "17:00"),
+        color_hex=f.get("color_hex", "#64748b"),
+        display_order=max_order + 1,
+    ))
+    db.session.commit()
+    flash(f"Preset '{name}' added.", "success")
+    return redirect(url_for("settings", tab="positions"))
+
+
+@app.route("/settings/presets/<int:preset_id>/delete", methods=["POST"])
+def settings_delete_preset(preset_id):
+    preset = ShiftPreset.query.get_or_404(preset_id)
+    preset.active = False
+    db.session.commit()
+    flash("Preset removed.", "success")
+    return redirect(url_for("settings", tab="positions"))
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8082, debug=False)
