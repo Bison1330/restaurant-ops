@@ -334,3 +334,44 @@ class MenuItemSale(db.Model):
         if self.expected_count and self.expected_count > 0:
             return (self.variance / self.expected_count) * 100
         return 0
+
+
+class Shift(db.Model):
+    """A scheduled or actual shift for one employee on one day."""
+    __tablename__ = 'shifts'
+    id = db.Column(db.Integer, primary_key=True)
+    restaurant_id = db.Column(db.Integer, db.ForeignKey('restaurants.id'), index=True)
+    employee_id = db.Column(db.Integer, db.ForeignKey('employees.id'), index=True)
+    shift_date = db.Column(db.Date, index=True, nullable=False)
+    start_time = db.Column(db.String(5), nullable=False)
+    end_time = db.Column(db.String(5), nullable=False)
+    role = db.Column(db.String(50))
+    status = db.Column(db.String(20), default='scheduled')
+    notes = db.Column(db.String(200))
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    restaurant = db.relationship('Restaurant', backref='shifts')
+    employee = db.relationship('Employee', backref='shifts')
+
+    @property
+    def hours(self):
+        try:
+            sh, sm = map(int, self.start_time.split(':'))
+            eh, em = map(int, self.end_time.split(':'))
+            start_mins = sh * 60 + sm
+            end_mins = eh * 60 + em
+            if end_mins <= start_mins:
+                end_mins += 1440
+            return (end_mins - start_mins) / 60
+        except Exception:
+            return 0
+
+    @property
+    def labor_cost(self):
+        emp = self.employee
+        if not emp:
+            return 0
+        rate = emp.manual_pay_rate if emp.manual_pay_rate is not None else emp.pay_rate
+        if emp.pay_type == 'salary':
+            return (rate / 52 / 5)
+        return self.hours * (rate or 0)

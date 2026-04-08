@@ -17,7 +17,7 @@ from database import (
     PayrollRun, Employee, Recipe, RecipeIngredient,
     ItemAlias, PriceHistory, UnmatchedItem,
     StorageZone, InventoryItemZone, CountSession, CountEntry,
-    Alert, MenuItemSale,
+    Alert, MenuItemSale, Shift,
 )
 from mock_data import seed_mock_data
 from connectors.gfs_sftp import fetch_gfs_invoices
@@ -2390,6 +2390,215 @@ def _start_scheduler():
 if not app.debug or os.environ.get("WERKZEUG_RUN_MAIN") == "true":
     _start_scheduler()
 
+
+# ─────────────────────────────────────────────────────────────
+# SCHEDULE / SHIFT MANAGEMENT
+# ─────────────────────────────────────────────────────────────
+
+def _week_bounds(date_str=None):
+    from datetime import date, timedelta
+    if date_str:
+        try:
+            pivot = datetime.strptime(date_str, "%Y-%m-%d").date()
+        except ValueError:
+            pivot = datetime.now(CENTRAL_TZ).date()
+    else:
+        pivot = datetime.now(CENTRAL_TZ).date()
+    monday = pivot - timedelta(days=pivot.weekday())
+    sunday = monday + timedelta(days=6)
+    return monday, sunday
+
+
+@app.route("/schedule")
+def schedule():
+    from datetime import timedelta, date
+    restaurant = _get_selected_restaurant()
+    week_str = request.args.get("week")
+    monday, sunday = _week_bounds(week_str)
+    week_days = [monday + timedelta(days=i) for i in range(7)]
+    today_str = datetime.now(CENTRAL_TZ).date().isoformat()
+
+    employees = Employee.query.filter_by(
+        restaurant_id=restaurant.id, active=True
+    ).order_by(Employee.role, Employee.last_name).all()
+
+    shifts = Shift.query.filter_by(restaurant_id=restaurant.id).filter(
+        Shift.shift_date >= monday,
+        Shift.shift_date <= sunday
+    ).all()
+
+    shift_map = {}
+    for s in shifts:
+        key = (s.employee_id, s.shift_date.isoformat())
+        shift_map.setdefault(key, []).append(s)
+
+    weekly_cost = sum(s.labor_cost for s in shifts if s.status not in ('called_out', 'no_show'))
+    weekly_hours = sum(s.hours for s in shifts if s.status not in ('called_out', 'no_show'))
+
+    daily_cost = {}
+    daily_hours = {}
+    for s in shifts:
+        if s.status in ('called_out', 'no_show'):
+            continue
+        d = s.shift_date.isoformat()
+        daily_cost[d] = daily_cost.get(d, 0) + s.labor_cost
+        daily_hours[d] = daily_hours.get(d, 0) + s.hours
+
+    last_mon = monday - timedelta(days=7)
+    last_sun = sunday - timedelta(days=7)
+    from sqlalchemy import func
+    last_week_sales_row = db.session.query(
+        func.sum(MenuItemSale.total_revenue)
+    ).filter(
+        MenuItemSale.restaurant_id == restaurant.id,
+        MenuItemSale.sale_date >= last_mon,
+        MenuItemSale.sale_date <= last_sun
+    ).scalar()
+    last_week_sales = float(last_week_sales_row or 0)
+    projected_labor_pct = (weekly_cost / last_week_sales * 100) if last_week_sales > 0 else None
+
+    prev_week = (monday - timedelta(days=7)).isoformat()
+    next_week = (monday + timedelta(days=7)).isoformat()
+    restaurants = Restaurant.query.all()
+
+    return render_template(
+        "schedule.html",
+        restaurant=restaurant,
+        restaurants=restaurants,
+        selected_restaurant=restaurant,
+        week_days=week_days,
+        monday=monday,
+        today_str=today_str,
+        employees=employees,
+        shift_map=shift_map,
+        daily_cost=daily_cost,
+        daily_hours=daily_hours,
+        weekly_cost=weekly_cost,
+        weekly_hours=weekly_hours,
+        last_week_sales=last_week_sales,
+        projected_labor_pct=projected_labor_pct,
+        prev_week=prev_week,
+        next_week=next_week,
+    )
+
+
+@app.route("/schedule/shift/add", methods=["POST"])
+def schedule_add_shift():
+    restaurant = _get_selected_restaurant()
+    data = request.form
+    shift_date = None
+    try:
+        shift_date = datetime.strptime(data["shift_date"], "%Y-%m-%d").date()
+        shift = Shift(
+            restaurant_id=restaurant.id,
+            employee_id=int(data["employee_id"]),
+            shift_date=shift_date,
+            start_time=data["start_time"],
+            end_time=data["end_time"],
+            role=data.get("role", ""),
+            status=data.get("status", "scheduled"),
+            notes=data.get("notes", ""),
+        )
+        db.session.add(shift)
+        db.session.commit()
+        flash("Shift added.", "success")
+    except Exception as e:
+        db.session.rollback()
+        flash(f"Error adding shift: {e}", "danger")
+    week_str = data.get("week") or (shift_date.isoformat() if shift_date else None)
+    return redirect(url_for("schedule", week=week_str))
+
+
+@app.route("/schedule/shift/<int:shift_id>/edit", methods=["POST"])
+def schedule_edit_shift(shift_id):
+    shift = Shift.query.get_or_404(shift_id)
+    data = request.form
+    try:
+        shift.employee_id = int(data["employee_id"])
+        shift.shift_date = datetime.strptime(data["shift_date"], "%Y-%m-%d").date()
+        shift.start_time = data["start_time"]
+        shift.end_time = data["end_time"]
+        shift.role = data.get("role", shift.role)
+        shift.status = data.get("status", shift.status)
+        shift.notes = data.get("notes", shift.notes)
+        db.session.commit()
+        flash("Shift updated.", "success")
+    except Exception as e:
+        db.session.rollback()
+        flash(f"Error updating shift: {e}", "danger")
+    week_str = data.get("week", shift.shift_date.isoformat())
+    return redirect(url_for("schedule", week=week_str))
+
+
+@app.route("/schedule/shift/<int:shift_id>/delete", methods=["POST"])
+def schedule_delete_shift(shift_id):
+    shift = Shift.query.get_or_404(shift_id)
+    week_str = request.form.get("week", shift.shift_date.isoformat())
+    try:
+        db.session.delete(shift)
+        db.session.commit()
+        flash("Shift removed.", "success")
+    except Exception as e:
+        db.session.rollback()
+        flash(f"Error: {e}", "danger")
+    return redirect(url_for("schedule", week=week_str))
+
+
+@app.route("/schedule/copy-week", methods=["POST"])
+def schedule_copy_week():
+    from datetime import timedelta
+    restaurant = _get_selected_restaurant()
+    week_str = request.form.get("week")
+    monday, sunday = _week_bounds(week_str)
+    last_mon = monday - timedelta(days=7)
+    last_sun = sunday - timedelta(days=7)
+
+    source_shifts = Shift.query.filter_by(restaurant_id=restaurant.id).filter(
+        Shift.shift_date >= last_mon,
+        Shift.shift_date <= last_sun
+    ).all()
+
+    copied = 0
+    for s in source_shifts:
+        new_date = s.shift_date + timedelta(days=7)
+        exists = Shift.query.filter_by(
+            restaurant_id=restaurant.id,
+            employee_id=s.employee_id,
+            shift_date=new_date,
+            start_time=s.start_time,
+            end_time=s.end_time,
+        ).first()
+        if not exists:
+            db.session.add(Shift(
+                restaurant_id=restaurant.id,
+                employee_id=s.employee_id,
+                shift_date=new_date,
+                start_time=s.start_time,
+                end_time=s.end_time,
+                role=s.role,
+                status='scheduled',
+                notes=s.notes,
+            ))
+            copied += 1
+
+    db.session.commit()
+    flash(f"Copied {copied} shift{'s' if copied != 1 else ''} from last week.", "success")
+    return redirect(url_for("schedule", week=monday.isoformat()))
+
+
+@app.route("/api/schedule/shift/<int:shift_id>")
+def api_get_shift(shift_id):
+    shift = Shift.query.get_or_404(shift_id)
+    return jsonify({
+        "id": shift.id,
+        "employee_id": shift.employee_id,
+        "shift_date": shift.shift_date.isoformat(),
+        "start_time": shift.start_time,
+        "end_time": shift.end_time,
+        "role": shift.role or "",
+        "status": shift.status,
+        "notes": shift.notes or "",
+    })
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8082, debug=False)

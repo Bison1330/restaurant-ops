@@ -1,0 +1,381 @@
+{% extends "base.html" %}
+{% block title %}Schedule — Bison Stockyard{% endblock %}
+
+{% block topbar %}
+<h1>Schedule</h1>
+{% endblock %}
+
+{% block topbar_actions %}
+<div class="d-flex align-items-center gap-2">
+    <a href="{{ url_for('schedule', week=prev_week) }}" class="btn btn-sm btn-outline-secondary">
+        <i class="bi bi-chevron-left"></i>
+    </a>
+    <span class="fw-semibold" style="min-width:200px; text-align:center;">
+        {{ monday.strftime('%b %-d') }} – {{ week_days[-1].strftime('%b %-d, %Y') }}
+    </span>
+    <a href="{{ url_for('schedule', week=next_week) }}" class="btn btn-sm btn-outline-secondary">
+        <i class="bi bi-chevron-right"></i>
+    </a>
+    <a href="{{ url_for('schedule') }}" class="btn btn-sm btn-outline-secondary ms-1">Today</a>
+</div>
+{% endblock %}
+
+{% block content %}
+{% with messages = get_flashed_messages(with_categories=true) %}
+{% for cat, msg in messages %}
+<div class="alert alert-{{ cat }} alert-dismissible fade show" role="alert">
+    {{ msg }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+</div>
+{% endfor %}
+{% endwith %}
+
+<div class="row g-3 mb-3">
+    <div class="col-6 col-md-3">
+        <div class="content-card text-center py-3">
+            <div style="font-size:1.5rem;font-weight:700;color:var(--accent);">{{ "%.1f"|format(weekly_hours) }}</div>
+            <div class="text-muted" style="font-size:0.75rem;">Scheduled Hours</div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="content-card text-center py-3">
+            <div style="font-size:1.5rem;font-weight:700;color:var(--accent);">${{ "{:,.0f}".format(weekly_cost) }}</div>
+            <div class="text-muted" style="font-size:0.75rem;">Projected Labor Cost</div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="content-card text-center py-3">
+            {% if projected_labor_pct is not none %}
+            <div style="font-size:1.5rem;font-weight:700;color:{% if projected_labor_pct > 35 %}#ef4444{% elif projected_labor_pct > 28 %}#f59e0b{% else %}#22c55e{% endif %};">
+                {{ "%.1f"|format(projected_labor_pct) }}%
+            </div>
+            <div class="text-muted" style="font-size:0.75rem;">Proj. Labor % (vs LW Sales)</div>
+            {% else %}
+            <div style="font-size:1.5rem;font-weight:700;color:var(--text-muted);">—</div>
+            <div class="text-muted" style="font-size:0.75rem;">No last-week sales data</div>
+            {% endif %}
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="content-card text-center py-3">
+            <div style="font-size:1.5rem;font-weight:700;color:var(--text-muted);">{{ employees|length }}</div>
+            <div class="text-muted" style="font-size:0.75rem;">Active Employees</div>
+        </div>
+    </div>
+</div>
+
+<div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
+    <div class="d-flex gap-2 flex-wrap">
+        <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#addShiftModal">
+            <i class="bi bi-plus-lg me-1"></i>Add Shift
+        </button>
+        <form method="POST" action="{{ url_for('schedule_copy_week') }}" class="d-inline"
+              onsubmit="return confirm('Copy all shifts from last week into this week?')">
+            <input type="hidden" name="week" value="{{ monday.isoformat() }}">
+            <button type="submit" class="btn btn-sm btn-outline-secondary">
+                <i class="bi bi-copy me-1"></i>Copy Last Week
+            </button>
+        </form>
+    </div>
+    <div class="d-flex align-items-center gap-2" style="font-size:0.78rem;">
+        <span class="role-legend server">Server</span>
+        <span class="role-legend bartender">Bartender</span>
+        <span class="role-legend kitchen">Kitchen</span>
+        <span class="role-legend manager">Manager</span>
+        <span class="role-legend host">Host</span>
+        <span class="role-legend other">Other</span>
+    </div>
+</div>
+
+<div class="content-card p-0" style="overflow-x:auto;">
+<table class="schedule-table">
+    <thead>
+        <tr>
+            <th class="emp-col">Employee</th>
+            {% for day in week_days %}
+            <th class="day-col {% if day.isoformat() == today_str %}today-col{% endif %}">
+                <div class="day-name">{{ day.strftime('%a') }}</div>
+                <div class="day-date {% if day.isoformat() == today_str %}today-badge{% endif %}">{{ day.strftime('%-m/%-d') }}</div>
+            </th>
+            {% endfor %}
+        </tr>
+    </thead>
+    <tbody>
+        {% for emp in employees %}
+        <tr>
+            <td class="emp-cell">
+                <div class="emp-name">{{ emp.first_name }} {{ emp.last_name }}</div>
+                <div class="emp-role">{{ emp.role or '—' }}</div>
+            </td>
+            {% for day in week_days %}
+            {% set key = (emp.id, day.isoformat()) %}
+            {% set day_shifts = shift_map.get(key, []) %}
+            <td class="shift-cell" data-emp="{{ emp.id }}" data-date="{{ day.isoformat() }}" data-role="{{ emp.role or '' }}">
+                {% for s in day_shifts %}
+                <div class="shift-pill {{ s.role|lower|replace(' ','-')|replace('/','-') if s.role else 'other' }}-pill {% if s.status == 'called_out' %}called-out{% elif s.status == 'no_show' %}no-show{% endif %}"
+                     title="{{ s.role }} · {{ s.start_time }}–{{ s.end_time }}{% if s.notes %} · {{ s.notes }}{% endif %}"
+                     onclick="openEditModal({{ s.id }})">
+                    <span class="shift-time">{{ s.start_time }}–{{ s.end_time }}</span>
+                    {% if s.status == 'called_out' %}<i class="bi bi-telephone-x-fill" style="font-size:0.6rem;opacity:0.7;"></i>
+                    {% elif s.status == 'no_show' %}<i class="bi bi-x-octagon-fill" style="font-size:0.6rem;opacity:0.7;"></i>{% endif %}
+                </div>
+                {% endfor %}
+                <button class="add-shift-inline" onclick="openAddModal({{ emp.id }}, '{{ day.isoformat() }}', '{{ emp.role or '' }}')" title="Add shift">+</button>
+            </td>
+            {% endfor %}
+        </tr>
+        {% else %}
+        <tr>
+            <td colspan="8" class="text-center text-muted py-5">
+                No active employees found for {{ restaurant.name }}.
+                <a href="{{ url_for('employees') }}">Sync from Toast</a>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+    {% if employees %}
+    <tfoot>
+        <tr class="daily-totals">
+            <td class="emp-col"><strong>Daily Total</strong></td>
+            {% for day in week_days %}
+            {% set d = day.isoformat() %}
+            <td class="text-center">
+                {% if daily_hours.get(d, 0) > 0 %}
+                <div style="font-size:0.78rem;font-weight:600;color:var(--text);">{{ "%.1f"|format(daily_hours.get(d, 0)) }}h</div>
+                <div style="font-size:0.72rem;color:var(--text-muted);">${{ "{:,.0f}".format(daily_cost.get(d, 0)) }}</div>
+                {% else %}<span class="text-muted" style="font-size:0.72rem;">—</span>{% endif %}
+            </td>
+            {% endfor %}
+        </tr>
+    </tfoot>
+    {% endif %}
+</table>
+</div>
+
+<!-- ADD SHIFT MODAL -->
+<div class="modal fade" id="addShiftModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-plus-circle me-2"></i>Add Shift</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="{{ url_for('schedule_add_shift') }}">
+                <input type="hidden" name="week" value="{{ monday.isoformat() }}">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Employee</label>
+                        <select name="employee_id" id="add-emp-select" class="form-select" required>
+                            <option value="">— select —</option>
+                            {% for emp in employees %}
+                            <option value="{{ emp.id }}" data-role="{{ emp.role or '' }}">{{ emp.first_name }} {{ emp.last_name }}{% if emp.role %} ({{ emp.role }}){% endif %}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Date</label>
+                        <select name="shift_date" id="add-date-select" class="form-select" required>
+                            {% for day in week_days %}
+                            <option value="{{ day.isoformat() }}">{{ day.strftime('%A, %b %-d') }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="row g-2 mb-3">
+                        <div class="col">
+                            <label class="form-label fw-semibold">Start</label>
+                            <input type="time" name="start_time" id="add-start" class="form-control" value="09:00" required>
+                        </div>
+                        <div class="col">
+                            <label class="form-label fw-semibold">End</label>
+                            <input type="time" name="end_time" id="add-end" class="form-control" value="17:00" required>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Role</label>
+                        <input type="text" name="role" id="add-role" class="form-control" placeholder="Server, Bartender…">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Notes</label>
+                        <input type="text" name="notes" class="form-control" placeholder="Optional">
+                    </div>
+                    <div id="add-cost-preview" class="alert alert-info py-2" style="font-size:0.8rem;display:none;"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Add Shift</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- EDIT SHIFT MODAL -->
+<div class="modal fade" id="editShiftModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-pencil me-2"></i>Edit Shift</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" id="editShiftForm" action="">
+                <input type="hidden" name="week" value="{{ monday.isoformat() }}">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Employee</label>
+                        <select name="employee_id" id="edit-emp-select" class="form-select" required>
+                            {% for emp in employees %}
+                            <option value="{{ emp.id }}">{{ emp.first_name }} {{ emp.last_name }}{% if emp.role %} ({{ emp.role }}){% endif %}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Date</label>
+                        <select name="shift_date" id="edit-date-select" class="form-select" required>
+                            {% for day in week_days %}
+                            <option value="{{ day.isoformat() }}">{{ day.strftime('%A, %b %-d') }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="row g-2 mb-3">
+                        <div class="col">
+                            <label class="form-label fw-semibold">Start</label>
+                            <input type="time" name="start_time" id="edit-start" class="form-control" required>
+                        </div>
+                        <div class="col">
+                            <label class="form-label fw-semibold">End</label>
+                            <input type="time" name="end_time" id="edit-end" class="form-control" required>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Role</label>
+                        <input type="text" name="role" id="edit-role" class="form-control">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Status</label>
+                        <select name="status" id="edit-status" class="form-select">
+                            <option value="scheduled">Scheduled</option>
+                            <option value="confirmed">Confirmed</option>
+                            <option value="called_out">Called Out</option>
+                            <option value="no_show">No Show</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Notes</label>
+                        <input type="text" name="notes" id="edit-notes" class="form-control">
+                    </div>
+                </div>
+                <div class="modal-footer justify-content-between">
+                    <form method="POST" id="deleteShiftForm">
+                        <input type="hidden" name="week" value="{{ monday.isoformat() }}">
+                        <button type="submit" class="btn btn-outline-danger btn-sm" onclick="return confirm('Delete this shift?')">
+                            <i class="bi bi-trash"></i> Delete
+                        </button>
+                    </form>
+                    <div>
+                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" form="editShiftForm" class="btn btn-primary">Save Changes</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<style>
+.schedule-table { width:100%; border-collapse:collapse; min-width:700px; }
+.schedule-table thead th { background:var(--surface); padding:10px 8px 8px; text-align:center; border-bottom:1px solid var(--border); position:sticky; top:0; z-index:2; }
+.schedule-table .emp-col { min-width:140px; text-align:left; padding-left:16px; }
+.schedule-table .day-col { width:calc((100% - 140px) / 7); }
+.today-col { background:rgba(61,220,132,0.06) !important; }
+.day-name { font-size:0.72rem; text-transform:uppercase; color:var(--text-muted); letter-spacing:0.04em; }
+.day-date { font-size:0.88rem; font-weight:600; color:var(--text); }
+.today-badge { color:var(--accent) !important; }
+.emp-cell { padding:8px 8px 8px 16px; border-bottom:1px solid var(--border); vertical-align:middle; background:var(--surface); }
+.emp-name { font-size:0.83rem; font-weight:600; white-space:nowrap; }
+.emp-role { font-size:0.7rem; color:var(--text-muted); }
+.shift-cell { border-bottom:1px solid var(--border); border-left:1px solid var(--border); padding:4px 4px 2px; vertical-align:top; min-height:52px; position:relative; }
+.shift-cell:hover { background:rgba(255,255,255,0.03); }
+.shift-pill { display:flex; align-items:center; gap:3px; border-radius:4px; padding:2px 6px; margin-bottom:2px; cursor:pointer; font-size:0.72rem; font-weight:500; transition:opacity 0.15s; }
+.shift-pill:hover { opacity:0.82; }
+.shift-time { flex:1; }
+.server-pill         { background:rgba(59,130,246,0.18);  color:#93c5fd; border-left:3px solid #3b82f6; }
+.bartender-pill      { background:rgba(139,92,246,0.18);  color:#c4b5fd; border-left:3px solid #8b5cf6; }
+.kitchen-pill,
+.cook-pill,
+.line-cook-pill      { background:rgba(249,115,22,0.18);  color:#fdba74; border-left:3px solid #f97316; }
+.manager-pill        { background:rgba(34,197,94,0.18);   color:#86efac; border-left:3px solid #22c55e; }
+.host-pill,
+.hostess-pill        { background:rgba(20,184,166,0.18);  color:#5eead4; border-left:3px solid #14b8a6; }
+.other-pill          { background:rgba(148,163,184,0.12); color:#94a3b8; border-left:3px solid #64748b; }
+.called-out { opacity:0.45 !important; text-decoration:line-through; }
+.no-show    { opacity:0.45 !important; text-decoration:line-through; background:rgba(239,68,68,0.12) !important; }
+.add-shift-inline { display:none; width:20px; height:20px; border-radius:4px; border:1px dashed var(--border); background:transparent; color:var(--text-muted); font-size:0.85rem; line-height:1; cursor:pointer; padding:0; transition:all 0.15s; }
+.shift-cell:hover .add-shift-inline { display:inline-flex; align-items:center; justify-content:center; }
+.add-shift-inline:hover { border-color:var(--accent); color:var(--accent); }
+.daily-totals td { padding:8px; border-top:2px solid var(--border); background:var(--surface); }
+.daily-totals .emp-col { padding-left:16px; }
+.role-legend { display:inline-block; padding:2px 8px; border-radius:4px; font-size:0.7rem; font-weight:500; }
+.role-legend.server     { background:rgba(59,130,246,0.18); color:#93c5fd; }
+.role-legend.bartender  { background:rgba(139,92,246,0.18); color:#c4b5fd; }
+.role-legend.kitchen    { background:rgba(249,115,22,0.18); color:#fdba74; }
+.role-legend.manager    { background:rgba(34,197,94,0.18);  color:#86efac; }
+.role-legend.host       { background:rgba(20,184,166,0.18); color:#5eead4; }
+.role-legend.other      { background:rgba(148,163,184,0.12); color:#94a3b8; }
+</style>
+
+<script>
+function openAddModal(empId, dateStr, role) {
+    if (empId) document.getElementById('add-emp-select').value = empId;
+    if (dateStr) document.getElementById('add-date-select').value = dateStr;
+    if (role) document.getElementById('add-role').value = role;
+    new bootstrap.Modal(document.getElementById('addShiftModal')).show();
+}
+
+function openEditModal(shiftId) {
+    fetch(`/api/schedule/shift/${shiftId}`)
+        .then(r => r.json())
+        .then(s => {
+            document.getElementById('editShiftForm').action = `/schedule/shift/${shiftId}/edit`;
+            document.getElementById('deleteShiftForm').action = `/schedule/shift/${shiftId}/delete`;
+            document.getElementById('edit-emp-select').value = s.employee_id;
+            document.getElementById('edit-date-select').value = s.shift_date;
+            document.getElementById('edit-start').value = s.start_time;
+            document.getElementById('edit-end').value = s.end_time;
+            document.getElementById('edit-role').value = s.role;
+            document.getElementById('edit-status').value = s.status;
+            document.getElementById('edit-notes').value = s.notes;
+            new bootstrap.Modal(document.getElementById('editShiftModal')).show();
+        });
+}
+
+document.getElementById('add-emp-select').addEventListener('change', function() {
+    const opt = this.options[this.selectedIndex];
+    if (opt && opt.dataset.role) document.getElementById('add-role').value = opt.dataset.role;
+    updateCostPreview();
+});
+
+const empRates = {
+    {% for emp in employees %}
+    {{ emp.id }}: { rate: {{ (emp.manual_pay_rate if emp.manual_pay_rate is not none else emp.pay_rate) or 0 }}, pay_type: "{{ emp.pay_type or 'hourly' }}" },
+    {% endfor %}
+};
+
+function updateCostPreview() {
+    const empId = parseInt(document.getElementById('add-emp-select').value);
+    const start = document.getElementById('add-start').value;
+    const end = document.getElementById('add-end').value;
+    const preview = document.getElementById('add-cost-preview');
+    if (!empId || !start || !end) { preview.style.display = 'none'; return; }
+    const [sh, sm] = start.split(':').map(Number);
+    const [eh, em] = end.split(':').map(Number);
+    let startM = sh*60+sm, endM = eh*60+em;
+    if (endM <= startM) endM += 1440;
+    const hrs = (endM - startM) / 60;
+    const emp = empRates[empId];
+    if (!emp) { preview.style.display = 'none'; return; }
+    const cost = emp.pay_type === 'salary' ? emp.rate/52/5 : hrs * emp.rate;
+    preview.style.display = 'block';
+    preview.innerHTML = `<i class="bi bi-info-circle me-1"></i><strong>${hrs.toFixed(1)} hrs</strong> &nbsp;·&nbsp; Est. cost: <strong>$${cost.toFixed(2)}</strong>`;
+}
+['add-start','add-end'].forEach(id => document.getElementById(id).addEventListener('change', updateCostPreview));
+</script>
+{% endblock %}

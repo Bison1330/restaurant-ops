@@ -571,6 +571,9 @@
             </a>
 
             <div class="nav-section" style="margin-top: 8px;">Team</div>
+            <a href="{{ url_for('schedule') }}" class="{% if '/schedule' in request.path %}active{% endif %}">
+                <i class="bi bi-calendar3-week"></i> Schedule
+            </a>
             <a href="{{ url_for('employees') }}" class="{% if '/employees' in request.path %}active{% endif %}">
                 <i class="bi bi-people"></i> Employees
             </a>
