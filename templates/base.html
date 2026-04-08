@@ -1049,31 +1049,32 @@
             clearTimeout(bisonState.bubbleTimeout);
             clearInterval(bisonState.typewriterTimer);
         }
-        function bisonShowBubble(text) {
+        // Show the bubble with `text`. If `streaming` is true, the read-time
+        // auto-hide timer is NOT armed — call bisonFinalizeBubble() once the
+        // stream is complete to start the timer.
+        function bisonShowBubble(text, streaming) {
             bisonHideChips();
             const bubble = document.getElementById('bisonBubble');
             const target = document.getElementById('bisonBubbleText');
-            target.innerHTML = '';
+            target.innerHTML = bisonHighlightNumbers(text || '');
             bubble.style.display = 'block';
             bisonRepositionFloaters();
 
-            let i = 0;
             clearInterval(bisonState.typewriterTimer);
             clearTimeout(bisonState.bubbleTimeout);
-            bisonState.typewriterTimer = setInterval(() => {
-                i++;
-                target.innerHTML = bisonHighlightNumbers(text.slice(0, i));
-                bisonRepositionFloaters();
-                if (i >= text.length) {
-                    clearInterval(bisonState.typewriterTimer);
-                    // Start the read-time timer only after the typewriter finishes
-                    clearTimeout(bisonState.bubbleTimeout);
-                    bisonState.bubbleTimeout = setTimeout(() => {
-                        bisonHideBubble();
-                        bisonShowChips();
-                    }, 20000);
-                }
-            }, 18);
+            if (!streaming) {
+                bisonState.bubbleTimeout = setTimeout(() => {
+                    bisonHideBubble();
+                    bisonShowChips();
+                }, 20000);
+            }
+        }
+        function bisonFinalizeBubble() {
+            clearTimeout(bisonState.bubbleTimeout);
+            bisonState.bubbleTimeout = setTimeout(() => {
+                bisonHideBubble();
+                bisonShowChips();
+            }, 20000);
         }
         function bisonHighlightNumbers(s) {
             const esc = s.replace(/[&<>"']/g, c => ({
@@ -1113,6 +1114,22 @@
         }
 
         // ---- Ask the AI -----------------------------------------------------
+        async function bisonAskJSONFallback(question, key) {
+            const r = await fetch('/api/assistant', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    messages: bisonState.history,
+                    restaurant_id: BISON_AI_RID,
+                }),
+            });
+            const data = await r.json();
+            const reply = data.response || data.error || '(no response)';
+            bisonState.history.push({role: 'assistant', content: reply});
+            bisonState.cache.set(key, {t: Date.now(), response: reply});
+            bisonShowBubble(reply);
+        }
+
         async function bisonAsk(question) {
             bisonHideChips();
             const key = BISON_AI_RID + '|' + question;
@@ -1121,25 +1138,89 @@
                 bisonShowBubble(cached.response);
                 return;
             }
-            bisonShowBubble('…');
+            bisonShowBubble('…', true);
+            bisonState.history.push({role: 'user', content: question});
+
             try {
-                bisonState.history.push({role: 'user', content: question});
-                const r = await fetch('/api/assistant', {
+                const r = await fetch('/api/assistant/stream', {
                     method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'text/event-stream',
+                    },
                     body: JSON.stringify({
                         messages: bisonState.history,
                         restaurant_id: BISON_AI_RID,
                     }),
                 });
-                const data = await r.json();
-                const reply = data.response || data.error || '(no response)';
-                bisonState.history.push({role: 'assistant', content: reply});
-                bisonState.cache.set(key, {t: Date.now(), response: reply});
-                bisonShowBubble(reply);
+                if (!r.ok || !r.body) throw new Error('stream failed: ' + r.status);
+
+                const reader = r.body.getReader();
+                const decoder = new TextDecoder();
+                let buf = '';
+                let acc = '';
+                let pendingAction = null;
+                let finished = false;
+
+                while (!finished) {
+                    const { value, done } = await reader.read();
+                    if (done) break;
+                    buf += decoder.decode(value, { stream: true });
+
+                    let idx;
+                    while ((idx = buf.indexOf('\n\n')) !== -1) {
+                        const block = buf.slice(0, idx);
+                        buf = buf.slice(idx + 2);
+
+                        let eventName = 'message';
+                        let dataStr = '';
+                        for (const line of block.split('\n')) {
+                            if (line.startsWith('event:')) {
+                                eventName = line.slice(6).trim();
+                            } else if (line.startsWith('data:')) {
+                                dataStr += line.slice(5).trimStart();
+                            }
+                        }
+                        if (!dataStr) continue;
+
+                        let data;
+                        try { data = JSON.parse(dataStr); } catch (e) { continue; }
+
+                        if (eventName === 'message' || eventName === 'delta') {
+                            if (data.delta) {
+                                acc += data.delta;
+                                bisonShowBubble(acc, true);
+                            }
+                        } else if (eventName === 'pending_action') {
+                            pendingAction = data;
+                        } else if (eventName === 'done') {
+                            const finalText = data.response || acc || '(no response)';
+                            bisonState.history.push({role: 'assistant', content: finalText});
+                            bisonState.cache.set(key, {t: Date.now(), response: finalText});
+                            bisonShowBubble(finalText, true);
+                            bisonFinalizeBubble();
+                            if (pendingAction) {
+                                console.log('pending action:', pendingAction);
+                            }
+                            finished = true;
+                            break;
+                        } else if (eventName === 'error') {
+                            throw new Error(data.message || 'stream error');
+                        }
+                    }
+                }
+                if (!finished) {
+                    // Stream ended without `done` — finalize what we have
+                    bisonFinalizeBubble();
+                }
             } catch (e) {
-                bisonShowBubble('Network error — please try again.');
-                console.error('assistant fetch failed', e);
+                console.error('assistant stream failed, falling back to JSON', e);
+                try {
+                    await bisonAskJSONFallback(question, key);
+                } catch (e2) {
+                    console.error('JSON fallback also failed', e2);
+                    bisonShowBubble('Network error — please try again.');
+                }
             }
         }
 

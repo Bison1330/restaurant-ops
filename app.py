@@ -8,7 +8,7 @@ CENTRAL_TZ = pytz.timezone("US/Central")
 
 from flask import (
     Flask, render_template, request, redirect, url_for, flash,
-    session, send_file, jsonify, make_response
+    session, send_file, jsonify, make_response, Response, stream_with_context
 )
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from werkzeug.utils import secure_filename
@@ -1397,6 +1397,175 @@ def api_assistant():
     except Exception as e:
         print(f"[assistant] error: {e}")
         return jsonify({"response": f"Sorry — the assistant hit an error: {e}"}), 200
+
+
+@app.route("/api/assistant/stream", methods=["POST"])
+def api_assistant_stream():
+    """SSE-streamed version of /api/assistant.
+
+    Tool-use iterations still happen server-side; final text deltas are
+    forwarded to the client as `data:` events. A terminal `event: done`
+    carries the full assembled text. A `event: pending_action` is sent
+    when the model calls a mutating tool.
+    """
+    payload = request.get_json(silent=True) or {}
+    history = _normalize_history(payload)
+    if not history:
+        return jsonify({"error": "message required"}), 400
+
+    restaurant = _resolve_restaurant_from_payload(payload)
+    ctx = _assistant_gather_context(restaurant)
+    system_prompt = ASSISTANT_SYSTEM_TEMPLATE.format(**ctx)
+
+    last_user = next(
+        (m.get("content", "") for m in reversed(history) if m.get("role") == "user"),
+        "",
+    )
+    if isinstance(last_user, str):
+        chip_key = last_user.strip().lower().rstrip("?.!")
+        chip_instructions = {
+            "morning briefing": (
+                "The user clicked the 'Morning Briefing' chip. Produce a concise "
+                "morning briefing covering: yesterday's total sales and how it "
+                "compared to the prior week, who is on the schedule today, any "
+                "active alerts that need attention, and weather if it's relevant "
+                "to the operation. Keep it under ~80 words and lead with the "
+                "single most important number."
+            ),
+            "end of day summary": (
+                "The user clicked the 'End of Day Summary' chip. Summarize: "
+                "total sales for today, labor as a % of sales, the top 3 selling "
+                "items, and any issues to flag for tomorrow's open. Be terse — "
+                "bullet style, under ~80 words."
+            ),
+            "who's clocked in": (
+                "The user clicked the \"Who's Clocked In?\" chip. List every "
+                "employee currently on the clock, their role, and the hours "
+                "they've worked so far today. If nobody is clocked in, say so "
+                "plainly."
+            ),
+            "what's selling": (
+                "The user clicked the \"What's Selling?\" chip. Show the top 5 "
+                "items by quantity sold in the last 2 hours. Format as a short "
+                "ranked list with item name and quantity."
+            ),
+        }
+        extra = chip_instructions.get(chip_key)
+        if extra:
+            system_prompt = system_prompt + "\n\n" + extra
+
+    api_key = os.environ.get("ANTHROPIC_API_KEY")
+
+    def sse(event_name, data_obj):
+        line = f"event: {event_name}\n" if event_name else ""
+        return f"{line}data: {_json.dumps(data_obj)}\n\n"
+
+    def generate():
+        if not api_key:
+            yield sse("done", {"response": (
+                "The AI assistant isn't configured yet — set ANTHROPIC_API_KEY "
+                "on the server to enable it."
+            )})
+            return
+
+        try:
+            from anthropic import Anthropic
+            client = Anthropic(api_key=api_key)
+
+            messages = [dict(m) for m in history]
+            full_text = ""
+
+            for _iter in range(3):
+                with client.messages.stream(
+                    model="claude-sonnet-4-6",
+                    max_tokens=1024,
+                    system=system_prompt,
+                    tools=ASSISTANT_TOOLS,
+                    messages=messages,
+                ) as stream:
+                    for text_delta in stream.text_stream:
+                        if text_delta:
+                            full_text += text_delta
+                            yield sse(None, {"delta": text_delta})
+                    final_msg = stream.get_final_message()
+
+                if final_msg.stop_reason == "tool_use":
+                    tool_uses = [
+                        b for b in final_msg.content
+                        if getattr(b, "type", None) == "tool_use"
+                    ]
+                    leading_text = "".join(
+                        b.text for b in final_msg.content
+                        if getattr(b, "type", None) == "text"
+                    ).strip()
+
+                    mutating = next(
+                        (tu for tu in tool_uses if tu.name in MUTATING_TOOLS),
+                        None,
+                    )
+                    if mutating:
+                        description = _describe_pending_action(
+                            mutating.name, dict(mutating.input or {}), restaurant
+                        )
+                        yield sse("pending_action", {
+                            "tool": mutating.name,
+                            "input": dict(mutating.input or {}),
+                            "description": description,
+                        })
+                        yield sse("done", {
+                            "response": full_text or leading_text or description,
+                        })
+                        return
+
+                    assistant_blocks = []
+                    for b in final_msg.content:
+                        btype = getattr(b, "type", None)
+                        if btype == "text":
+                            assistant_blocks.append({"type": "text", "text": b.text})
+                        elif btype == "tool_use":
+                            assistant_blocks.append({
+                                "type": "tool_use",
+                                "id": b.id,
+                                "name": b.name,
+                                "input": dict(b.input or {}),
+                            })
+                    messages.append({"role": "assistant", "content": assistant_blocks})
+
+                    tool_results = []
+                    for tu in tool_uses:
+                        handler = READ_TOOL_HANDLERS.get(tu.name)
+                        if handler:
+                            try:
+                                result = handler(restaurant, dict(tu.input or {}))
+                            except Exception as e:
+                                result = {"error": str(e)}
+                        else:
+                            result = {"error": f"unknown tool {tu.name}"}
+                        tool_results.append({
+                            "type": "tool_result",
+                            "tool_use_id": tu.id,
+                            "content": _json.dumps(result, default=str),
+                        })
+                    messages.append({"role": "user", "content": tool_results})
+                    continue
+
+                yield sse("done", {"response": full_text or "(no response)"})
+                return
+
+            yield sse("done", {
+                "response": full_text or "(stopped after too many tool iterations)",
+            })
+        except Exception as e:
+            print(f"[assistant stream] error: {e}")
+            yield sse("error", {"message": str(e)})
+
+    headers = {
+        "Content-Type": "text/event-stream",
+        "Cache-Control": "no-cache",
+        "X-Accel-Buffering": "no",
+        "Connection": "keep-alive",
+    }
+    return Response(stream_with_context(generate()), headers=headers)
 
 
 @app.route("/api/assistant/execute", methods=["POST"])
