@@ -18,7 +18,7 @@ from database import (
     PayrollRun, Employee, Recipe, RecipeIngredient,
     ItemAlias, PriceHistory, UnmatchedItem,
     StorageZone, InventoryItemZone, CountSession, CountEntry,
-    Alert, MenuItemSale, Shift, User, Position,
+    Alert, MenuItemSale, Shift, User, Position, RestaurantSettings, ManagerPreference,
 )
 from mock_data import seed_mock_data
 from connectors.gfs_sftp import fetch_gfs_invoices
@@ -2823,6 +2823,161 @@ def toggle_user_active(user_id):
     db.session.commit()
     flash(f"{'Activated' if user.active else 'Deactivated'} {user.username}.", "success")
     return redirect(url_for("admin_users"))
+
+# ─────────────────────────────────────────────────────────────
+# SETTINGS
+# ─────────────────────────────────────────────────────────────
+
+def _get_or_create_settings(restaurant_id):
+    s = RestaurantSettings.query.filter_by(restaurant_id=restaurant_id).first()
+    if not s:
+        s = RestaurantSettings(restaurant_id=restaurant_id)
+        db.session.add(s)
+        db.session.commit()
+    return s
+
+def _get_or_create_prefs(user_id):
+    p = ManagerPreference.query.filter_by(user_id=user_id).first()
+    if not p:
+        p = ManagerPreference(user_id=user_id)
+        db.session.add(p)
+        db.session.commit()
+    return p
+
+@app.route("/settings")
+def settings():
+    restaurant = _get_selected_restaurant()
+    restaurants = Restaurant.query.all()
+    tab = request.args.get("tab", "notifications")
+    rs = _get_or_create_settings(restaurant.id)
+    positions = Position.query.filter_by(
+        restaurant_id=restaurant.id, active=True
+    ).order_by(Position.display_order).all()
+    prefs = None
+    if current_user.is_authenticated:
+        prefs = _get_or_create_prefs(current_user.id)
+    return render_template("settings.html",
+        restaurant=restaurant,
+        restaurants=restaurants,
+        selected_restaurant=restaurant,
+        tab=tab,
+        rs=rs,
+        positions=positions,
+        prefs=prefs,
+    )
+
+@app.route("/settings/notifications", methods=["POST"])
+def settings_save_notifications():
+    if not current_user.is_authenticated:
+        flash("Please log in to save preferences.", "warning")
+        return redirect(url_for("settings", tab="notifications"))
+    prefs = _get_or_create_prefs(current_user.id)
+    f = request.form
+    prefs.notify_pto_email     = 'notify_pto_email'     in f
+    prefs.notify_pto_sms       = 'notify_pto_sms'       in f
+    prefs.notify_pto_inapp     = 'notify_pto_inapp'     in f
+    prefs.notify_shift_email   = 'notify_shift_email'   in f
+    prefs.notify_shift_sms     = 'notify_shift_sms'     in f
+    prefs.notify_shift_inapp   = 'notify_shift_inapp'   in f
+    prefs.notify_low_stock_email  = 'notify_low_stock_email'  in f
+    prefs.notify_low_stock_inapp  = 'notify_low_stock_inapp'  in f
+    prefs.notify_payroll_email    = 'notify_payroll_email'    in f
+    prefs.notify_payroll_inapp    = 'notify_payroll_inapp'    in f
+    prefs.notify_invoice_email    = 'notify_invoice_email'    in f
+    prefs.notify_invoice_inapp    = 'notify_invoice_inapp'    in f
+    prefs.phone_number   = f.get("phone_number", "").strip()
+    prefs.email_override = f.get("email_override", "").strip()
+    db.session.commit()
+    flash("Notification preferences saved.", "success")
+    return redirect(url_for("settings", tab="notifications"))
+
+@app.route("/settings/schedule", methods=["POST"])
+def settings_save_schedule():
+    restaurant = _get_selected_restaurant()
+    rs = _get_or_create_settings(restaurant.id)
+    f = request.form
+    rs.week_start               = f.get("week_start", "monday")
+    rs.clopening_warning        = 'clopening_warning' in f
+    rs.clopening_min_hours      = float(f.get("clopening_min_hours", 10))
+    rs.shift_acceptance         = 'shift_acceptance' in f
+    rs.allow_shift_swaps        = 'allow_shift_swaps' in f
+    rs.unavailability_approval  = 'unavailability_approval' in f
+    db.session.commit()
+    flash("Schedule settings saved.", "success")
+    return redirect(url_for("settings", tab="schedule"))
+
+@app.route("/settings/labor", methods=["POST"])
+def settings_save_labor():
+    restaurant = _get_selected_restaurant()
+    rs = _get_or_create_settings(restaurant.id)
+    f = request.form
+    rs.overtime_weekly_enabled = 'overtime_weekly_enabled' in f
+    rs.overtime_weekly_hours   = float(f.get("overtime_weekly_hours", 40))
+    rs.overtime_weekly_rate    = float(f.get("overtime_weekly_rate", 1.5))
+    rs.overtime_daily_enabled  = 'overtime_daily_enabled' in f
+    rs.overtime_daily_hours    = float(f.get("overtime_daily_hours", 8))
+    rs.overtime_daily_rate     = float(f.get("overtime_daily_rate", 1.5))
+    rs.labor_pct_goal          = float(f.get("labor_pct_goal", 25))
+    db.session.commit()
+    flash("Labor cost settings saved.", "success")
+    return redirect(url_for("settings", tab="labor"))
+
+@app.route("/settings/timeoff", methods=["POST"])
+def settings_save_timeoff():
+    restaurant = _get_selected_restaurant()
+    rs = _get_or_create_settings(restaurant.id)
+    f = request.form
+    rs.pto_enabled           = 'pto_enabled' in f
+    rs.pto_requires_approval = 'pto_requires_approval' in f
+    rs.pto_accrual_rate      = float(f.get("pto_accrual_rate", 0.025))
+    rs.pto_usage_cap         = float(f.get("pto_usage_cap", 40))
+    db.session.commit()
+    flash("Time off settings saved.", "success")
+    return redirect(url_for("settings", tab="timeoff"))
+
+@app.route("/settings/positions/add", methods=["POST"])
+def settings_add_position():
+    restaurant = _get_selected_restaurant()
+    f = request.form
+    name = f.get("name", "").strip()
+    if name:
+        exists = Position.query.filter_by(
+            restaurant_id=restaurant.id, name=name
+        ).first()
+        if not exists:
+            max_order = db.session.query(
+                db.func.max(Position.display_order)
+            ).filter_by(restaurant_id=restaurant.id).scalar() or 0
+            db.session.add(Position(
+                restaurant_id=restaurant.id,
+                name=name,
+                color_hex=f.get("color_hex", "#64748b"),
+                display_order=max_order + 1,
+            ))
+            db.session.commit()
+            flash(f"Position '{name}' added.", "success")
+        else:
+            flash(f"Position '{name}' already exists.", "warning")
+    return redirect(url_for("settings", tab="positions"))
+
+@app.route("/settings/positions/<int:pos_id>/edit", methods=["POST"])
+def settings_edit_position(pos_id):
+    pos = Position.query.get_or_404(pos_id)
+    f = request.form
+    pos.name      = f.get("name", pos.name).strip()
+    pos.color_hex = f.get("color_hex", pos.color_hex)
+    pos.active    = 'active' in f
+    db.session.commit()
+    flash("Position updated.", "success")
+    return redirect(url_for("settings", tab="positions"))
+
+@app.route("/settings/positions/<int:pos_id>/delete", methods=["POST"])
+def settings_delete_position(pos_id):
+    pos = Position.query.get_or_404(pos_id)
+    pos.active = False
+    db.session.commit()
+    flash("Position removed.", "success")
+    return redirect(url_for("settings", tab="positions"))
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8082, debug=False)

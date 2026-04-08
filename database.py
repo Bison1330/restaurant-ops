@@ -441,3 +441,53 @@ class Position(db.Model):
         """Return r,g,b from hex for use in rgba() CSS."""
         h = self.color_hex.lstrip('#')
         return ','.join(str(int(h[i:i+2], 16)) for i in (0, 2, 4))
+
+
+class RestaurantSettings(db.Model):
+    """Per-restaurant configuration settings."""
+    __tablename__ = 'restaurant_settings'
+    id = db.Column(db.Integer, primary_key=True)
+    restaurant_id = db.Column(db.Integer, db.ForeignKey('restaurants.id'), unique=True, index=True)
+    week_start = db.Column(db.String(10), default='monday')
+    overtime_weekly_enabled = db.Column(db.Boolean, default=True)
+    overtime_weekly_hours = db.Column(db.Float, default=40.0)
+    overtime_weekly_rate = db.Column(db.Float, default=1.5)
+    overtime_daily_enabled = db.Column(db.Boolean, default=False)
+    overtime_daily_hours = db.Column(db.Float, default=8.0)
+    overtime_daily_rate = db.Column(db.Float, default=1.5)
+    labor_pct_goal = db.Column(db.Float, default=25.0)
+    clopening_warning = db.Column(db.Boolean, default=True)
+    clopening_min_hours = db.Column(db.Float, default=10.0)
+    shift_acceptance = db.Column(db.Boolean, default=False)
+    allow_shift_swaps = db.Column(db.Boolean, default=True)
+    unavailability_approval = db.Column(db.Boolean, default=True)
+    pto_enabled = db.Column(db.Boolean, default=True)
+    pto_requires_approval = db.Column(db.Boolean, default=True)
+    pto_accrual_rate = db.Column(db.Float, default=0.025)
+    pto_usage_cap = db.Column(db.Float, default=40.0)
+    early_clockin_minutes = db.Column(db.Integer, default=5)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    restaurant = db.relationship('Restaurant', backref='settings_obj')
+
+
+class ManagerPreference(db.Model):
+    """Per-manager notification and display preferences."""
+    __tablename__ = 'manager_preferences'
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), unique=True, index=True)
+    notify_pto_email = db.Column(db.Boolean, default=True)
+    notify_pto_sms = db.Column(db.Boolean, default=True)
+    notify_pto_inapp = db.Column(db.Boolean, default=True)
+    notify_shift_email = db.Column(db.Boolean, default=False)
+    notify_shift_sms = db.Column(db.Boolean, default=True)
+    notify_shift_inapp = db.Column(db.Boolean, default=True)
+    notify_low_stock_email = db.Column(db.Boolean, default=True)
+    notify_low_stock_inapp = db.Column(db.Boolean, default=True)
+    notify_payroll_email = db.Column(db.Boolean, default=True)
+    notify_payroll_inapp = db.Column(db.Boolean, default=True)
+    notify_invoice_email = db.Column(db.Boolean, default=False)
+    notify_invoice_inapp = db.Column(db.Boolean, default=True)
+    phone_number = db.Column(db.String(20))
+    email_override = db.Column(db.String(100))
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    user = db.relationship('User', backref='preferences')

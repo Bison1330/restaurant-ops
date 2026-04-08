@@ -1,0 +1,432 @@
+{% extends "base.html" %}
+{% block title %}Settings — Bison Stockyard{% endblock %}
+{% block topbar %}<h1>Settings</h1>{% endblock %}
+
+{% block content %}
+{% with messages = get_flashed_messages(with_categories=true) %}
+{% for cat, msg in messages %}
+<div class="alert alert-{{ cat }} alert-dismissible fade show" role="alert">
+    {{ msg }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+</div>
+{% endfor %}
+{% endwith %}
+
+<div class="settings-layout">
+    <div class="settings-tabs">
+        <a href="{{ url_for('settings', tab='notifications') }}" class="settings-tab {% if tab=='notifications' %}active{% endif %}">
+            <i class="bi bi-bell"></i> Notifications
+        </a>
+        <a href="{{ url_for('settings', tab='schedule') }}" class="settings-tab {% if tab=='schedule' %}active{% endif %}">
+            <i class="bi bi-calendar3-week"></i> Schedule
+        </a>
+        <a href="{{ url_for('settings', tab='labor') }}" class="settings-tab {% if tab=='labor' %}active{% endif %}">
+            <i class="bi bi-currency-dollar"></i> Labor Cost
+        </a>
+        <a href="{{ url_for('settings', tab='timeoff') }}" class="settings-tab {% if tab=='timeoff' %}active{% endif %}">
+            <i class="bi bi-calendar-heart"></i> Time Off
+        </a>
+        <a href="{{ url_for('settings', tab='positions') }}" class="settings-tab {% if tab=='positions' %}active{% endif %}">
+            <i class="bi bi-tags"></i> Positions
+        </a>
+    </div>
+
+    <div class="settings-body">
+
+    {# ── NOTIFICATIONS ── #}
+    {% if tab == 'notifications' %}
+    <form method="POST" action="{{ url_for('settings_save_notifications') }}">
+        <div class="settings-section">
+            <div class="settings-section-title">Indicate which notifications you want to receive and how.</div>
+        </div>
+
+        {% macro notif_row(label, desc, key_email, key_sms, key_inapp) %}
+        <div class="notif-row">
+            <div class="notif-info">
+                <div class="notif-label">{{ label }}</div>
+                <div class="notif-desc">{{ desc }}</div>
+            </div>
+            <div class="notif-channels">
+                <label class="channel-toggle">
+                    <input type="checkbox" name="{{ key_email }}" {% if prefs and prefs[key_email] %}checked{% endif %}>
+                    <span class="channel-label"><i class="bi bi-envelope"></i> Email</span>
+                </label>
+                <label class="channel-toggle">
+                    <input type="checkbox" name="{{ key_sms }}" {% if prefs and prefs[key_sms] %}checked{% endif %}>
+                    <span class="channel-label"><i class="bi bi-phone"></i> SMS</span>
+                </label>
+                <label class="channel-toggle">
+                    <input type="checkbox" name="{{ key_inapp }}" {% if prefs and prefs[key_inapp] %}checked{% endif %}>
+                    <span class="channel-label"><i class="bi bi-bell"></i> In-App</span>
+                </label>
+            </div>
+        </div>
+        {% endmacro %}
+
+        {{ notif_row('PTO Requests', 'Alert when an employee submits a time off request.', 'notify_pto_email', 'notify_pto_sms', 'notify_pto_inapp') }}
+        {{ notif_row('Shift Updates', 'Alert on shift changes, swaps, and call-outs.', 'notify_shift_email', 'notify_shift_sms', 'notify_shift_inapp') }}
+        {{ notif_row('Low Stock', 'Alert when inventory drops below par level.', 'notify_low_stock_email', 'notify_low_stock_sms', 'notify_low_stock_inapp') }}
+        {{ notif_row('Payroll', 'Alert when a payroll run is ready to review.', 'notify_payroll_email', 'notify_payroll_sms', 'notify_payroll_inapp') }}
+        {{ notif_row('Invoices', 'Alert when a new invoice arrives for approval.', 'notify_invoice_email', 'notify_invoice_sms', 'notify_invoice_inapp') }}
+
+        <div class="settings-section mt-4">
+            <div class="settings-section-title">Contact details</div>
+            <div class="row g-3">
+                <div class="col-md-5">
+                    <label class="form-label fw-semibold">SMS phone number</label>
+                    <input type="tel" name="phone_number" class="form-control"
+                        placeholder="+1 630 555 0100"
+                        value="{{ prefs.phone_number or '' if prefs else '' }}">
+                </div>
+                <div class="col-md-5">
+                    <label class="form-label fw-semibold">Email override</label>
+                    <input type="email" name="email_override" class="form-control"
+                        placeholder="Leave blank to use account email"
+                        value="{{ prefs.email_override or '' if prefs else '' }}">
+                </div>
+            </div>
+        </div>
+
+        <div class="mt-4 d-flex gap-2">
+            <button type="submit" class="btn btn-primary">Save Notifications</button>
+        </div>
+    </form>
+
+    {# ── SCHEDULE ── #}
+    {% elif tab == 'schedule' %}
+    <form method="POST" action="{{ url_for('settings_save_schedule') }}">
+        <div class="settings-section">
+            <div class="settings-section-title">Schedule settings</div>
+            <div class="setting-row">
+                <div class="setting-info">
+                    <div class="setting-label">First day of the week</div>
+                    <div class="setting-desc">Affects schedule layout and labor cost calculation.</div>
+                </div>
+                <select name="week_start" class="form-select" style="width:180px;">
+                    <option value="monday" {% if rs.week_start=='monday' %}selected{% endif %}>Monday</option>
+                    <option value="sunday" {% if rs.week_start=='sunday' %}selected{% endif %}>Sunday</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="settings-section">
+            <div class="settings-section-title">Labor compliance</div>
+            <div class="setting-row">
+                <div class="setting-info">
+                    <div class="setting-label">Clopening warning</div>
+                    <div class="setting-desc">Warn when an employee closes then opens with less than the minimum rest hours.</div>
+                </div>
+                <div class="d-flex align-items-center gap-3">
+                    <input type="number" name="clopening_min_hours" class="form-control" style="width:80px;"
+                        value="{{ rs.clopening_min_hours }}" min="4" max="24" step="0.5">
+                    <span style="font-size:0.8rem;color:var(--text-muted);">hours minimum</span>
+                    <div class="form-check form-switch mb-0">
+                        <input class="form-check-input" type="checkbox" name="clopening_warning" id="sw_clopen"
+                            {% if rs.clopening_warning %}checked{% endif %}>
+                    </div>
+                </div>
+            </div>
+            <div class="setting-row">
+                <div class="setting-info">
+                    <div class="setting-label">Shift acceptance</div>
+                    <div class="setting-desc">Allow employees to confirm or deny their scheduled shifts.</div>
+                </div>
+                <div class="form-check form-switch mb-0">
+                    <input class="form-check-input" type="checkbox" name="shift_acceptance" id="sw_accept"
+                        {% if rs.shift_acceptance %}checked{% endif %}>
+                </div>
+            </div>
+            <div class="setting-row">
+                <div class="setting-info">
+                    <div class="setting-label">Allow shift swaps</div>
+                    <div class="setting-desc">Allow employees to offer and swap shifts with each other.</div>
+                </div>
+                <div class="form-check form-switch mb-0">
+                    <input class="form-check-input" type="checkbox" name="allow_shift_swaps" id="sw_swaps"
+                        {% if rs.allow_shift_swaps %}checked{% endif %}>
+                </div>
+            </div>
+            <div class="setting-row">
+                <div class="setting-info">
+                    <div class="setting-label">Unavailability approval</div>
+                    <div class="setting-desc">Require manager approval when employees update their unavailability.</div>
+                </div>
+                <div class="form-check form-switch mb-0">
+                    <input class="form-check-input" type="checkbox" name="unavailability_approval" id="sw_unavail"
+                        {% if rs.unavailability_approval %}checked{% endif %}>
+                </div>
+            </div>
+        </div>
+        <div class="mt-4">
+            <button type="submit" class="btn btn-primary">Save Schedule Settings</button>
+        </div>
+    </form>
+
+    {# ── LABOR COST ── #}
+    {% elif tab == 'labor' %}
+    <form method="POST" action="{{ url_for('settings_save_labor') }}">
+        <div class="settings-section">
+            <div class="settings-section-title">Overtime</div>
+            <div class="setting-row">
+                <div class="setting-info">
+                    <div class="setting-label">Weekly overtime</div>
+                    <div class="setting-desc">Illinois standard: over 40 hours/week at 1.5x rate.</div>
+                </div>
+                <div class="d-flex align-items-center gap-2">
+                    <input type="number" name="overtime_weekly_hours" class="form-control" style="width:70px;"
+                        value="{{ rs.overtime_weekly_hours }}" min="1" max="80">
+                    <span style="font-size:0.8rem;color:var(--text-muted);">hrs @ rate x</span>
+                    <input type="number" name="overtime_weekly_rate" class="form-control" style="width:70px;"
+                        value="{{ rs.overtime_weekly_rate }}" min="1" max="3" step="0.1">
+                    <div class="form-check form-switch mb-0 ms-2">
+                        <input class="form-check-input" type="checkbox" name="overtime_weekly_enabled"
+                            {% if rs.overtime_weekly_enabled %}checked{% endif %}>
+                    </div>
+                </div>
+            </div>
+            <div class="setting-row">
+                <div class="setting-info">
+                    <div class="setting-label">Daily overtime</div>
+                    <div class="setting-desc">Extra pay after a set number of hours in a single day.</div>
+                </div>
+                <div class="d-flex align-items-center gap-2">
+                    <input type="number" name="overtime_daily_hours" class="form-control" style="width:70px;"
+                        value="{{ rs.overtime_daily_hours }}" min="1" max="24">
+                    <span style="font-size:0.8rem;color:var(--text-muted);">hrs @ rate x</span>
+                    <input type="number" name="overtime_daily_rate" class="form-control" style="width:70px;"
+                        value="{{ rs.overtime_daily_rate }}" min="1" max="3" step="0.1">
+                    <div class="form-check form-switch mb-0 ms-2">
+                        <input class="form-check-input" type="checkbox" name="overtime_daily_enabled"
+                            {% if rs.overtime_daily_enabled %}checked{% endif %}>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="settings-section">
+            <div class="settings-section-title">Labor %</div>
+            <div class="setting-row">
+                <div class="setting-info">
+                    <div class="setting-label">Labor % goal</div>
+                    <div class="setting-desc">The upper limit you don't want to exceed. Schedule page will warn when projected labor exceeds this.</div>
+                </div>
+                <div class="d-flex align-items-center gap-2">
+                    <input type="number" name="labor_pct_goal" class="form-control" style="width:80px;"
+                        value="{{ rs.labor_pct_goal }}" min="1" max="100" step="0.5">
+                    <span style="font-size:0.8rem;color:var(--text-muted);">%</span>
+                </div>
+            </div>
+        </div>
+        <div class="mt-4">
+            <button type="submit" class="btn btn-primary">Save Labor Settings</button>
+        </div>
+    </form>
+
+    {# ── TIME OFF ── #}
+    {% elif tab == 'timeoff' %}
+    <form method="POST" action="{{ url_for('settings_save_timeoff') }}">
+        <div class="settings-section">
+            <div class="settings-section-title">Time off requests</div>
+            <div class="setting-row">
+                <div class="setting-info">
+                    <div class="setting-label">Allow employees to request time off</div>
+                </div>
+                <div class="form-check form-switch mb-0">
+                    <input class="form-check-input" type="checkbox" name="pto_enabled"
+                        {% if rs.pto_enabled %}checked{% endif %}>
+                </div>
+            </div>
+            <div class="setting-row">
+                <div class="setting-info">
+                    <div class="setting-label">Require manager approval</div>
+                    <div class="setting-desc">All requests must be approved before appearing on the schedule.</div>
+                </div>
+                <div class="form-check form-switch mb-0">
+                    <input class="form-check-input" type="checkbox" name="pto_requires_approval"
+                        {% if rs.pto_requires_approval %}checked{% endif %}>
+                </div>
+            </div>
+        </div>
+        <div class="settings-section">
+            <div class="settings-section-title">Paid time off — Illinois PLAWA</div>
+            <div class="alert py-2 mb-3" style="background:rgba(61,220,132,0.08);border:1px solid rgba(61,220,132,0.2);font-size:0.82rem;">
+                <i class="bi bi-info-circle me-1" style="color:var(--accent);"></i>
+                <strong>Illinois Paid Leave for All Workers Act</strong> — Effective Jan 1, 2024.
+                Employees accrue 1 hour of paid leave per 40 hours worked. Usage capped at 40 hours per calendar year.
+                Accrued balance never expires. Employees may use leave for any reason — no documentation required.
+            </div>
+            <div class="setting-row">
+                <div class="setting-info">
+                    <div class="setting-label">Accrual rate</div>
+                    <div class="setting-desc">Hours of PTO earned per hour worked. Illinois minimum = 0.025 (1hr per 40hrs).</div>
+                </div>
+                <div class="d-flex align-items-center gap-2">
+                    <input type="number" name="pto_accrual_rate" class="form-control" style="width:90px;"
+                        value="{{ rs.pto_accrual_rate }}" min="0.025" max="1" step="0.001">
+                    <span style="font-size:0.8rem;color:var(--text-muted);">hrs earned per hr worked</span>
+                </div>
+            </div>
+            <div class="setting-row">
+                <div class="setting-info">
+                    <div class="setting-label">Annual usage cap</div>
+                    <div class="setting-desc">Maximum hours an employee can use per calendar year. Illinois cap = 40 hours.</div>
+                </div>
+                <div class="d-flex align-items-center gap-2">
+                    <input type="number" name="pto_usage_cap" class="form-control" style="width:80px;"
+                        value="{{ rs.pto_usage_cap }}" min="1" max="80">
+                    <span style="font-size:0.8rem;color:var(--text-muted);">hours per year</span>
+                </div>
+            </div>
+        </div>
+        <div class="mt-4">
+            <button type="submit" class="btn btn-primary">Save Time Off Settings</button>
+        </div>
+    </form>
+
+    {# ── POSITIONS ── #}
+    {% elif tab == 'positions' %}
+    <div class="settings-section">
+        <div class="d-flex align-items-center justify-content-between mb-3">
+            <div class="settings-section-title mb-0">Positions — {{ restaurant.name }}</div>
+            <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#addPositionModal">
+                <i class="bi bi-plus-lg me-1"></i>Add Position
+            </button>
+        </div>
+        <table class="table table-clean">
+            <thead>
+                <tr>
+                    <th style="width:40px;"></th>
+                    <th>Name</th>
+                    <th>Color</th>
+                    <th>Employees</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for pos in positions %}
+                <tr>
+                    <td>
+                        <span style="display:inline-block;width:16px;height:16px;border-radius:50%;background:{{ pos.color_hex }};"></span>
+                    </td>
+                    <td class="fw-semibold" style="color:{{ pos.color_hex }};">{{ pos.name }}</td>
+                    <td><code style="font-size:0.75rem;color:var(--text-muted);">{{ pos.color_hex }}</code></td>
+                    <td class="text-muted" style="font-size:0.82rem;">
+                        {{ pos.employees|length if pos.employees is defined else '—' }}
+                    </td>
+                    <td class="text-end">
+                        <button class="btn btn-xs btn-outline-secondary"
+                            onclick="openEditPosition({{ pos.id }}, '{{ pos.name }}', '{{ pos.color_hex }}')">
+                            <i class="bi bi-pencil"></i>
+                        </button>
+                        <form method="POST" action="{{ url_for('settings_delete_position', pos_id=pos.id) }}" class="d-inline"
+                              onsubmit="return confirm('Remove {{ pos.name }}?')">
+                            <button type="submit" class="btn btn-xs btn-outline-danger">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </form>
+                    </td>
+                </tr>
+                {% else %}
+                <tr><td colspan="5" class="text-center text-muted py-4">No positions yet.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Add Position Modal -->
+    <div class="modal fade" id="addPositionModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Add Position</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <form method="POST" action="{{ url_for('settings_add_position') }}">
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Position name</label>
+                            <input type="text" name="name" class="form-control" required placeholder="e.g. Line Cook">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Color</label>
+                            <input type="color" name="color_hex" class="form-control form-control-color" value="#3b82f6">
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary">Add</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Position Modal -->
+    <div class="modal fade" id="editPositionModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Edit Position</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <form method="POST" id="editPositionForm" action="">
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Position name</label>
+                            <input type="text" name="name" id="edit-pos-name" class="form-control" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Color</label>
+                            <input type="color" name="color_hex" id="edit-pos-color" class="form-control form-control-color">
+                        </div>
+                        <div class="form-check">
+                            <input type="checkbox" name="active" id="edit-pos-active" class="form-check-input" checked>
+                            <label class="form-check-label" for="edit-pos-active">Active</label>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary">Save</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    function openEditPosition(id, name, color) {
+        document.getElementById('editPositionForm').action = `/settings/positions/${id}/edit`;
+        document.getElementById('edit-pos-name').value = name;
+        document.getElementById('edit-pos-color').value = color;
+        new bootstrap.Modal(document.getElementById('editPositionModal')).show();
+    }
+    </script>
+    {% endif %}
+
+    </div>
+</div>
+
+<style>
+.settings-layout { display:flex; gap:0; min-height:600px; }
+.settings-tabs { width:180px; flex-shrink:0; border-right:1px solid var(--border); padding:8px 0; }
+.settings-tab { display:flex; align-items:center; gap:8px; padding:10px 16px; color:var(--text-muted); font-size:0.85rem; text-decoration:none; border-radius:0; transition:all 0.15s; white-space:nowrap; }
+.settings-tab:hover { background:var(--surface-hover); color:var(--text); }
+.settings-tab.active { color:var(--accent); background:rgba(61,220,132,0.06); border-right:2px solid var(--accent); }
+.settings-tab i { font-size:0.95rem; width:16px; }
+.settings-body { flex:1; padding:24px 32px; }
+.settings-section { margin-bottom:32px; }
+.settings-section-title { font-size:0.95rem; font-weight:600; color:var(--accent); margin-bottom:16px; padding-bottom:8px; border-bottom:1px solid var(--border); }
+.setting-row { display:flex; align-items:center; justify-content:space-between; padding:14px 0; border-bottom:1px solid var(--border); gap:16px; }
+.setting-info { flex:1; }
+.setting-label { font-size:0.88rem; font-weight:500; color:var(--text); }
+.setting-desc { font-size:0.78rem; color:var(--text-muted); margin-top:2px; }
+.notif-row { display:flex; align-items:center; justify-content:space-between; padding:14px 0; border-bottom:1px solid var(--border); gap:16px; }
+.notif-info { flex:1; }
+.notif-label { font-size:0.88rem; font-weight:500; color:var(--text); }
+.notif-desc { font-size:0.78rem; color:var(--text-muted); margin-top:2px; }
+.notif-channels { display:flex; gap:8px; }
+.channel-toggle { display:flex; flex-direction:column; align-items:center; gap:4px; cursor:pointer; }
+.channel-toggle input { display:none; }
+.channel-label { padding:4px 10px; border-radius:6px; border:1px solid var(--border); font-size:0.72rem; color:var(--text-muted); transition:all 0.15s; white-space:nowrap; }
+.channel-toggle input:checked + .channel-label { border-color:var(--accent); color:var(--accent); background:rgba(61,220,132,0.08); }
+.btn-xs { padding:2px 8px; font-size:0.72rem; }
+</style>
+{% endblock %}
