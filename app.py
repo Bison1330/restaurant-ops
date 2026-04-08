@@ -555,6 +555,151 @@ def api_sales_summary():
     return jsonify(_build_sales_summary(r, range_name, custom_start, custom_end, compare))
 
 
+# ---------------------------------------------------------------------------
+# Bison AI Assistant — chat endpoint backed by Anthropic Claude
+# ---------------------------------------------------------------------------
+
+ASSISTANT_SYSTEM_TEMPLATE = (
+    "You are an AI assistant for Bison Stockyard restaurant operations platform. "
+    "You help restaurant managers and employees with inventory, recipes, invoices, "
+    "and platform guidance. Current context: {restaurant_name}, {date}, "
+    "{alert_count} open alerts, {low_stock_count} low stock items, "
+    "{pending_invoices} pending invoices. Be concise, practical, and action-oriented. "
+    "When an employee describes adding an item or recipe, extract the structured data "
+    "and confirm before saving. When asked about costs or inventory, query the database."
+)
+
+
+def _assistant_gather_context(restaurant, message):
+    """Pull lightweight DB facts the model can ground its answer in."""
+    rid = restaurant.id if restaurant else None
+    today = datetime.now(CENTRAL_TZ).strftime("%A, %B %d, %Y")
+
+    alert_count = 0
+    low_stock_count = 0
+    pending_invoices = 0
+    if rid:
+        alert_count = Alert.query.filter_by(restaurant_id=rid, resolved=False).count()
+        low_stock_count = InventoryItem.query.filter(
+            InventoryItem.restaurant_id == rid,
+            InventoryItem.par_level > 0,
+            InventoryItem.current_stock < InventoryItem.par_level,
+        ).count()
+        pending_invoices = Invoice.query.filter_by(
+            restaurant_id=rid, status="pending"
+        ).count()
+
+    facts = []
+    msg_lower = (message or "").lower()
+
+    # Recipe lookup — match any recipe whose name appears in the message
+    if rid:
+        recipes = Recipe.query.filter_by(restaurant_id=rid, status="active").all()
+        for r in recipes:
+            if r.name and len(r.name) >= 3 and r.name.lower() in msg_lower:
+                facts.append(
+                    f"Recipe '{r.name}': menu price ${r.menu_price or 0:.2f}, "
+                    f"food cost ${r.total_cost:.2f} ({r.cost_percent:.1f}%), "
+                    f"category {r.category or '—'}"
+                )
+                if len(facts) >= 5:
+                    break
+
+    # Inventory item lookup
+    if rid and len(facts) < 8:
+        items = InventoryItem.query.filter_by(restaurant_id=rid).all()
+        for it in items:
+            if it.name and len(it.name) >= 3 and it.name.lower() in msg_lower:
+                facts.append(
+                    f"Item '{it.name}': on hand {it.current_stock or 0:g} {it.unit or ''}, "
+                    f"par {it.par_level or 0:g}, last cost ${it.last_cost or 0:.2f}"
+                )
+                if len(facts) >= 8:
+                    break
+
+    # Vendor + recent invoices lookup
+    vendors = Vendor.query.filter_by(active=True).all()
+    for v in vendors:
+        if v.name and len(v.name) >= 3 and v.name.lower() in msg_lower:
+            recent = (
+                Invoice.query.filter_by(vendor_id=v.id, restaurant_id=rid)
+                .order_by(Invoice.invoice_date.desc())
+                .limit(3)
+                .all()
+                if rid
+                else []
+            )
+            recent_str = ", ".join(
+                f"#{inv.invoice_number or inv.id} ${inv.total_amount:.2f} ({inv.status})"
+                for inv in recent
+            ) or "no recent invoices"
+            facts.append(f"Vendor '{v.name}': {recent_str}")
+            if len(facts) >= 10:
+                break
+
+    return {
+        "restaurant_name": restaurant.name if restaurant else "(no restaurant selected)",
+        "date": today,
+        "alert_count": alert_count,
+        "low_stock_count": low_stock_count,
+        "pending_invoices": pending_invoices,
+        "facts": facts,
+    }
+
+
+@app.route("/api/assistant", methods=["POST"])
+def api_assistant():
+    payload = request.get_json(silent=True) or {}
+    message = (payload.get("message") or "").strip()
+    rid = payload.get("restaurant_id")
+    if not message:
+        return jsonify({"error": "message required"}), 400
+
+    restaurant = None
+    if rid:
+        try:
+            restaurant = db.session.get(Restaurant, int(rid))
+        except (TypeError, ValueError):
+            restaurant = None
+    if restaurant is None:
+        restaurant = _get_selected_restaurant()
+
+    ctx = _assistant_gather_context(restaurant, message)
+
+    system_prompt = ASSISTANT_SYSTEM_TEMPLATE.format(**ctx)
+    if ctx["facts"]:
+        system_prompt += "\n\nRelevant database facts:\n- " + "\n- ".join(ctx["facts"])
+
+    api_key = os.environ.get("ANTHROPIC_API_KEY")
+    if not api_key:
+        return jsonify({
+            "response": (
+                "The AI assistant isn't configured yet — set the ANTHROPIC_API_KEY "
+                "environment variable on the server to enable it."
+            )
+        })
+
+    try:
+        from anthropic import Anthropic
+        client = Anthropic(api_key=api_key)
+        resp = client.messages.create(
+            model="claude-sonnet-4-5",
+            max_tokens=1024,
+            system=system_prompt,
+            messages=[{"role": "user", "content": message}],
+        )
+        # Concatenate any text blocks from the response
+        text_parts = [
+            block.text for block in resp.content
+            if getattr(block, "type", None) == "text"
+        ]
+        reply = "".join(text_parts).strip() or "(no response)"
+        return jsonify({"response": reply})
+    except Exception as e:
+        print(f"[assistant] error: {e}")
+        return jsonify({"response": f"Sorry — the assistant hit an error: {e}"}), 200
+
+
 @app.route("/invoices")
 def invoices():
     r = _get_selected_restaurant()
