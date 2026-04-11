@@ -65,16 +65,16 @@
                     <td class="fw-semibold">{{ inv.invoice_number }}</td>
                     <td>{{ inv.vendor.name if inv.vendor else '—' }}</td>
                     <td>
-                        {% if inv.source == 'gfs' %}
-                        <span class="source-tag gfs">GFS</span>
-                        {% elif inv.source == 'fintech' %}
-                        <span class="source-tag fintech">Fintech</span>
-                        {% elif inv.source == 'ocr' %}
-                        <span class="source-tag ocr">OCR</span>
-                        {% elif inv.source == 'email' %}
-                        <span class="source-tag email">Email</span>
+                        {% if inv.source == 'xtrachef' %}
+                        <span class="source-badge xtrachef">xtraCHEF</span>
+                        {% elif inv.source == 'gfs' or inv.source == 'GFS' %}
+                        <span class="source-badge gfs">GFS</span>
+                        {% elif inv.source == 'fintech' or inv.source == 'FINTECH' %}
+                        <span class="source-badge fintech">Fintech</span>
+                        {% elif inv.source == 'manual' or inv.source == 'MANUAL' %}
+                        <span class="source-badge manual">Manual</span>
                         {% else %}
-                        <span class="source-tag manual">Manual</span>
+                        <span class="source-badge manual">{{ inv.source or 'Manual' }}</span>
                         {% endif %}
                     </td>
                     <td>${{ "{:,.2f}".format(inv.total_amount) }}</td>
@@ -143,6 +143,12 @@
     .source-tag.ocr { background: rgba(232,93,4,0.12); color: #e85d04; }
     .source-tag.email { background: rgba(108,117,125,0.12); color: #6c757d; }
     .source-tag.manual { background: rgba(108,117,125,0.08); color: #999; }
+
+    .source-badge { display:inline-block; padding:2px 8px; border-radius:4px; font-size:0.72rem; font-weight:600; text-transform:uppercase; letter-spacing:0.03em; }
+    .source-badge.xtrachef { background:rgba(61,220,132,0.15); color:#3ddc84; }
+    .source-badge.gfs { background:rgba(59,130,246,0.15); color:#3b82f6; }
+    .source-badge.fintech { background:rgba(168,85,247,0.15); color:#a855f7; }
+    .source-badge.manual { background:rgba(100,116,139,0.15); color:#94a3b8; }
 
     .action-btn { border-radius: 6px; font-weight: 600; }
 </style>
