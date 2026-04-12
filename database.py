@@ -231,9 +231,14 @@ class StorageZone(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     restaurant_id = db.Column(db.Integer, db.ForeignKey('restaurants.id'))
     name = db.Column(db.String(100), nullable=False)
+    description = db.Column(db.String(200))
     sort_order = db.Column(db.Integer, default=0)
+    count_day = db.Column(db.String(50))
+    count_time = db.Column(db.String(10))
     active = db.Column(db.Boolean, default=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
     restaurant = db.relationship('Restaurant', backref='storage_zones')
+    items = db.relationship('InventoryItem', secondary='inventory_item_zones', backref=db.backref('zones', overlaps='items'), overlaps='zones')
 
 
 class InventoryItemZone(db.Model):
@@ -784,3 +789,18 @@ class EmployeeDocument(db.Model):
             return None
         from datetime import date
         return (self.expiration_date - date.today()).days
+
+
+class CountSheet(db.Model):
+    """A named count list assigned to a storage zone"""
+    __tablename__ = 'count_sheets'
+    id = db.Column(db.Integer, primary_key=True)
+    restaurant_id = db.Column(db.Integer, db.ForeignKey('restaurants.id'), index=True)
+    storage_zone_id = db.Column(db.Integer, db.ForeignKey('storage_zones.id'), nullable=True)
+    name = db.Column(db.String(100), nullable=False)
+    status = db.Column(db.String(20), default='published')  # published, draft
+    item_count = db.Column(db.Integer, default=0)
+    sort_order = db.Column(db.Integer, default=0)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    restaurant = db.relationship('Restaurant', backref='count_sheets')
+    zone = db.relationship('StorageZone', backref='count_sheets')
