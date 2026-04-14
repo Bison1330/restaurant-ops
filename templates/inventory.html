@@ -1,144 +1,153 @@
 {% extends "base.html" %}
+{% block title %}Inventory — Bison Stockyard{% endblock %}
 
-{% block title %}Inventory — RestaurantOps{% endblock %}
-
-{% block topbar %}
-<h1>Inventory</h1>
-{% endblock %}
+{% block topbar %}<h1>Inventory</h1>{% endblock %}
 
 {% block topbar_actions %}
-<span class="text-muted" style="font-size: 0.82rem;">
-    {{ items|length }} item{{ 's' if items|length != 1 else '' }}
-</span>
+<div class="d-flex align-items-center gap-2">
+    <span class="text-muted" style="font-size:0.82rem;">{{ total_items }} items</span>
+    <select id="zone-filter" class="form-select form-select-sm" style="width:200px;"
+            onchange="filterZone(this.value)">
+        <option value="">All Areas</option>
+        {% for zone in zones %}
+        <option value="{{ zone.id }}">{{ zone.name }}
+            {% if zone.count_sheets %}({{ zone.count_sheets[0].item_count }}){% endif %}
+        </option>
+        {% endfor %}
+    </select>
+    <input type="text" id="item-search" class="form-control form-control-sm"
+           placeholder="Search items..." style="width:200px;"
+           oninput="filterItems(this.value)">
+    <a href="{{ url_for('counts') }}" class="btn btn-sm btn-primary">
+        <i class="bi bi-clipboard-check me-1"></i>Start Count
+    </a>
+</div>
 {% endblock %}
 
 {% block content %}
+<div id="inventory-body">
+{% for zone in zones %}
+{% set zone_items = items_by_zone.get(zone.id, []) %}
+{% if zone_items %}
+<div class="zone-section mb-4" data-zone-id="{{ zone.id }}">
+    <div class="zone-header d-flex align-items-center justify-content-between mb-2">
+        <div class="d-flex align-items-center gap-2">
+            <i class="bi bi-box-seam" style="color:var(--accent);"></i>
+            <span class="fw-semibold" style="font-size:0.95rem;">{{ zone.name }}</span>
+            <span class="badge" style="background:rgba(61,220,132,0.12);color:var(--accent);font-size:0.72rem;">
+                {{ zone_items|length }} items
+            </span>
+            {% if zone.count_day %}
+            <span class="text-muted" style="font-size:0.75rem;">
+                <i class="bi bi-calendar3 me-1"></i>{{ zone.count_day }} {{ zone.count_time or '' }}
+            </span>
+            {% endif %}
+        </div>
+        {% if zone.count_sheets %}
+        <span class="text-muted" style="font-size:0.75rem;">
+            {{ zone.count_sheets[0].name }}
+        </span>
+        {% endif %}
+    </div>
 
-{% macro inventory_table(item_list) %}
-<div class="table-responsive">
-    <table class="table table-clean">
-        <thead>
-            <tr>
-                <th>Item</th>
-                <th>Category</th>
-                <th>Vendor</th>
-                <th>Par Level</th>
-                <th>On Hand</th>
-                <th>Last Cost</th>
-                <th>Status</th>
-                <th>Adjust Stock</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for item in item_list %}
-            <tr>
+    <div class="content-card p-0">
+        <table class="table table-clean mb-0">
+            <thead>
+                <tr>
+                    <th>Item</th>
+                    <th>Category</th>
+                    <th>Vendor</th>
+                    <th>Par</th>
+                    <th>On Hand</th>
+                    <th>Last Cost</th>
+                    <th>Status</th>
+                    <th>Adjust</th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for item in zone_items %}
+            <tr class="item-row" data-name="{{ item.name|lower }}" data-zone="{{ zone.id }}">
                 <td class="fw-semibold">{{ item.name }}</td>
                 <td>
-                    <span class="category-tag">{{ item.category|capitalize if item.category else '—' }}</span>
+                    <span class="badge" style="background:rgba(100,116,139,0.15);color:var(--text-muted);font-size:0.7rem;">
+                        {{ item.category or '—' }}
+                    </span>
                 </td>
-                <td>{{ item.vendor.name if item.vendor else '—' }}</td>
-                <td>{{ item.par_level }}</td>
+                <td class="text-muted" style="font-size:0.82rem;">
+                    {{ item.vendor.name if item.vendor else '—' }}
+                </td>
+                <td>{{ item.par_level or '—' }}</td>
                 <td>
-                    {% if item.current_stock < item.par_level %}
-                    <span class="low-stock">{{ item.current_stock }}</span>
+                    <span class="{% if item.current_stock == 0 %}text-muted{% elif item.par_level and item.current_stock < item.par_level %}text-warning{% else %}text-success{% endif %}">
+                        {{ item.current_stock or '0.0' }}
+                    </span>
+                </td>
+                <td>${{ '%.2f'|format(item.last_cost or 0) }}</td>
+                <td>
+                    {% if item.par_level and item.current_stock < item.par_level %}
+                    <span class="badge" style="background:rgba(245,158,11,0.15);color:#f59e0b;font-size:0.7rem;">LOW</span>
                     {% else %}
-                    {{ item.current_stock }}
+                    <span class="badge" style="background:rgba(34,197,94,0.15);color:#22c55e;font-size:0.7rem;">OK</span>
                     {% endif %}
                 </td>
-                <td>${{ "{:,.2f}".format(item.last_cost) }}</td>
                 <td>
-                    {% if item.current_stock < item.par_level %}
-                    <span class="badge-status overdue">Low</span>
-                    {% else %}
-                    <span class="badge-status paid">OK</span>
-                    {% endif %}
-                </td>
-                <td>
-                    <form action="{{ url_for('update_inventory', id=item.id) }}" method="POST" class="d-flex gap-1 align-items-center">
-                        <input type="number" name="current_stock" value="{{ item.current_stock }}" step="0.5" min="0"
-                               class="form-control form-control-sm stock-input" style="width: 70px; font-size: 0.82rem;">
-                        <input type="hidden" name="par_level" value="{{ item.par_level }}">
-                        <button type="submit" class="btn btn-sm btn-outline-primary" style="font-size: 0.72rem; padding: 3px 8px; border-radius: 5px;">
-                            <i class="bi bi-check-lg"></i>
+                    <form method="POST" action="{{ url_for('update_inventory', id=item.id) }}"
+                          class="d-flex align-items-center gap-1">
+                        <input type="number" name="current_stock" class="form-control form-control-sm"
+                               style="width:75px;" value="{{ item.current_stock or 0 }}"
+                               step="0.1" min="0">
+                        <button type="submit" class="btn btn-xs btn-outline-primary">
+                            <i class="bi bi-check"></i>
                         </button>
                     </form>
                 </td>
             </tr>
-            {% else %}
-            <tr>
-                <td colspan="8" class="text-center text-muted py-4">No items in this section.</td>
-            </tr>
             {% endfor %}
-        </tbody>
-    </table>
-</div>
-{% endmacro %}
-
-<!-- Food Section -->
-<div class="content-card mb-4">
-    <div class="card-header-row">
-        <h5>
-            <i class="bi bi-egg-fried section-icon food-icon"></i>
-            Food
-            <span class="text-muted" style="font-weight: 400; font-size: 0.85rem;">({{ food_items|length }})</span>
-        </h5>
-        <div class="d-flex align-items-center gap-2">
-            {% set food_low = food_items|selectattr('current_stock')|list %}
-            {% set food_low_count = [] %}
-            {% for item in food_items if item.current_stock < item.par_level %}
-                {% if food_low_count.append(1) %}{% endif %}
-            {% endfor %}
-            {% if food_low_count|length > 0 %}
-            <span class="badge-status overdue">{{ food_low_count|length }} Low</span>
-            {% endif %}
-        </div>
+            </tbody>
+        </table>
     </div>
-    {{ inventory_table(food_items) }}
+</div>
+{% endif %}
+{% endfor %}
+
+{% if not zones %}
+<div class="text-center text-muted py-5">
+    <i class="bi bi-box-seam" style="font-size:2rem;"></i>
+    <div class="mt-2">No inventory zones set up yet.</div>
+</div>
+{% endif %}
 </div>
 
-<!-- Beverage Section -->
-<div class="content-card">
-    <div class="card-header-row">
-        <h5>
-            <i class="bi bi-cup-straw section-icon bev-icon"></i>
-            Beverage
-            <span class="text-muted" style="font-weight: 400; font-size: 0.85rem;">({{ beverage_items|length }})</span>
-        </h5>
-        <div class="d-flex align-items-center gap-2">
-            {% set bev_low_count = [] %}
-            {% for item in beverage_items if item.current_stock < item.par_level %}
-                {% if bev_low_count.append(1) %}{% endif %}
-            {% endfor %}
-            {% if bev_low_count|length > 0 %}
-            <span class="badge-status overdue">{{ bev_low_count|length }} Low</span>
-            {% endif %}
-        </div>
-    </div>
-    {{ inventory_table(beverage_items) }}
-</div>
-{% endblock %}
-
-{% block extra_js %}
 <style>
-    .category-tag {
-        font-size: 0.72rem;
-        font-weight: 600;
-        padding: 3px 8px;
-        border-radius: 4px;
-        background: rgba(108,117,125,0.08);
-        color: #6c757d;
-        text-transform: capitalize;
-    }
-    .stock-input:focus {
-        border-color: var(--brand-orange);
-        box-shadow: 0 0 0 2px rgba(232,93,4,0.12);
-    }
-    .section-icon {
-        font-size: 1.1rem;
-        margin-right: 4px;
-        vertical-align: -1px;
-    }
-    .food-icon { color: var(--accent-green); }
-    .bev-icon { color: var(--brand-orange); }
+.zone-header { padding:8px 4px; border-bottom:1px solid var(--border); margin-bottom:0; }
+.btn-xs { padding:2px 8px; font-size:0.72rem; }
+.zone-section { transition:opacity 0.15s; }
+.zone-section.hidden { display:none; }
+.item-row.hidden { display:none; }
 </style>
+
+<script>
+function filterZone(zoneId) {
+    document.querySelectorAll('.zone-section').forEach(s => {
+        if (!zoneId || s.dataset.zoneId === zoneId) {
+            s.classList.remove('hidden');
+        } else {
+            s.classList.add('hidden');
+        }
+    });
+}
+
+function filterItems(query) {
+    const q = query.toLowerCase();
+    document.querySelectorAll('.item-row').forEach(row => {
+        const match = !q || row.dataset.name.includes(q);
+        row.classList.toggle('hidden', !match);
+    });
+    // Hide empty zone sections
+    document.querySelectorAll('.zone-section').forEach(section => {
+        const visible = section.querySelectorAll('.item-row:not(.hidden)').length;
+        section.classList.toggle('hidden', visible === 0);
+    });
+}
+</script>
 {% endblock %}

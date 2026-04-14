@@ -1873,13 +1873,36 @@ def export_qb_invoices():
 
 @app.route("/inventory")
 def inventory():
-    r = _get_selected_restaurant()
-    items = InventoryItem.query.filter_by(restaurant_id=r.id).all() if r else []
-    food_categories = {'protein', 'produce', 'dairy', 'bakery', 'supplies'}
-    beverage_categories = {'alcohol'}
-    food_items = [i for i in items if (i.category or '').lower() in food_categories]
-    beverage_items = [i for i in items if (i.category or '').lower() in beverage_categories]
-    return render_template("inventory.html", items=items, food_items=food_items, beverage_items=beverage_items)
+    restaurant = _get_selected_restaurant()
+    restaurants = Restaurant.query.all()
+
+    zones = StorageZone.query.filter_by(
+        restaurant_id=restaurant.id, active=True
+    ).order_by(StorageZone.sort_order).all()
+
+    # Build items grouped by zone
+    items_by_zone = {}
+    for zone in zones:
+        zone_item_ids = [
+            iz.inventory_item_id for iz in
+            InventoryItemZone.query.filter_by(storage_zone_id=zone.id).all()
+        ]
+        items = InventoryItem.query.filter(
+            InventoryItem.id.in_(zone_item_ids)
+        ).order_by(InventoryItem.name).all() if zone_item_ids else []
+        items_by_zone[zone.id] = items
+
+    total_items = InventoryItem.query.filter_by(restaurant_id=restaurant.id).count()
+
+    return render_template(
+        'inventory.html',
+        zones=zones,
+        items_by_zone=items_by_zone,
+        total_items=total_items,
+        restaurant=restaurant,
+        restaurants=restaurants,
+        selected_restaurant=restaurant,
+    )
 
 
 @app.route("/inventory/<int:id>/update", methods=["POST"])
