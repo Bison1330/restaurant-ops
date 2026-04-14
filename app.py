@@ -4622,9 +4622,142 @@ def reporting():
 
 @app.route("/cogs")
 def cogs():
+    from datetime import date, timedelta
+    from sqlalchemy import func
+    import calendar
+
     restaurant = _get_selected_restaurant()
     restaurants = Restaurant.query.all()
-    return render_template("coming_soon.html", page_title="COGS", page_icon="bi-calculator", restaurant=restaurant, restaurants=restaurants, selected_restaurant=restaurant)
+
+    period = request.args.get('period', 'this_month')
+    today = date.today()
+
+    if period == 'this_month':
+        start = today.replace(day=1)
+        end = today
+        label = f"{start.strftime('%b %d')} – {end.strftime('%b %d, %Y')}"
+        last_day_prev = start - timedelta(days=1)
+        prior_start = last_day_prev.replace(day=1)
+        prior_end = last_day_prev
+        prior_label = f"{prior_start.strftime('%b %d')} – {prior_end.strftime('%b %d, %Y')}"
+    elif period == 'last_month':
+        last_day_prev = today.replace(day=1) - timedelta(days=1)
+        start = last_day_prev.replace(day=1)
+        end = last_day_prev
+        label = f"{start.strftime('%b %d')} – {end.strftime('%b %d, %Y')}"
+        prior_start = (start.replace(day=1) - timedelta(days=1)).replace(day=1)
+        prior_end = start - timedelta(days=1)
+        prior_label = f"{prior_start.strftime('%b %d')} – {prior_end.strftime('%b %d, %Y')}"
+    else:
+        start = today.replace(day=1)
+        end = today
+        label = f"{start.strftime('%b %d')} – {end.strftime('%b %d, %Y')}"
+        prior_start = (start - timedelta(days=1)).replace(day=1)
+        prior_end = start - timedelta(days=1)
+        prior_label = f"{prior_start.strftime('%b %d')} – {prior_end.strftime('%b %d, %Y')}"
+
+    def _get_net_sales(r_id, ps, pe):
+        try:
+            r = Restaurant.query.get(r_id)
+            orders = fetch_orders(r, ps, pe)
+            return sum(o.get('net_amount', 0) or 0 for o in orders)
+        except Exception:
+            return 0.0
+
+    def get_period_data(r_id, ps, pe):
+        purchases = db.session.query(
+            func.sum(Invoice.total_amount)
+        ).filter(
+            Invoice.restaurant_id == r_id,
+            Invoice.status.in_(['approved', 'paid']),
+            Invoice.invoice_date >= ps,
+            Invoice.invoice_date <= pe,
+        ).scalar() or 0.0
+
+        net_sales = _cached(
+            f"cogs_sales_{r_id}_{ps}_{pe}",
+            300,
+            lambda: _get_net_sales(r_id, ps, pe)
+        )
+
+        from database import CountSession
+        last_count = CountSession.query.filter(
+            CountSession.restaurant_id == r_id,
+            CountSession.count_date < ps,
+            CountSession.status == 'submitted',
+        ).order_by(CountSession.count_date.desc()).first()
+        beginning_inv = last_count.total_value if last_count else 0.0
+
+        end_count = CountSession.query.filter(
+            CountSession.restaurant_id == r_id,
+            CountSession.count_date >= ps,
+            CountSession.count_date <= pe,
+            CountSession.status == 'submitted',
+        ).order_by(CountSession.count_date.desc()).first()
+        ending_inv = end_count.total_value if end_count else 0.0
+
+        inv_change = ending_inv - beginning_inv
+        cogs_val = beginning_inv + purchases - ending_inv
+        cost_ratio = round((cogs_val / net_sales * 100), 1) if net_sales > 0 else 0.0
+
+        return {
+            'purchases': round(purchases, 2),
+            'beginning_inv': round(beginning_inv, 2),
+            'ending_inv': round(ending_inv, 2),
+            'inv_change': round(inv_change, 2),
+            'cogs': round(cogs_val, 2),
+            'net_sales': round(net_sales, 2),
+            'cost_ratio': cost_ratio,
+        }
+
+    current = get_period_data(restaurant.id, start, end)
+    prior = get_period_data(restaurant.id, prior_start, prior_end)
+
+    from database import InvoiceLine
+    category_rows = db.session.query(
+        Vendor.type,
+        func.sum(InvoiceLine.line_total)
+    ).join(
+        Invoice, Invoice.id == InvoiceLine.invoice_id
+    ).join(
+        Vendor, Vendor.id == Invoice.vendor_id
+    ).filter(
+        Invoice.restaurant_id == restaurant.id,
+        Invoice.status.in_(['approved', 'paid']),
+        Invoice.invoice_date >= start,
+        Invoice.invoice_date <= end,
+    ).group_by(Vendor.type).all()
+
+    cogs_groups = []
+    for cat, amount in category_rows:
+        if not cat or not amount:
+            continue
+        net = current['net_sales']
+        ratio = round((amount / net * 100), 1) if net > 0 else 0.0
+        cogs_groups.append({
+            'name': cat,
+            'purchases': round(amount, 2),
+            'cogs': round(amount, 2),
+            'net_sales': round(net, 2),
+            'cost_ratio': ratio,
+            'beginning_inv': 0,
+            'ending_inv': 0,
+        })
+    cogs_groups.sort(key=lambda x: x['purchases'], reverse=True)
+
+    return render_template(
+        'cogs.html',
+        period=period,
+        label=label,
+        prior_label=prior_label,
+        current=current,
+        prior=prior,
+        cogs_groups=cogs_groups,
+        restaurant=restaurant,
+        restaurants=restaurants,
+        selected_restaurant=restaurant,
+        now=today,
+    )
 
 @app.route("/invoices/search")
 def invoices_search():

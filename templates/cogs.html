@@ -1,0 +1,198 @@
+{% extends "base.html" %}
+{% block title %}COGS — Bison Stockyard{% endblock %}
+{% block topbar %}
+<div class="d-flex align-items-center gap-3">
+    <h1>COGS</h1>
+    <span style="font-size:0.78rem;color:var(--text-muted);">
+        Data as of {{ now.strftime('%b %d, %Y') if now else '' }}
+    </span>
+</div>
+{% endblock %}
+
+{% block topbar_actions %}
+<div class="d-flex align-items-center gap-2">
+    <div class="btn-group" role="group">
+        <a href="{{ url_for('cogs', period='this_month') }}"
+           class="btn btn-sm {% if period == 'this_month' %}btn-primary{% else %}btn-outline-secondary{% endif %}">
+            This month
+        </a>
+        <a href="{{ url_for('cogs', period='last_month') }}"
+           class="btn btn-sm {% if period == 'last_month' %}btn-primary{% else %}btn-outline-secondary{% endif %}">
+            Last month
+        </a>
+    </div>
+    <span class="text-muted" style="font-size:0.78rem;">{{ label }}</span>
+    <span class="text-muted" style="font-size:0.72rem;">vs {{ prior_label }}</span>
+</div>
+{% endblock %}
+
+{% block content %}
+
+{# ── KPI TILES ── #}
+<div class="row g-3 mb-4">
+
+    {# Purchases #}
+    <div class="col-6 col-md">
+        <div class="content-card h-100 p-3">
+            <div style="font-size:0.72rem;color:var(--text-muted);margin-bottom:4px;">
+                Purchases
+                <i class="bi bi-info-circle ms-1" title="Only approved invoices are included"></i>
+            </div>
+            <div style="font-size:1.5rem;font-weight:700;color:var(--text);">
+                ${{ "{:,.2f}".format(current.purchases) }}
+            </div>
+            {% set diff = current.purchases - prior.purchases %}
+            <div style="font-size:0.75rem;margin-top:4px;color:{% if diff > 0 %}#ef4444{% else %}#22c55e{% endif %};">
+                {% if diff > 0 %}▲{% else %}▼{% endif %}
+                ${{ "{:,.2f}".format(diff|abs) }} vs prior
+            </div>
+        </div>
+    </div>
+
+    {# Inventory Change #}
+    <div class="col-6 col-md">
+        <div class="content-card h-100 p-3">
+            <div style="font-size:0.72rem;color:var(--text-muted);margin-bottom:4px;">
+                Inventory change
+                <i class="bi bi-info-circle ms-1" title="Ending inventory minus beginning inventory"></i>
+            </div>
+            <div style="font-size:1.5rem;font-weight:700;color:var(--text);">
+                {% if current.inv_change >= 0 %}+{% endif %}${{ "{:,.2f}".format(current.inv_change) }}
+            </div>
+            {% set diff2 = current.inv_change - prior.inv_change %}
+            <div style="font-size:0.75rem;margin-top:4px;color:var(--text-muted);">
+                {% if diff2 > 0 %}▲{% else %}▼{% endif %}
+                ${{ "{:,.2f}".format(diff2|abs) }} vs prior
+            </div>
+        </div>
+    </div>
+
+    {# COGS #}
+    <div class="col-6 col-md">
+        <div class="content-card h-100 p-3">
+            <div style="font-size:0.72rem;color:var(--text-muted);margin-bottom:4px;">
+                COGS
+                <i class="bi bi-info-circle ms-1" title="Beginning inventory + Purchases - Ending inventory"></i>
+            </div>
+            <div style="font-size:1.5rem;font-weight:700;color:var(--text);">
+                ${{ "{:,.2f}".format(current.cogs) }}
+            </div>
+            {% set diff3 = current.cogs - prior.cogs %}
+            <div style="font-size:0.75rem;margin-top:4px;color:{% if diff3 > 0 %}#ef4444{% else %}#22c55e{% endif %};">
+                {% if diff3 > 0 %}▲{% else %}▼{% endif %}
+                ${{ "{:,.2f}".format(diff3|abs) }} vs prior
+            </div>
+        </div>
+    </div>
+
+    {# Net Sales #}
+    <div class="col-6 col-md">
+        <div class="content-card h-100 p-3">
+            <div style="font-size:0.72rem;color:var(--text-muted);margin-bottom:4px;">
+                Net sales
+                <i class="bi bi-info-circle ms-1" title="From Toast POS sales data"></i>
+            </div>
+            <div style="font-size:1.5rem;font-weight:700;color:var(--text);">
+                ${{ "{:,.2f}".format(current.net_sales) }}
+            </div>
+            {% set diff4 = current.net_sales - prior.net_sales %}
+            <div style="font-size:0.75rem;margin-top:4px;color:{% if diff4 >= 0 %}#22c55e{% else %}#ef4444{% endif %};">
+                {% if diff4 >= 0 %}▲{% else %}▼{% endif %}
+                ${{ "{:,.2f}".format(diff4|abs) }} vs prior
+            </div>
+        </div>
+    </div>
+
+    {# Cost Ratio #}
+    <div class="col-6 col-md">
+        <div class="content-card h-100 p-3">
+            <div style="font-size:0.72rem;color:var(--text-muted);margin-bottom:4px;">
+                Cost ratio
+                <i class="bi bi-info-circle ms-1" title="COGS divided by net sales"></i>
+            </div>
+            <div style="font-size:1.5rem;font-weight:700;
+                color:{% if current.cost_ratio > 35 %}#ef4444{% elif current.cost_ratio > 25 %}#f59e0b{% else %}#22c55e{% endif %};">
+                {{ current.cost_ratio }}%
+            </div>
+            {% set diff5 = current.cost_ratio - prior.cost_ratio %}
+            <div style="font-size:0.75rem;margin-top:4px;color:{% if diff5 > 0 %}#ef4444{% else %}#22c55e{% endif %};">
+                {% if diff5 > 0 %}▲{% else %}▼{% endif %}
+                {{ "%.1f"|format(diff5|abs) }}pp vs prior
+            </div>
+        </div>
+    </div>
+
+</div>
+
+{# ── COGS TABLE ── #}
+<div class="content-card p-0">
+    <div class="d-flex align-items-center justify-content-between px-4 py-3"
+         style="border-bottom:1px solid var(--border);">
+        <div class="fw-semibold">COGS by Category</div>
+        <div class="text-muted" style="font-size:0.78rem;">{{ label }}</div>
+    </div>
+    <table class="table table-clean mb-0">
+        <thead>
+            <tr>
+                <th>COGS Group</th>
+                <th class="text-end">Beginning Inv</th>
+                <th class="text-end">Purchases</th>
+                <th class="text-end">Ending Inv</th>
+                <th class="text-end">COGS</th>
+                <th class="text-end">Net Sales</th>
+                <th class="text-end">Cost Ratio</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for group in cogs_groups %}
+            <tr>
+                <td class="fw-semibold">{{ group.name or 'Unassigned' }}</td>
+                <td class="text-end text-muted">${{ "{:,.2f}".format(group.beginning_inv) }}</td>
+                <td class="text-end">${{ "{:,.2f}".format(group.purchases) }}</td>
+                <td class="text-end text-muted">${{ "{:,.2f}".format(group.ending_inv) }}</td>
+                <td class="text-end fw-semibold">${{ "{:,.2f}".format(group.cogs) }}</td>
+                <td class="text-end">${{ "{:,.2f}".format(group.net_sales) }}</td>
+                <td class="text-end">
+                    <span style="color:{% if group.cost_ratio > 35 %}#ef4444{% elif group.cost_ratio > 25 %}#f59e0b{% else %}#22c55e{% endif %};">
+                        {{ group.cost_ratio }}%
+                    </span>
+                </td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="7" class="text-center text-muted py-5">
+                    No invoice data for this period.<br>
+                    <small>Approve invoices to see COGS breakdown.</small>
+                </td>
+            </tr>
+            {% endfor %}
+
+            {# TOTAL ROW #}
+            {% if cogs_groups %}
+            <tr style="border-top:2px solid var(--border);font-weight:700;">
+                <td>Total</td>
+                <td class="text-end">${{ "{:,.2f}".format(current.beginning_inv) }}</td>
+                <td class="text-end">${{ "{:,.2f}".format(current.purchases) }}</td>
+                <td class="text-end">${{ "{:,.2f}".format(current.ending_inv) }}</td>
+                <td class="text-end" style="color:var(--accent);">${{ "{:,.2f}".format(current.cogs) }}</td>
+                <td class="text-end">${{ "{:,.2f}".format(current.net_sales) }}</td>
+                <td class="text-end">
+                    <span style="color:{% if current.cost_ratio > 35 %}#ef4444{% elif current.cost_ratio > 25 %}#f59e0b{% else %}#22c55e{% endif %};">
+                        {{ current.cost_ratio }}%
+                    </span>
+                </td>
+            </tr>
+            {% endif %}
+        </tbody>
+    </table>
+</div>
+
+<div class="mt-3" style="font-size:0.75rem;color:var(--text-muted);">
+    <i class="bi bi-info-circle me-1"></i>
+    COGS = Beginning Inventory + Purchases − Ending Inventory.
+    Purchases include approved invoices only.
+    Net sales pulled from Toast POS.
+    Run an inventory count to populate beginning/ending inventory values.
+</div>
+
+{% endblock %}
