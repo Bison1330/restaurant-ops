@@ -1729,33 +1729,135 @@ def api_assistant_check():
 
 @app.route("/invoices")
 def invoices():
-    r = _get_selected_restaurant()
-    status_filter = request.args.get("status")
-    query = Invoice.query.filter_by(restaurant_id=r.id) if r else Invoice.query
-    if status_filter:
-        query = query.filter_by(status=status_filter)
-    invoice_list = query.order_by(Invoice.invoice_date.desc()).all()
-    return render_template("invoices.html", invoices=invoice_list, status_filter=status_filter)
+    restaurant = _get_selected_restaurant()
+    restaurants = Restaurant.query.all()
+
+    tab = request.args.get('tab', 'all')
+    vendor_id = request.args.get('vendor_id', '', type=str)
+    date_from = request.args.get('date_from', '')
+    date_to = request.args.get('date_to', '')
+    page = request.args.get('page', 1, type=int)
+    per_page = 25
+
+    query = Invoice.query.filter_by(restaurant_id=restaurant.id)
+
+    if tab == 'action_needed':
+        query = query.filter(Invoice.status == 'pending')
+    elif tab == 'rejected':
+        query = query.filter(Invoice.status == 'disputed')
+    elif tab == 'processing':
+        query = query.filter(Invoice.status == 'processing')
+    elif tab == 'completed':
+        query = query.filter(Invoice.status.in_(['approved', 'paid']))
+
+    if vendor_id:
+        query = query.filter(Invoice.vendor_id == vendor_id)
+
+    if date_from:
+        try:
+            query = query.filter(Invoice.invoice_date >= datetime.strptime(date_from, '%Y-%m-%d').date())
+        except Exception:
+            pass
+    if date_to:
+        try:
+            query = query.filter(Invoice.invoice_date <= datetime.strptime(date_to, '%Y-%m-%d').date())
+        except Exception:
+            pass
+
+    base = Invoice.query.filter_by(restaurant_id=restaurant.id)
+    counts = {
+        'all': base.count(),
+        'action_needed': base.filter(Invoice.status == 'pending').count(),
+        'rejected': base.filter(Invoice.status == 'disputed').count(),
+        'processing': base.filter(Invoice.status == 'processing').count(),
+        'completed': base.filter(Invoice.status.in_(['approved', 'paid'])).count(),
+    }
+
+    pagination = query.order_by(Invoice.imported_at.desc()).paginate(
+        page=page, per_page=per_page, error_out=False
+    )
+
+    vendors = Vendor.query.order_by(Vendor.name).all()
+
+    return render_template(
+        'invoices.html',
+        invoices=pagination.items,
+        pagination=pagination,
+        tab=tab,
+        counts=counts,
+        vendors=vendors,
+        vendor_id=vendor_id,
+        date_from=date_from,
+        date_to=date_to,
+        restaurant=restaurant,
+        restaurants=restaurants,
+        selected_restaurant=restaurant,
+    )
 
 
-@app.route("/invoices/<int:id>/approve", methods=["POST"])
-def approve_invoice(id):
-    invoice = Invoice.query.get_or_404(id)
-    invoice.status = "approved"
+@app.route("/invoices/<int:invoice_id>")
+def invoice_detail(invoice_id):
+    invoice = Invoice.query.get_or_404(invoice_id)
+    restaurant = _get_selected_restaurant()
+    restaurants = Restaurant.query.all()
+    vendors = Vendor.query.order_by(Vendor.name).all()
+    lines = InvoiceLine.query.filter_by(invoice_id=invoice_id).all()
+
+    all_ids = [i.id for i in Invoice.query.filter_by(
+        restaurant_id=restaurant.id
+    ).order_by(Invoice.imported_at.desc()).all()]
+    current_idx = all_ids.index(invoice_id) if invoice_id in all_ids else 0
+    prev_id = all_ids[current_idx - 1] if current_idx > 0 else None
+    next_id = all_ids[current_idx + 1] if current_idx < len(all_ids) - 1 else None
+
+    return render_template(
+        'invoice_detail.html',
+        invoice=invoice,
+        lines=lines,
+        vendors=vendors,
+        prev_id=prev_id,
+        next_id=next_id,
+        current_num=current_idx + 1,
+        total=len(all_ids),
+        restaurant=restaurant,
+        restaurants=restaurants,
+        selected_restaurant=restaurant,
+    )
+
+
+@app.route("/invoices/<int:invoice_id>/approve", methods=["POST"])
+def invoice_approve(invoice_id):
+    invoice = Invoice.query.get_or_404(invoice_id)
+    invoice.status = 'approved'
     invoice.approved_at = datetime.utcnow()
     db.session.commit()
     flash(f"Invoice {invoice.invoice_number} approved.", "success")
-    return redirect(request.referrer or url_for("invoices"))
+    next_url = request.form.get('next', url_for('invoices'))
+    return redirect(next_url)
 
 
-@app.route("/invoices/<int:id>/pay", methods=["POST"])
-def pay_invoice(id):
-    invoice = Invoice.query.get_or_404(id)
-    invoice.status = "paid"
+@app.route("/invoices/<int:invoice_id>/reject", methods=["POST"])
+def invoice_reject(invoice_id):
+    invoice = Invoice.query.get_or_404(invoice_id)
+    invoice.status = 'disputed'
+    db.session.commit()
+    flash(f"Invoice {invoice.invoice_number} rejected.", "success")
+    return redirect(url_for('invoices'))
+
+
+@app.route("/invoices/<int:invoice_id>/mark-paid", methods=["POST"])
+def invoice_mark_paid(invoice_id):
+    invoice = Invoice.query.get_or_404(invoice_id)
+    invoice.status = 'paid'
     invoice.paid_at = datetime.utcnow()
     db.session.commit()
     flash(f"Invoice {invoice.invoice_number} marked as paid.", "success")
-    return redirect(request.referrer or url_for("invoices"))
+    return redirect(request.referrer or url_for('invoices'))
+
+
+@app.route("/invoices/upload-doc", endpoint="upload_invoice")
+def upload_invoice():
+    return redirect(url_for('import_invoices'))
 
 
 @app.route("/invoices/import")

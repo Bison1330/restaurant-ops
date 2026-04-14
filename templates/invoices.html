@@ -1,195 +1,181 @@
 {% extends "base.html" %}
-
-{% block title %}Invoices — RestaurantOps{% endblock %}
-
-{% block topbar %}
-<h1>Invoices</h1>
-{% endblock %}
+{% block title %}Invoices — Bison Stockyard{% endblock %}
+{% block topbar %}<h1>Invoices</h1>{% endblock %}
 
 {% block topbar_actions %}
-<button class="btn btn-outline-brand btn-sm" onclick="syncSource('gfs')">
-    <i class="bi bi-arrow-repeat"></i> Sync GFS
-</button>
-<button class="btn btn-outline-brand btn-sm" onclick="syncSource('fintech')">
-    <i class="bi bi-arrow-repeat"></i> Sync Fintech
-</button>
-<a href="{{ url_for('import_invoices') }}" class="btn btn-brand btn-sm">
-    <i class="bi bi-cloud-upload"></i> Upload Invoice
-</a>
+<div class="d-flex align-items-center gap-2">
+    <a href="{{ url_for('upload_invoice') }}" class="btn btn-sm btn-outline-secondary">
+        <i class="bi bi-upload me-1"></i>Upload Document
+    </a>
+    <a href="#" class="btn btn-sm btn-outline-secondary">
+        <i class="bi bi-download me-1"></i>Download
+    </a>
+</div>
 {% endblock %}
 
 {% block content %}
-<!-- Filter Tabs -->
-<div class="content-card mb-4" style="padding: 12px 20px;">
-    <div class="d-flex gap-1">
-        {% set filters = [('', 'All'), ('pending', 'Pending'), ('approved', 'Approved'), ('paid', 'Paid'), ('disputed', 'Disputed')] %}
-        {% for val, label in filters %}
-        <a href="{{ url_for('invoices', status=val if val else None) }}"
-           class="btn btn-sm {% if status_filter == val or (not status_filter and val == '') %}btn-brand{% else %}btn-light{% endif %}"
-           style="font-size: 0.82rem; font-weight: 600; border-radius: 6px; padding: 6px 16px;">
-            {{ label }}
-        </a>
-        {% endfor %}
-    </div>
+{% with messages = get_flashed_messages(with_categories=true) %}
+{% for cat, msg in messages %}
+<div class="alert alert-{{ cat }} alert-dismissible fade show">
+    {{ msg }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
 </div>
+{% endfor %}
+{% endwith %}
 
-<!-- Invoices Table -->
-<div class="content-card">
-    <div class="card-header-row">
-        <h5>
-            {% if status_filter %}{{ status_filter|capitalize }}{% else %}All{% endif %} Invoices
-            <span class="text-muted" style="font-weight: 400; font-size: 0.85rem;">({{ invoices|length }})</span>
-        </h5>
-        <a href="{{ url_for('export_qb_invoices') }}" class="btn btn-outline-brand btn-sm">
-            <i class="bi bi-file-earmark-arrow-down"></i> Export to QB
-        </a>
-    </div>
-    <div class="table-responsive">
-        <table class="table table-clean">
-            <thead>
-                <tr>
-                    <th>Invoice #</th>
-                    <th>Vendor</th>
-                    <th>Source</th>
-                    <th>Amount</th>
-                    <th>Due Date</th>
-                    <th>Status</th>
-                    <th>QB</th>
-                    <th>Actions</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for inv in invoices %}
-                {% set today = now().date() if now is defined else None %}
-                <tr>
-                    <td class="fw-semibold">{{ inv.invoice_number }}</td>
-                    <td>{{ inv.vendor.name if inv.vendor else '—' }}</td>
-                    <td>
-                        {% if inv.source == 'xtrachef' %}
-                        <span class="source-badge xtrachef">xtraCHEF</span>
-                        {% elif inv.source == 'gfs' or inv.source == 'GFS' %}
-                        <span class="source-badge gfs">GFS</span>
-                        {% elif inv.source == 'fintech' or inv.source == 'FINTECH' %}
-                        <span class="source-badge fintech">Fintech</span>
-                        {% elif inv.source == 'manual' or inv.source == 'MANUAL' %}
-                        <span class="source-badge manual">Manual</span>
-                        {% else %}
-                        <span class="source-badge manual">{{ inv.source or 'Manual' }}</span>
-                        {% endif %}
-                    </td>
-                    <td>${{ "{:,.2f}".format(inv.total_amount) }}</td>
-                    <td>
-                        {% if inv.due_date %}
-                            {% if inv.status in ['pending', 'approved'] and inv.due_date < inv.due_date.__class__.today() %}
-                            <span class="low-stock">{{ inv.due_date.strftime('%b %d, %Y') }}</span>
-                            {% else %}
-                            {{ inv.due_date.strftime('%b %d, %Y') }}
-                            {% endif %}
-                        {% else %}
-                        —
-                        {% endif %}
-                    </td>
-                    <td><span class="badge-status {{ inv.status }}">{{ inv.status|capitalize }}</span></td>
-                    <td>
-                        {% if inv.qb_exported %}
-                        <i class="bi bi-check-circle-fill" style="color: var(--accent-green);"></i>
-                        {% else %}
-                        <i class="bi bi-dash" style="color: #ccc;"></i>
-                        {% endif %}
-                    </td>
-                    <td>
-                        <div class="d-flex gap-1">
-                            {% if inv.status == 'pending' %}
-                            <button class="btn btn-sm btn-outline-primary action-btn" onclick="invoiceAction({{ inv.id }}, 'approve')" style="font-size: 0.75rem; padding: 3px 10px;">
-                                <i class="bi bi-check-lg"></i> Approve
-                            </button>
-                            {% endif %}
-                            {% if inv.status == 'approved' %}
-                            <button class="btn btn-sm btn-outline-success action-btn" onclick="invoiceAction({{ inv.id }}, 'pay')" style="font-size: 0.75rem; padding: 3px 10px;">
-                                <i class="bi bi-currency-dollar"></i> Mark Paid
-                            </button>
-                            {% endif %}
-                            {% if inv.status == 'paid' %}
-                            <span class="text-muted" style="font-size: 0.75rem; padding: 3px 0;">Completed</span>
-                            {% endif %}
-                        </div>
-                    </td>
-                </tr>
-                {% else %}
-                <tr>
-                    <td colspan="8" class="text-center text-muted py-4">
-                        No invoices found. Import from GFS, Fintech, or upload a scan.
-                    </td>
-                </tr>
+{# FILTERS #}
+<div class="content-card p-3 mb-3">
+    <form method="GET" action="{{ url_for('invoices') }}" class="d-flex flex-wrap gap-2 align-items-end">
+        <input type="hidden" name="tab" value="{{ tab }}">
+        <div>
+            <label class="form-label fw-semibold" style="font-size:0.78rem;">Vendor</label>
+            <select name="vendor_id" class="form-select form-select-sm" style="width:180px;">
+                <option value="">All vendors</option>
+                {% for v in vendors %}
+                <option value="{{ v.id }}" {% if vendor_id == v.id|string %}selected{% endif %}>{{ v.name }}</option>
                 {% endfor %}
-            </tbody>
-        </table>
-    </div>
+            </select>
+        </div>
+        <div>
+            <label class="form-label fw-semibold" style="font-size:0.78rem;">Invoice Date From</label>
+            <input type="date" name="date_from" class="form-control form-control-sm"
+                   value="{{ date_from }}" style="width:150px;">
+        </div>
+        <div>
+            <label class="form-label fw-semibold" style="font-size:0.78rem;">To</label>
+            <input type="date" name="date_to" class="form-control form-control-sm"
+                   value="{{ date_to }}" style="width:150px;">
+        </div>
+        <div class="d-flex gap-2 mt-auto">
+            <button type="submit" class="btn btn-sm btn-primary">Filter</button>
+            <a href="{{ url_for('invoices') }}" class="btn btn-sm btn-outline-secondary">Clear</a>
+        </div>
+    </form>
 </div>
-{% endblock %}
 
-{% block extra_js %}
+{# TABS #}
+<div class="d-flex gap-1 mb-3">
+    {% set tabs = [
+        ('all', 'All invoices', counts.all),
+        ('action_needed', 'Action needed', counts.action_needed),
+        ('rejected', 'Rejected', counts.rejected),
+        ('processing', 'Processing', counts.processing),
+        ('completed', 'Completed', counts.completed),
+    ] %}
+    {% for tab_key, tab_label, tab_count in tabs %}
+    <a href="{{ url_for('invoices', tab=tab_key, vendor_id=vendor_id, date_from=date_from, date_to=date_to) }}"
+       class="btn btn-sm {% if tab == tab_key %}btn-primary{% else %}btn-outline-secondary{% endif %}">
+        {{ tab_label }}
+        {% if tab_count > 0 %}
+        <span class="badge ms-1"
+              style="background:{% if tab == tab_key %}rgba(255,255,255,0.2){% else %}rgba(61,220,132,0.15){% endif %};
+                     color:{% if tab == tab_key %}#fff{% else %}var(--accent){% endif %};">
+            {{ tab_count }}
+        </span>
+        {% endif %}
+    </a>
+    {% endfor %}
+</div>
+
+{# TABLE #}
+<div class="content-card p-0">
+    <table class="table table-clean mb-0">
+        <thead>
+            <tr>
+                <th><input type="checkbox" class="form-check-input"></th>
+                <th>Vendor</th>
+                <th>Invoice #</th>
+                <th>Invoice Date</th>
+                <th>Amount Payable</th>
+                <th>Status</th>
+                <th>Upload Date</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for inv in invoices %}
+            <tr class="invoice-row" style="cursor:pointer;"
+                onclick="window.location='{{ url_for('invoice_detail', invoice_id=inv.id) }}'">
+                <td onclick="event.stopPropagation()">
+                    <input type="checkbox" class="form-check-input">
+                </td>
+                <td class="fw-semibold">{{ inv.vendor.name if inv.vendor else '—' }}</td>
+                <td>{{ inv.invoice_number }}</td>
+                <td>{{ inv.invoice_date.strftime('%b %d, %Y') if inv.invoice_date else '—' }}</td>
+                <td>${{ "{:,.2f}".format(inv.total_amount or 0) }}</td>
+                <td>
+                    {% if inv.status == 'approved' %}
+                    <span class="badge" style="background:rgba(34,197,94,0.15);color:#22c55e;">EXTRACTED</span>
+                    {% elif inv.status == 'paid' %}
+                    <span class="badge" style="background:rgba(59,130,246,0.15);color:#3b82f6;">PAID</span>
+                    {% elif inv.status == 'disputed' %}
+                    <span class="badge" style="background:rgba(239,68,68,0.15);color:#ef4444;">REJECTED</span>
+                    {% elif inv.status == 'processing' %}
+                    <span class="badge" style="background:rgba(245,158,11,0.15);color:#f59e0b;">PROCESSING</span>
+                    {% else %}
+                    <span class="badge" style="background:rgba(245,158,11,0.15);color:#f59e0b;">READY TO EXTRACT</span>
+                    {% endif %}
+                </td>
+                <td class="text-muted" style="font-size:0.82rem;">
+                    {{ inv.imported_at.strftime('%b %d, %Y') if inv.imported_at else '—' }}
+                </td>
+                <td onclick="event.stopPropagation()">
+                    {% if inv.status == 'pending' %}
+                    <form method="POST" action="{{ url_for('invoice_approve', invoice_id=inv.id) }}" class="d-inline">
+                        <input type="hidden" name="next" value="{{ url_for('invoices', tab=tab) }}">
+                        <button type="submit" class="btn btn-xs btn-success">✓ Approve</button>
+                    </form>
+                    {% elif inv.status == 'approved' %}
+                    <form method="POST" action="{{ url_for('invoice_mark_paid', invoice_id=inv.id) }}" class="d-inline">
+                        <button type="submit" class="btn btn-xs btn-outline-primary">$ Mark Paid</button>
+                    </form>
+                    {% endif %}
+                </td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="8" class="text-center text-muted py-5">
+                    No invoices found.
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+{# PAGINATION #}
+{% if pagination.pages > 1 %}
+<div class="d-flex justify-content-between align-items-center mt-3">
+    <span class="text-muted" style="font-size:0.82rem;">
+        Showing {{ ((pagination.page-1)*pagination.per_page)+1 }}–{{ [pagination.page*pagination.per_page, pagination.total]|min }} of {{ pagination.total }}
+    </span>
+    <nav>
+        <ul class="pagination pagination-sm mb-0">
+            {% if pagination.has_prev %}
+            <li class="page-item">
+                <a class="page-link" href="{{ url_for('invoices', tab=tab, page=pagination.prev_num, vendor_id=vendor_id, date_from=date_from, date_to=date_to) }}">‹</a>
+            </li>
+            {% endif %}
+            {% for p in pagination.iter_pages(left_edge=2, right_edge=2, left_current=2, right_current=2) %}
+            {% if p %}
+            <li class="page-item {% if p == pagination.page %}active{% endif %}">
+                <a class="page-link" href="{{ url_for('invoices', tab=tab, page=p, vendor_id=vendor_id, date_from=date_from, date_to=date_to) }}">{{ p }}</a>
+            </li>
+            {% else %}
+            <li class="page-item disabled"><span class="page-link">…</span></li>
+            {% endif %}
+            {% endfor %}
+            {% if pagination.has_next %}
+            <li class="page-item">
+                <a class="page-link" href="{{ url_for('invoices', tab=tab, page=pagination.next_num, vendor_id=vendor_id, date_from=date_from, date_to=date_to) }}">›</a>
+            </li>
+            {% endif %}
+        </ul>
+    </nav>
+</div>
+{% endif %}
+
 <style>
-    .source-tag {
-        font-size: 0.68rem;
-        font-weight: 700;
-        padding: 3px 8px;
-        border-radius: 4px;
-        text-transform: uppercase;
-        letter-spacing: 0.3px;
-    }
-    .source-tag.gfs { background: rgba(42,157,143,0.12); color: #2a9d8f; }
-    .source-tag.fintech { background: rgba(0,119,182,0.12); color: #0077b6; }
-    .source-tag.ocr { background: rgba(232,93,4,0.12); color: #e85d04; }
-    .source-tag.email { background: rgba(108,117,125,0.12); color: #6c757d; }
-    .source-tag.manual { background: rgba(108,117,125,0.08); color: #999; }
-
-    .source-badge { display:inline-block; padding:2px 8px; border-radius:4px; font-size:0.72rem; font-weight:600; text-transform:uppercase; letter-spacing:0.03em; }
-    .source-badge.xtrachef { background:rgba(61,220,132,0.15); color:#3ddc84; }
-    .source-badge.gfs { background:rgba(59,130,246,0.15); color:#3b82f6; }
-    .source-badge.fintech { background:rgba(168,85,247,0.15); color:#a855f7; }
-    .source-badge.manual { background:rgba(100,116,139,0.15); color:#94a3b8; }
-
-    .action-btn { border-radius: 6px; font-weight: 600; }
-</style>
-<script>
-    async function invoiceAction(id, action) {
-        try {
-            const resp = await fetch(`/invoices/${id}/${action}`, { method: 'POST' });
-            if (resp.ok || resp.redirected) {
-                window.location.reload();
-            } else {
-                alert('Action failed. Please try again.');
-            }
-        } catch (e) {
-            alert('Action failed. Please try again.');
-        }
-    }
-
-    async function syncSource(source) {
-        const btn = event.currentTarget;
-        const origHtml = btn.innerHTML;
-        btn.disabled = true;
-        btn.innerHTML = '<i class="bi bi-arrow-repeat spin"></i> Syncing...';
-
-        try {
-            const resp = await fetch(`/invoices/import/${source}`, { method: 'POST' });
-            if (resp.ok || resp.redirected) {
-                window.location.reload();
-            } else {
-                alert('Sync failed. Please try again.');
-                btn.disabled = false;
-                btn.innerHTML = origHtml;
-            }
-        } catch (e) {
-            alert('Sync failed. Please try again.');
-            btn.disabled = false;
-            btn.innerHTML = origHtml;
-        }
-    }
-</script>
-<style>
-    @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-    .spin { display: inline-block; animation: spin 1s linear infinite; }
+.invoice-row:hover td { background:rgba(255,255,255,0.03); }
+.btn-xs { padding:2px 8px; font-size:0.72rem; }
 </style>
 {% endblock %}
