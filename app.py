@@ -4586,5 +4586,87 @@ def employees_set_pay_type(emp_id):
         flash(f"{emp.first_name} {emp.last_name} updated to {pay_type}.", "success")
     return redirect(url_for("employees"))
 
+@app.route("/dashboard")
+def dashboard_alias():
+    return redirect(url_for("dashboard"))
+
+@app.route("/analytics")
+def analytics():
+    restaurant = _get_selected_restaurant()
+    restaurants = Restaurant.query.all()
+    return render_template("coming_soon.html", page_title="Analytics", page_icon="bi-bar-chart-line", restaurant=restaurant, restaurants=restaurants, selected_restaurant=restaurant)
+
+@app.route("/operating-summary")
+def operating_summary():
+    restaurant = _get_selected_restaurant()
+    restaurants = Restaurant.query.all()
+    return render_template("coming_soon.html", page_title="Operating Summary", page_icon="bi-file-earmark-text", restaurant=restaurant, restaurants=restaurants, selected_restaurant=restaurant)
+
+@app.route("/sync-monitor")
+def sync_monitor():
+    restaurant = _get_selected_restaurant()
+    restaurants = Restaurant.query.all()
+    return render_template("coming_soon.html", page_title="Sync Monitor", page_icon="bi-arrow-repeat", restaurant=restaurant, restaurants=restaurants, selected_restaurant=restaurant)
+
+@app.route("/budget")
+def budget():
+    restaurant = _get_selected_restaurant()
+    restaurants = Restaurant.query.all()
+    return render_template("coming_soon.html", page_title="Budget", page_icon="bi-wallet2", restaurant=restaurant, restaurants=restaurants, selected_restaurant=restaurant)
+
+@app.route("/reporting")
+def reporting():
+    restaurant = _get_selected_restaurant()
+    restaurants = Restaurant.query.all()
+    return render_template("coming_soon.html", page_title="Reporting", page_icon="bi-clipboard-data", restaurant=restaurant, restaurants=restaurants, selected_restaurant=restaurant)
+
+@app.route("/cogs")
+def cogs():
+    restaurant = _get_selected_restaurant()
+    restaurants = Restaurant.query.all()
+    return render_template("coming_soon.html", page_title="COGS", page_icon="bi-calculator", restaurant=restaurant, restaurants=restaurants, selected_restaurant=restaurant)
+
+@app.route("/invoices/search")
+def invoices_search():
+    restaurant = _get_selected_restaurant()
+    restaurants = Restaurant.query.all()
+    return render_template("coming_soon.html", page_title="Search Invoices", page_icon="bi-search", restaurant=restaurant, restaurants=restaurants, selected_restaurant=restaurant)
+
+@app.route("/reconciliation")
+def reconciliation():
+    restaurant = _get_selected_restaurant()
+    restaurants = Restaurant.query.all()
+    return render_template("coming_soon.html", page_title="Reconciliation", page_icon="bi-check2-square", restaurant=restaurant, restaurants=restaurants, selected_restaurant=restaurant)
+
+@app.route("/extract-monitor")
+def extract_monitor():
+    restaurant = _get_selected_restaurant()
+    restaurants = Restaurant.query.all()
+    return render_template("coming_soon.html", page_title="Extract Monitor", page_icon="bi-cloud-download", restaurant=restaurant, restaurants=restaurants, selected_restaurant=restaurant)
+
+@app.route("/map-invoice-items")
+def map_invoice_items():
+    restaurant = _get_selected_restaurant()
+    restaurants = Restaurant.query.all()
+    return render_template("coming_soon.html", page_title="Map Invoice Items", page_icon="bi-link-45deg", restaurant=restaurant, restaurants=restaurants, selected_restaurant=restaurant)
+
+@app.route("/approvals")
+def approvals():
+    restaurant = _get_selected_restaurant()
+    restaurants = Restaurant.query.all()
+    return render_template("coming_soon.html", page_title="Approvals", page_icon="bi-person-check", restaurant=restaurant, restaurants=restaurants, selected_restaurant=restaurant)
+
+@app.route("/item-library")
+def item_library():
+    restaurant = _get_selected_restaurant()
+    restaurants = Restaurant.query.all()
+    return render_template("coming_soon.html", page_title="Item Library", page_icon="bi-collection", restaurant=restaurant, restaurants=restaurants, selected_restaurant=restaurant)
+
+@app.route("/orders")
+def orders():
+    restaurant = _get_selected_restaurant()
+    restaurants = Restaurant.query.all()
+    return render_template("coming_soon.html", page_title="Order", page_icon="bi-cart3", restaurant=restaurant, restaurants=restaurants, selected_restaurant=restaurant)
+
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8082, debug=False)

@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block title %}{{ page_title }} — Bison Stockyard{% endblock %}
+{% block topbar %}<h1>{{ page_title }}</h1>{% endblock %}
+{% block content %}
+<div class="content-card" style="text-align:center; padding:60px 40px;">
+    <i class="bi {{ page_icon }}" style="font-size:3rem; color:var(--accent); display:block; margin-bottom:16px;"></i>
+    <h2 style="color:var(--text); margin-bottom:8px;">{{ page_title }}</h2>
+    <p style="color:var(--text-muted); margin-bottom:0;">
+        This page is being rebuilt to match xtraCHEF layout.<br>
+        Check back soon.
+    </p>
+</div>
+{% endblock %}

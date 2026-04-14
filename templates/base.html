@@ -97,6 +97,16 @@
             color: var(--text-muted);
         }
 
+        .nav-section-label {
+            font-size: 0.68rem;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            padding: 16px 20px 4px;
+            opacity: 0.6;
+        }
+
         .sidebar-nav a {
             display: flex;
             align-items: center;
@@ -528,73 +538,39 @@
         </div>
 
         <div class="sidebar-nav">
-            <div class="nav-section">Main</div>
-            <a href="{{ url_for('dashboard') }}" class="{% if request.path == '/' %}active{% endif %}">
-                <i class="bi bi-grid-1x2-fill"></i> Dashboard
-            </a>
-            <a href="{{ url_for('invoices') }}" class="{% if '/invoices' in request.path and 'import' not in request.path and 'upload' not in request.path %}active{% endif %}">
-                <i class="bi bi-receipt"></i> Invoices
-            </a>
-            <a href="{{ url_for('import_invoices') }}" class="{% if request.path == '/invoices/import' %}active{% endif %}">
-                <i class="bi bi-cloud-upload"></i> Upload Invoice
-            </a>
-            <a href="{{ url_for('inventory') }}" class="{% if '/inventory' in request.path %}active{% endif %}">
-                <i class="bi bi-box-seam"></i> Inventory
-            </a>
-            <a href="{{ url_for('counts') }}" class="{% if '/counts' in request.path %}active{% endif %}">
-                <i class="bi bi-clipboard-check"></i> Weekly Counts
-            </a>
-            <a href="{{ url_for('recipes') }}" class="{% if '/recipes' in request.path %}active{% endif %}">
-                <i class="bi bi-book"></i> Recipes
-            </a>
-            <a href="{{ url_for('pmix') }}" class="{% if '/pmix' in request.path %}active{% endif %}">
-                <i class="bi bi-bar-chart-line"></i> Product Mix
-            </a>
-            <a href="{{ url_for('vendors') }}" class="{% if '/vendors' in request.path %}active{% endif %}">
-                <i class="bi bi-truck"></i> Vendors
-            </a>
-            <a href="{{ url_for('mapping') }}" class="{% if '/mapping' in request.path or '/matching' in request.path %}active{% endif %}" style="position: relative;">
-                <i class="bi bi-link-45deg"></i> Item Mapping
-                {% if unmatched_count is defined and unmatched_count > 0 %}
-                <span style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); background: var(--red); color: #000; font-size: 0.6rem; font-weight: 700; padding: 1px 6px; border-radius: 8px;">{{ unmatched_count }}</span>
-                {% endif %}
-            </a>
-            <a href="{{ url_for('alerts') }}" class="{% if '/alerts' in request.path %}active{% endif %}" style="position: relative;">
-                <i class="bi bi-bell"></i> Alerts
-                {% if alert_critical is defined and alert_critical > 0 %}
-                <span style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); background: var(--red, #e63946); color: #fff; font-size: 0.6rem; font-weight: 700; padding: 1px 6px; border-radius: 8px;">{{ alert_critical }}</span>
-                {% elif alert_warning is defined and alert_warning > 0 %}
-                <span style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); background: #f4a261; color: #000; font-size: 0.6rem; font-weight: 700; padding: 1px 6px; border-radius: 8px;">{{ alert_warning }}</span>
-                {% elif alert_info is defined and alert_info > 0 %}
-                <span style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); background: #6c757d; color: #fff; font-size: 0.6rem; font-weight: 700; padding: 1px 6px; border-radius: 8px;">{{ alert_info }}</span>
-                {% endif %}
-            </a>
+            <!-- DATA -->
+            <div class="nav-section-label">Data</div>
+            <a href="/dashboard" class="nav-link {% if request.endpoint == 'dashboard' %}active{% endif %}"><i class="bi bi-grid-1x2"></i><span>Dashboard</span></a>
+            <a href="/analytics" class="nav-link {% if request.endpoint == 'analytics' %}active{% endif %}"><i class="bi bi-bar-chart-line"></i><span>Analytics</span></a>
+            <a href="/operating-summary" class="nav-link {% if request.endpoint == 'operating_summary' %}active{% endif %}"><i class="bi bi-file-earmark-text"></i><span>Operating Summary</span></a>
+            <a href="/sync-monitor" class="nav-link {% if request.endpoint == 'sync_monitor' %}active{% endif %}"><i class="bi bi-arrow-repeat"></i><span>Sync Monitor</span></a>
+            <a href="/budget" class="nav-link {% if request.endpoint == 'budget' %}active{% endif %}"><i class="bi bi-wallet2"></i><span>Budget</span></a>
+            <a href="/reporting" class="nav-link {% if request.endpoint == 'reporting' %}active{% endif %}"><i class="bi bi-clipboard-data"></i><span>Reporting</span></a>
+            <a href="/cogs" class="nav-link {% if request.endpoint == 'cogs' %}active{% endif %}"><i class="bi bi-calculator"></i><span>COGS</span></a>
 
-            <div class="nav-section" style="margin-top: 8px;">Team</div>
-            <a href="{{ url_for('schedule') }}" class="{% if '/schedule' in request.path %}active{% endif %}">
-                <i class="bi bi-calendar3-week"></i> Schedule
-            </a>
-            <a href="{{ url_for('pto') }}" class="{% if '/pto' in request.path %}active{% endif %}">
-                <i class="bi bi-calendar-heart"></i> PTO
-            </a>
-            <a href="{{ url_for('employees') }}" class="{% if '/employees' in request.path %}active{% endif %}">
-                <i class="bi bi-people"></i> Employees
-            </a>
-            <a href="{{ url_for('payroll') }}" class="{% if '/payroll' in request.path %}active{% endif %}">
-                <i class="bi bi-wallet2"></i> Payroll
-            </a>
+            <!-- INVOICE AUTOMATION -->
+            <div class="nav-section-label">Invoice Automation</div>
+            <a href="/invoices/search" class="nav-link {% if request.endpoint == 'invoices_search' %}active{% endif %}"><i class="bi bi-search"></i><span>Search Invoices</span></a>
+            <a href="/invoices" class="nav-link {% if request.endpoint == 'invoices' %}active{% endif %}"><i class="bi bi-receipt"></i><span>Invoices</span></a>
+            <a href="/reconciliation" class="nav-link {% if request.endpoint == 'reconciliation' %}active{% endif %}"><i class="bi bi-check2-square"></i><span>Reconciliation</span></a>
+            <a href="/extract-monitor" class="nav-link {% if request.endpoint == 'extract_monitor' %}active{% endif %}"><i class="bi bi-cloud-download"></i><span>Extract Monitor</span></a>
+            <a href="/map-invoice-items" class="nav-link {% if request.endpoint == 'map_invoice_items' %}active{% endif %}"><i class="bi bi-link-45deg"></i><span>Map Invoice Items</span></a>
+            <a href="/approvals" class="nav-link {% if request.endpoint == 'approvals' %}active{% endif %}"><i class="bi bi-person-check"></i><span>Approvals</span></a>
 
-            <div class="nav-section" style="margin-top: 8px;">Config</div>
-            <a href="{{ url_for('settings') }}" class="{% if '/settings' in request.path %}active{% endif %}">
-                <i class="bi bi-gear"></i> Settings
-            </a>
-            <div class="nav-section" style="margin-top: 8px;">Export</div>
-            <a href="{{ url_for('export_qb_invoices') }}" class="{% if request.path == '/invoices/export/qb' %}active{% endif %}">
-                <i class="bi bi-file-earmark-arrow-down"></i> QB Export
-            </a>
-            <a href="{{ url_for('xtra_chef.cogs') }}" class="{% if '/xtra-chef' in request.path %}active{% endif %}">
-                <i class="bi bi-graph-up-arrow"></i> xtraCHEF
-            </a>
+            <!-- VENDORS & ORDERING -->
+            <div class="nav-section-label">Vendors &amp; Ordering</div>
+            <a href="/vendors" class="nav-link {% if request.endpoint == 'vendors' %}active{% endif %}"><i class="bi bi-truck"></i><span>Vendors</span></a>
+            <a href="/item-library" class="nav-link {% if request.endpoint == 'item_library' %}active{% endif %}"><i class="bi bi-collection"></i><span>Item Library</span></a>
+            <a href="/inventory" class="nav-link {% if request.endpoint == 'inventory' %}active{% endif %}"><i class="bi bi-box-seam"></i><span>Inventory</span></a>
+            <a href="/recipes" class="nav-link {% if request.endpoint == 'recipes' %}active{% endif %}"><i class="bi bi-journal-richtext"></i><span>Recipe</span></a>
+            <a href="/orders" class="nav-link {% if request.endpoint == 'orders' %}active{% endif %}"><i class="bi bi-cart3"></i><span>Order</span></a>
+
+            <!-- TEAM -->
+            <div class="nav-section-label">Team</div>
+            <a href="/schedule" class="nav-link {% if request.endpoint == 'schedule' %}active{% endif %}"><i class="bi bi-calendar3"></i><span>Schedule</span></a>
+            <a href="/pto" class="nav-link {% if request.endpoint == 'pto' %}active{% endif %}"><i class="bi bi-calendar-heart"></i><span>PTO</span></a>
+            <a href="/employees" class="nav-link {% if request.endpoint == 'employees' %}active{% endif %}"><i class="bi bi-people"></i><span>Employees</span></a>
+            <a href="/payroll" class="nav-link {% if request.endpoint == 'payroll' %}active{% endif %}"><i class="bi bi-cash-stack"></i><span>Payroll</span></a>
 
             <div class="nav-section" style="margin-top:auto; padding-top:16px; border-top:1px solid var(--border); margin-top:16px;">
                 {% if current_user.is_authenticated %}
