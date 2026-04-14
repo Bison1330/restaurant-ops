@@ -75,50 +75,91 @@ Full rebuild plan to mimic xtraCHEF. Data layer is solid; UI/routes being stripp
 
 ---
 
-## KEY FILES
-- App: /root/restaurant-ops/app.py
-- DB models: /root/restaurant-ops/database.py
-- Templates: /root/restaurant-ops/templates/
-- Base template: /root/restaurant-ops/templates/base.html
-- Toast connector: /root/restaurant-ops/connectors/toast_pos.py
-- Env vars: /root/restaurant-ops/.env
-- Restart: /root/restaurant-ops/restart.sh
-- Inventory seed: /root/restaurant-ops/seed_inventory.py
+## KEY KNOWN ISSUES
+1. **Toast sales sync stale** — "Toast hasn't synced in 159 hours" — sales data not pulling
+   - Fix: check Toast API credentials in .env, verify sync job running
+   - Impact: Net sales = $0 on COGS page, cost ratio = 0%
 
-## KEY COMMANDS
-```bash
-# Start/restart server
-bash /root/restaurant-ops/restart.sh
+2. **COGS category names wrong** — shows "broadline", "Beverage", "alcohol"
+   - Fix: map vendor.type field to proper GL categories (Food, Alcohol:Beer, etc.)
+   - xtraCHEF GL categories: Food, Alcohol:Beer, Alcohol:Liquor, Alcohol:Wine,
+     Restaurant Supplies, NA Beverage
 
-# Check logs
-tail -f /root/restaurant-ops/logs/error.log
+3. **Inventory Counts wrong layout** — shows flat item list instead of
+   calendar + zone cards matching xtraCHEF
+   - Fix: full rebuild of /inventory with 6-tab structure
 
-# Run compliance check manually
-cd /root/restaurant-ops && source venv/bin/activate
-python -c "from app import app, _check_certification_alerts; _check_certification_alerts()"
+4. **No PDF viewer on invoice detail** — imported invoices have no PDF file
+   - Fix: implement file upload storage, display PDF for newly uploaded invoices
 
-# DB record counts
-python -c "
-from app import app
-from database import db, Employee, Recipe, Invoice, Restaurant, InventoryItem
-with app.app_context():
-    for r in Restaurant.query.all():
-        print(f'{r.name}:')
-        print(f'  employees: {Employee.query.filter_by(restaurant_id=r.id).count()}')
-        print(f'  recipes: {Recipe.query.filter_by(restaurant_id=r.id).count()}')
-        print(f'  invoices: {Invoice.query.filter_by(restaurant_id=r.id).count()}')
-        print(f'  inventory: {InventoryItem.query.filter_by(restaurant_id=r.id).count()}')
-"
-```
+5. **Net sales = $0 everywhere** — Toast API not returning sales for date ranges
+   - Root cause: likely token expiry or wrong endpoint for sales data
 
 ---
 
 ## EXTERNAL INTEGRATIONS
-- Toast POS API — credentials in .env
-- Anthropic API — ANTHROPIC_API_KEY in .env
-- GFS SFTP — NOT YET SET UP
-- Fintech API — NOT YET SET UP
+| Service | Status | Credentials |
+|---------|--------|-------------|
+| Toast POS API | Connected, sync stale | TOAST_CLIENT_ID, TOAST_CLIENT_SECRET in .env |
+| Anthropic API | Working | ANTHROPIC_API_KEY in .env — ROTATE THIS KEY |
+| GFS SFTP | Not set up | sftp-gordon.gfs.com |
+| Fintech API | Not set up | Southern Glazer's, RNDC alcohol invoices |
+| QuickBooks Desktop | Export only (IIF) | No API — file download |
 
-## SECURITY NOTE
-⚠️ ANTHROPIC_API_KEY and TOAST_CLIENT_SECRET were exposed in chat twice.
-Rotate both keys when possible at console.anthropic.com and Toast Developer Portal.
+---
+
+## KEY FILES
+| File | Purpose |
+|------|---------|
+| /root/restaurant-ops/app.py | Main Flask app — all routes |
+| /root/restaurant-ops/database.py | SQLAlchemy models |
+| /root/restaurant-ops/templates/ | All HTML templates |
+| /root/restaurant-ops/templates/base.html | Base layout, nav, CSS |
+| /root/restaurant-ops/connectors/toast_pos.py | Toast API connector |
+| /root/restaurant-ops/.env | All credentials/secrets |
+| /root/restaurant-ops/restart.sh | Kill + restart Gunicorn |
+| /root/restaurant-ops/seed_inventory.py | Reseed inventory from scratch |
+| /root/restaurant-ops/xtrachef_docs/ | xtraCHEF page documentation |
+
+## KEY COMMANDS
+```bash
+# Restart server
+bash /root/restaurant-ops/restart.sh
+
+# Check logs
+tail -f /root/restaurant-ops/logs/error.log
+tail -f /root/restaurant-ops/logs/access.log
+
+# Check DB counts
+cd /root/restaurant-ops && source venv/bin/activate
+python -c "
+from app import app
+from database import db, Employee, Recipe, Invoice, Restaurant, InventoryItem, Vendor
+with app.app_context():
+    for r in Restaurant.query.all():
+        print(f'{r.name}:')
+        print(f'  invoices: {Invoice.query.filter_by(restaurant_id=r.id).count()}')
+        print(f'  inventory: {InventoryItem.query.filter_by(restaurant_id=r.id).count()}')
+        print(f'  recipes: {Recipe.query.filter_by(restaurant_id=r.id).count()}')
+        print(f'  vendors: {Vendor.query.filter_by(restaurant_id=r.id).count()}')
+"
+
+# Git status
+cd /root/restaurant-ops && git log --oneline -5
+```
+
+---
+
+## SECURITY NOTES
+⚠️ ANTHROPIC_API_KEY exposed in chat — rotate at console.anthropic.com
+⚠️ TOAST_CLIENT_SECRET exposed in chat — rotate at Toast Developer Portal
+⚠️ All owner passwords are temporary — users should change on first login
+
+---
+
+## SESSION HISTORY SUMMARY
+- Session 1-3: Initial build — employees, schedule, PTO, payroll, compliance
+- Session 4-5: Toast API integration, invoice import, vendor seeding
+- Session 6: Inventory seeding from xtraCHEF (1,083 items, 49 zones, 48 count sheets)
+- Session 7: Full xtraCHEF documentation captured via Claude Chrome (all 23 pages)
+- Session 8 (current): Nav restructure to match xtraCHEF, COGS page built, Invoices rebuilt
