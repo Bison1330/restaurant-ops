@@ -175,7 +175,7 @@
                         <td>${{ "{:,.2f}".format(inv.total_amount) }}</td>
                         <td style="font-size: 0.82rem;">{{ inv.due_date.strftime('%b %d') if inv.due_date else '—' }}</td>
                         <td class="text-end">
-                            <form action="{{ url_for('approve_invoice', id=inv.id) }}" method="POST" style="display:inline;">
+                            <form action="{{ url_for('invoice_approve', invoice_id=inv.id) }}" method="POST" style="display:inline;">
                                 <button class="btn btn-sm btn-outline-success"><i class="bi bi-check-lg"></i> Approve</button>
                             </form>
                         </td>
